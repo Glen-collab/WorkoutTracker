@@ -96,6 +96,8 @@ const styles = {
     marginBottom: '4px',
   },
   gridInput: {
+    width: '100%',
+    minWidth: 0,
     padding: '12px',
     border: '2px solid #e0e0e0',
     borderRadius: '10px',

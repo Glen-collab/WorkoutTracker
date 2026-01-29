@@ -18,6 +18,8 @@ const styles = {
     fontSize: '14px',
     color: '#666',
     marginBottom: '16px',
+    overflowWrap: 'break-word',
+    wordBreak: 'break-word',
   },
   nav: {
     display: 'flex',
