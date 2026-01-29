@@ -375,16 +375,28 @@ export default function App() {
         day: currentDay,
         blocks: program?.blocks?.map((block, blockIndex) => ({
           ...block,
-          exercises: block.exercises?.map((ex, exIndex) => ({
-            ...ex,
-            sets: ex.sets?.map((set, setIndex) => ({
-              ...set,
-              weight: trackingData[`${blockIndex}-${exIndex}-${setIndex}-weight`] || set.weight || '',
-              reps: trackingData[`${blockIndex}-${exIndex}-${setIndex}-reps`] || set.reps || '',
-              completed: trackingData[`${blockIndex}-${exIndex}-${setIndex}-completed`] || false,
-            })),
-            recommendation: recommendations[`${blockIndex}-${exIndex}`] || null,
-          })),
+          exercises: block.exercises?.map((ex, exIndex) => {
+            // sets can be a number (from builder) or an array (from saved workout)
+            const setsCount = typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 1);
+            const setsArray = Array.isArray(ex.sets)
+              ? ex.sets.map((set, setIndex) => ({
+                  ...set,
+                  weight: trackingData[`${blockIndex}-${exIndex}-${setIndex}-weight`] || set.weight || '',
+                  reps: trackingData[`${blockIndex}-${exIndex}-${setIndex}-reps`] || set.reps || '',
+                  completed: trackingData[`${blockIndex}-${exIndex}-${setIndex}-completed`] || false,
+                }))
+              : Array.from({ length: setsCount }, (_, setIndex) => ({
+                  weight: trackingData[`${blockIndex}-${exIndex}-${setIndex}-weight`] || '',
+                  reps: trackingData[`${blockIndex}-${exIndex}-${setIndex}-reps`] || ex.reps || '',
+                  completed: trackingData[`${blockIndex}-${exIndex}-${setIndex}-completed`] || false,
+                }));
+            return {
+              ...ex,
+              sets: setsArray,
+              setsCount,
+              recommendation: recommendations[`${blockIndex}-${exIndex}`] || null,
+            };
+          }),
         })) || [],
       };
 
