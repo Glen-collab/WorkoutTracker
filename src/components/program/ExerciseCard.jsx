@@ -202,7 +202,8 @@ export default function ExerciseCard({
   const getTrack = (setIdx, field) => {
     if (!trackingData) return '';
     if (setIdx !== null) return trackingData?.[`${blockIndex}-${exIndex}-${setIdx}-${field}`] || '';
-    return trackingData?.[`${blockIndex}-${exIndex}-${field}`] || '';
+    // Conditioning fields stored with null setIndex
+    return trackingData?.[`${blockIndex}-${exIndex}-null-${field}`] || '';
   };
 
   const activeRec = trackingData?.[`rec-${blockIndex}-${exIndex}`] || null;
@@ -216,6 +217,8 @@ export default function ExerciseCard({
     }
     showToast(msg);
     setCollapsed(true);
+    // Save completed flag to trackingData for tonnage calculations
+    if (onUpdateTracking) onUpdateTracking(blockIndex, exIndex, null, `complete-${blockIndex}-${exIndex}`, true);
     if (onMarkComplete) onMarkComplete(blockIndex, exIndex);
   };
 

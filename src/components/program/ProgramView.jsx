@@ -122,7 +122,7 @@ export default function ProgramView({
           />
         ))}
 
-        <DailyTonnage blocks={blocks} maxes={maxes} />
+        <DailyTonnage blocks={blocks} maxes={maxes} trackingData={trackingData} />
 
         <div style={s.actionBar}>
           <button style={s.logBtn} onClick={onLogWorkout}>
