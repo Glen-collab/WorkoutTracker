@@ -114,8 +114,11 @@ export default function App() {
         setProgram(prog);
 
         if (result.data.userPosition) {
-          setCurrentWeek(result.data.userPosition.currentWeek || 1);
-          setCurrentDay(result.data.userPosition.currentDay || 1);
+          // Only set position from DB on initial load (no explicit requested day)
+          if (!requestedWeek && !requestedDay) {
+            setCurrentWeek(result.data.userPosition.currentWeek || 1);
+            setCurrentDay(result.data.userPosition.currentDay || 1);
+          }
           // Auto-fill 1RM from database if user didn't provide them
           const pos = result.data.userPosition;
           setMaxes(prev => ({
@@ -367,6 +370,15 @@ export default function App() {
     await handleLoadProgramFromAPI(newWeek, newDay);
   }, [currentWeek, currentDay, daysPerWeek, totalWeeks, setCurrentWeek, setCurrentDay, setRecommendations, handleLoadProgramFromAPI]);
 
+  const handleNavigateToDay = useCallback(async (week, day) => {
+    if (week === currentWeek && day === currentDay) return;
+    setCurrentWeek(week);
+    setCurrentDay(day);
+    setTrackingData({});
+    setRecommendations({});
+    await handleLoadProgramFromAPI(week, day);
+  }, [currentWeek, currentDay, setCurrentWeek, setCurrentDay, setRecommendations, handleLoadProgramFromAPI]);
+
   const handleLogWorkout = useCallback(async (clientNotes) => {
     try {
       // Build workout data from tracking
@@ -509,6 +521,7 @@ export default function App() {
           customReason={customReason}
           recommendations={recommendations}
           onNavigate={handleNavigateDay}
+          onNavigateToDay={handleNavigateToDay}
           onSetRecommendation={setRecommendation}
           isFirstDay={isFirstDay}
           isLastDay={isLastDay}

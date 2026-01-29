@@ -1,6 +1,7 @@
 import React from 'react';
 import ProgramHeader from './ProgramHeader';
 import BlockCard from './BlockCard';
+import DailyTonnage from './DailyTonnage';
 
 const s = {
   container: {
@@ -67,6 +68,7 @@ export default function ProgramView({
   customReason,
   recommendations,
   onNavigate,
+  onNavigateToDay,
   onSetRecommendation,
   isFirstDay,
   isLastDay,
@@ -89,6 +91,7 @@ export default function ProgramView({
           daysPerWeek={daysPerWeek}
           totalWeeks={totalWeeks}
           onNavigate={onNavigate}
+          onNavigateToDay={onNavigateToDay}
           isFirstDay={isFirstDay}
           isLastDay={isLastDay}
           isCustomWorkout={isCustomWorkout}
@@ -118,6 +121,8 @@ export default function ProgramView({
             recommendations={recommendations}
           />
         ))}
+
+        <DailyTonnage blocks={blocks} maxes={maxes} />
 
         <div style={s.actionBar}>
           <button style={s.logBtn} onClick={onLogWorkout}>
