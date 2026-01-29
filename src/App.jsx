@@ -416,10 +416,24 @@ export default function App() {
           localStorage.setItem(historyKey, JSON.stringify(existing));
         } catch { /* ignore */ }
 
-        if (result.program_complete) {
+        if (result.data?.program_complete) {
           setShowCompletionModal(true);
         } else {
           setShowCongratsModal(true);
+
+          // Advance to next day/week from API response
+          const nextWeek = result.data?.next_week;
+          const nextDay = result.data?.next_day;
+          if (nextWeek && nextDay) {
+            // Load the next workout after a short delay so congrats modal shows first
+            setTimeout(() => {
+              setCurrentWeek(nextWeek);
+              setCurrentDay(nextDay);
+              setTrackingData({});
+              setRecommendations({});
+              handleLoadProgramFromAPI(nextWeek, nextDay);
+            }, 2000);
+          }
         }
 
         // If last day of week, trigger game after delay
@@ -433,7 +447,7 @@ export default function App() {
     } catch (err) {
       console.error('Failed to log workout:', err);
     }
-  }, [currentWeek, currentDay, program, trackingData, recommendations, api, user, daysPerWeek]);
+  }, [currentWeek, currentDay, program, trackingData, recommendations, api, user, daysPerWeek, totalWeeks, maxes, setCurrentWeek, setCurrentDay, setRecommendations, handleLoadProgramFromAPI]);
 
   const handleSubmitCompletion = useCallback(async (completionData) => {
     try {
@@ -495,7 +509,7 @@ export default function App() {
 
       {/* Floating chatbot - on access and program screens */}
       {(screen === 'access' || screen === 'program') && (
-        <WorkoutChatbot ref={chatbotRef} userName={user?.name || 'there'} />
+        <WorkoutChatbot ref={chatbotRef} userName={user?.name || 'there'} screen={screen} />
       )}
 
       {/* Modals */}

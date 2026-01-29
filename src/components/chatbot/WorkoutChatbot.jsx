@@ -1,6 +1,50 @@
 import React, { useState, useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
 
 const TREE = {
+  // Access screen entry - simple help for new users
+  access_entry: {
+    message: "Hey {name}! Welcome to the Workout Tracker. How can I help?",
+    options: [
+      { label: "How do I use this?", next: "access_help" },
+      { label: "I don't have an access code", next: "no_code" },
+      { label: "What are 1RM values?", next: "one_rm_help" },
+      { label: "Just browsing!", next: "access_browse" }
+    ]
+  },
+  access_help: {
+    message: "It's simple! 1) If you're new, enter your name, email, and access code from your trainer. 2) If you're returning, just enter your email and code. 3) Optionally enter your 1RM values so your trainer can calculate percentages for you.",
+    options: [
+      { label: "What's an access code?", next: "no_code" },
+      { label: "What are 1RM values?", next: "one_rm_help" },
+      { label: "Thanks!", next: "access_entry" }
+    ]
+  },
+  no_code: {
+    message: "Your access code is a unique code your trainer gives you after building your program. It looks like XXXXX-XXXXX. If you don't have one, ask your trainer to create a program for you in the Workout Builder!",
+    options: [
+      { label: "Got it, thanks!", next: "access_entry" }
+    ]
+  },
+  one_rm_help: {
+    message: "1RM stands for One Rep Max \u2014 the heaviest weight you can lift for one rep. Your trainer uses these to calculate your working weights (e.g., 75% of your bench max). Common ones: Bench Press, Squat, Deadlift, and Power Clean. If you don't know yours, leave them blank!",
+    options: [
+      { label: "How do I find my 1RM?", next: "find_one_rm" },
+      { label: "Thanks!", next: "access_entry" }
+    ]
+  },
+  find_one_rm: {
+    message: "You can estimate your 1RM by doing a heavy set of 3-5 reps and using a calculator. Or your trainer can test you! A rough formula: Weight \u00d7 Reps \u00d7 0.0333 + Weight = estimated 1RM. Example: 185 lbs \u00d7 5 reps \u00d7 0.0333 + 185 = ~216 lbs.",
+    options: [
+      { label: "Good to know!", next: "access_entry" }
+    ]
+  },
+  access_browse: {
+    message: "No worries! When you're ready, enter your info above and hit Load My Program. Your trainer has a whole workout waiting for you! \ud83d\udcaa",
+    options: [
+      { label: "Sounds good!", next: "access_entry" }
+    ]
+  },
+  // Program screen entry - full helper mode
   entry: {
     message: "Hey {name}, I'm here to help! What's going on?",
     options: [
@@ -112,7 +156,7 @@ const TREE = {
   }
 };
 
-const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName }, ref) => {
+const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, screen: currentScreen }, ref) => {
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const isOpen = isControlled ? controlledOpen : internalOpen;
@@ -129,18 +173,28 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName }
     return text.replace(/\{name\}/g, name);
   }, [name]);
 
-  // Initialize with entry message
+  const entryNode = currentScreen === 'access' ? 'access_entry' : 'entry';
+
+  // Initialize with entry message (re-initialize when screen changes)
   useEffect(() => {
     if (isOpen && !initialized.current) {
       initialized.current = true;
+      const node = currentScreen === 'access' ? 'access_entry' : 'entry';
       setMessages([{
-        text: formatMessage(TREE.entry.message),
+        text: formatMessage(TREE[node].message),
         isBot: true,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }]);
-      setCurrentNode('entry');
+      setCurrentNode(node);
     }
-  }, [isOpen, formatMessage]);
+  }, [isOpen, formatMessage, currentScreen]);
+
+  // Reset when screen changes so it re-initializes with correct tree
+  useEffect(() => {
+    initialized.current = false;
+    setMessages([]);
+    setCurrentNode(currentScreen === 'access' ? 'access_entry' : 'entry');
+  }, [currentScreen]);
 
   // Auto-scroll
   useEffect(() => {
