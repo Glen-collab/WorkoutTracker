@@ -1,0 +1,518 @@
+import React, { useState } from 'react';
+import { get1RM, calculateWeight } from '../../utils/trackerHelpers';
+import TrackingInputs from './TrackingInputs';
+import { getMotivationalMessage } from '../../data/exerciseMotivation';
+
+function showToast(message) {
+  const toast = document.createElement('div');
+  toast.textContent = message;
+  toast.style.cssText = `
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white; padding: 16px 24px; border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3); font-size: 16px; font-weight: 600;
+    text-align: center; z-index: 10000; max-width: 90%;
+    animation: gwtToastSlideUp 0.3s ease-out;
+  `;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.style.animation = 'gwtToastSlideDown 0.3s ease-out';
+    setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 300);
+  }, 4000);
+}
+
+const s = {
+  card: {
+    background: '#fff',
+    borderRadius: '10px',
+    border: '1px solid #e0e0e0',
+    marginBottom: '10px',
+    overflow: 'hidden',
+    transition: 'all 0.2s',
+  },
+  cardCollapsed: {
+    background: '#e8f5e9',
+    border: '2px solid #4caf50',
+  },
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '12px 14px',
+    cursor: 'pointer',
+  },
+  headerLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontWeight: '600',
+    fontSize: '15px',
+    color: '#333',
+  },
+  youtubeBtn: {
+    background: '#ff0000',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '6px',
+    padding: '4px 8px',
+    fontSize: '12px',
+    cursor: 'pointer',
+    textDecoration: 'none',
+  },
+  body: { padding: '0 14px 14px' },
+  targetText: {
+    fontSize: '14px',
+    color: '#555',
+    marginBottom: '8px',
+    fontWeight: '500',
+  },
+  detailRow: {
+    fontSize: '13px',
+    color: '#666',
+    marginBottom: '4px',
+  },
+  pill: {
+    display: 'inline-block',
+    background: '#e3f2fd',
+    color: '#1565c0',
+    borderRadius: '6px',
+    padding: '4px 10px',
+    fontSize: '12px',
+    fontWeight: '600',
+    marginRight: '6px',
+    marginBottom: '6px',
+  },
+  pillGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '6px',
+    marginBottom: '10px',
+  },
+  markBtn: {
+    background: '#4caf50',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    padding: '10px 16px',
+    fontSize: '14px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    width: '100%',
+    marginTop: '10px',
+  },
+  expandBtn: {
+    background: '#4caf50',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '6px',
+    padding: '6px 12px',
+    fontSize: '14px',
+    fontWeight: '700',
+    cursor: 'pointer',
+  },
+  warmup: {
+    background: '#fff3e0',
+    borderRadius: '8px',
+    padding: '10px',
+    marginBottom: '10px',
+    fontSize: '13px',
+  },
+  warning: {
+    background: '#fff3e0',
+    border: '1px solid #ff9800',
+    borderRadius: '8px',
+    padding: '10px',
+    fontSize: '13px',
+    color: '#e65100',
+    marginBottom: '8px',
+  },
+  prevRec: {
+    background: '#e8f5e9',
+    border: '1px solid #4caf50',
+    borderRadius: '8px',
+    padding: '8px 12px',
+    fontSize: '13px',
+    color: '#2e7d32',
+    marginTop: '10px',
+    marginBottom: '6px',
+  },
+  recSection: { marginTop: '10px' },
+  recLabel: { fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '6px' },
+  recBtns: { display: 'flex', gap: '8px' },
+  recBtn: {
+    flex: 1,
+    padding: '8px',
+    borderRadius: '8px',
+    border: '2px solid',
+    background: 'transparent',
+    fontSize: '18px',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+  },
+  notesCard: {
+    background: '#fffde7',
+    borderLeft: '3px solid #fbc02d',
+    borderRadius: '6px',
+    padding: '8px 10px',
+    fontSize: '13px',
+    color: '#555',
+    marginBottom: '8px',
+    fontStyle: 'italic',
+  },
+  setLabel: {
+    fontSize: '13px',
+    fontWeight: '600',
+    color: '#555',
+    marginBottom: '4px',
+    marginTop: '8px',
+  },
+  condInput: {
+    width: '100%',
+    padding: '10px 12px',
+    border: '2px solid #e0e0e0',
+    borderRadius: '8px',
+    fontSize: '14px',
+    boxSizing: 'border-box',
+    marginBottom: '6px',
+  },
+};
+
+const recLabels = { up: 'go up', same: 'stay the same', down: 'go down' };
+
+export default function ExerciseCard({
+  exercise,
+  blockIndex,
+  exIndex,
+  blockType,
+  maxes,
+  userName,
+  savedExerciseData,
+  previousRecommendation,
+  trackingData,
+  onUpdateTracking,
+  onMarkComplete,
+  onSetRecommendation,
+}) {
+  const [collapsed, setCollapsed] = useState(false);
+  const isStrength = ['straight-set', 'superset', 'triset'].includes(blockType);
+  const isConditioning = ['conditioning', 'movement'].includes(blockType);
+  const isCircuit = blockType === 'circuit';
+  const isWarmup = blockType === 'warmup' || blockType === 'mobility';
+
+  const getTrack = (setIdx, field) => {
+    if (!trackingData) return '';
+    if (setIdx !== null) return trackingData?.[`${blockIndex}-${exIndex}-${setIdx}-${field}`] || '';
+    return trackingData?.[`${blockIndex}-${exIndex}-${field}`] || '';
+  };
+
+  const activeRec = trackingData?.[`rec-${blockIndex}-${exIndex}`] || null;
+
+  const handleMark = () => {
+    const firstName = (userName || '').split(' ')[0];
+    let msg = getMotivationalMessage(exercise.name, blockType);
+    // ~30% of the time, prepend the user's first name
+    if (firstName && Math.random() < 0.3) {
+      msg = `${firstName}, ${msg.charAt(0).toLowerCase()}${msg.slice(1)}`;
+    }
+    showToast(msg);
+    setCollapsed(true);
+    if (onMarkComplete) onMarkComplete(blockIndex, exIndex);
+  };
+
+  const handleRec = (dir) => {
+    if (onSetRecommendation) onSetRecommendation(blockIndex, exIndex, dir);
+    if (onUpdateTracking)
+      onUpdateTracking(blockIndex, exIndex, null, `rec-${blockIndex}-${exIndex}`, dir);
+  };
+
+  // Percentage-based strength
+  const oneRM = isStrength && exercise.isPercentageBased ? get1RM(exercise.name, maxes) : 0;
+  const hasPercentages = exercise.isPercentageBased && exercise.percentages?.length > 0;
+
+  const warmupSets =
+    oneRM > 225
+      ? [
+          { reps: 5, pct: 60 },
+          { reps: 5, pct: 65 },
+          { reps: 3, pct: 80 },
+          { reps: 1, pct: 85 },
+        ]
+      : [
+          { reps: 5, pct: 60 },
+          { reps: 3, pct: 65 },
+          { reps: 1, pct: 80 },
+        ];
+
+  const renderRecSection = () => (
+    <>
+      {previousRecommendation && (
+        <div style={s.prevRec}>
+          {'\uD83D\uDCC8'} Last time you said to {recLabels[previousRecommendation] || previousRecommendation}
+        </div>
+      )}
+      <div style={s.recSection}>
+        <div style={s.recLabel}>{'\uD83D\uDCCA'} Next Week's Plan</div>
+        <div style={s.recBtns}>
+          {[
+            { dir: 'up', icon: '\u2B06\uFE0F', color: '#4caf50' },
+            { dir: 'same', icon: '\u27A1\uFE0F', color: '#2196f3' },
+            { dir: 'down', icon: '\u2B07\uFE0F', color: '#f44336' },
+          ].map(({ dir, icon, color }) => (
+            <button
+              key={dir}
+              style={{
+                ...s.recBtn,
+                borderColor: color,
+                background: activeRec === dir ? color : 'transparent',
+                color: activeRec === dir ? '#fff' : color,
+              }}
+              onClick={() => handleRec(dir)}
+            >
+              {icon}
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+
+  const renderStrength = () => {
+    if (hasPercentages && oneRM > 0) {
+      return (
+        <>
+          <div style={s.warmup}>
+            <strong>Warm-Up Protocol</strong>
+            {warmupSets.map((ws, i) => (
+              <div key={i}>
+                {ws.reps} reps @ {ws.pct}% = {calculateWeight(oneRM, ws.pct)} lbs
+              </div>
+            ))}
+          </div>
+          <div style={{ ...s.targetText, fontWeight: '700' }}>
+            {exercise.schemeName || 'Working Sets'} - Auto-Calculated Weights
+          </div>
+          {exercise.percentages.map((pct, si) => (
+            <div key={si}>
+              <div style={s.setLabel}>
+                Set {si + 1}: {calculateWeight(oneRM, pct)} lbs ({pct}% of 1RM) x{' '}
+                {exercise.repsPerSet?.[si] || exercise.reps || '?'} reps
+              </div>
+              <TrackingInputs
+                blockIndex={blockIndex}
+                exIndex={exIndex}
+                setIndex={si}
+                weightValue={getTrack(si, 'weight')}
+                repsValue={getTrack(si, 'reps')}
+                weightPlaceholder={`${calculateWeight(oneRM, pct)} lbs`}
+                repsPlaceholder={`${exercise.repsPerSet?.[si] || exercise.reps || ''} reps`}
+                onUpdate={onUpdateTracking}
+              />
+            </div>
+          ))}
+          <button style={s.markBtn} onClick={handleMark}>
+            {'\u2713'} Mark Complete
+          </button>
+          {renderRecSection()}
+        </>
+      );
+    }
+
+    if (hasPercentages && oneRM === 0) {
+      const fallbackSets = exercise.sets || 3;
+      const fallbackReps = exercise.reps || '10';
+      return (
+        <>
+          <div style={s.warning}>
+            {'\u26A0\uFE0F'} No 1RM entered — showing default tracking inputs.
+          </div>
+          <div style={s.targetText}>
+            {fallbackSets} sets x {fallbackReps} reps
+          </div>
+          {Array.from({ length: fallbackSets }).map((_, si) => (
+            <div key={si}>
+              <div style={s.setLabel}>Set {si + 1}</div>
+              <TrackingInputs
+                blockIndex={blockIndex}
+                exIndex={exIndex}
+                setIndex={si}
+                weightValue={getTrack(si, 'weight')}
+                repsValue={getTrack(si, 'reps')}
+                weightPlaceholder="Weight (lbs)"
+                repsPlaceholder="Reps"
+                onUpdate={onUpdateTracking}
+              />
+            </div>
+          ))}
+          <button style={s.markBtn} onClick={handleMark}>
+            {'\u2713'} Mark Complete
+          </button>
+          {renderRecSection()}
+        </>
+      );
+    }
+
+    // Regular strength
+    const sets = exercise.sets || 1;
+    return (
+      <>
+        <div style={s.targetText}>
+          {sets} sets x {exercise.reps || '?'} reps
+        </div>
+        {exercise.weight && <div style={s.detailRow}>Weight: {exercise.weight}</div>}
+        {exercise.rest && <div style={s.detailRow}>Rest: {exercise.rest}</div>}
+        {exercise.notes && <div style={s.notesCard}>{exercise.notes}</div>}
+        {Array.from({ length: sets }).map((_, si) => (
+          <div key={si}>
+            <div style={s.setLabel}>Set {si + 1}</div>
+            <TrackingInputs
+              blockIndex={blockIndex}
+              exIndex={exIndex}
+              setIndex={si}
+              weightValue={getTrack(si, 'weight')}
+              repsValue={getTrack(si, 'reps')}
+              weightPlaceholder="Weight (lbs)"
+              repsPlaceholder="Reps"
+              onUpdate={onUpdateTracking}
+            />
+          </div>
+        ))}
+        <button style={s.markBtn} onClick={handleMark}>
+          {'\u2713'} Mark Complete
+        </button>
+        {renderRecSection()}
+      </>
+    );
+  };
+
+  const renderConditioning = () => {
+    const details = [
+      { label: 'Reps', val: exercise.reps },
+      { label: 'Weight', val: exercise.weight },
+      { label: 'Duration', val: exercise.duration },
+      { label: 'Distance', val: exercise.distance },
+      { label: 'Speed', val: exercise.speed },
+      { label: 'Intensity', val: exercise.intensity },
+      { label: 'Rest', val: exercise.rest },
+    ].filter((d) => d.val);
+
+    return (
+      <>
+        {details.length > 0 && (
+          <div style={s.pillGrid}>
+            {details.map((d, i) => (
+              <span key={i} style={s.pill}>
+                {d.label}: {d.val}
+              </span>
+            ))}
+          </div>
+        )}
+        {exercise.notes && <div style={s.notesCard}>{exercise.notes}</div>}
+        {exercise.description && (
+          <div style={{ ...s.detailRow, fontStyle: 'italic', marginBottom: '10px' }}>
+            {exercise.description}
+          </div>
+        )}
+        {['Duration', 'Distance', 'Speed/Intensity', 'Intervals/Notes'].map((field) => (
+          <input
+            key={field}
+            type="text"
+            placeholder={field}
+            value={getTrack(null, field.toLowerCase().replace(/[/ ]/g, '_'))}
+            onChange={(e) =>
+              onUpdateTracking(
+                blockIndex,
+                exIndex,
+                null,
+                field.toLowerCase().replace(/[/ ]/g, '_'),
+                e.target.value
+              )
+            }
+            style={s.condInput}
+          />
+        ))}
+        <button style={s.markBtn} onClick={handleMark}>
+          {'\u2713'} Mark Complete
+        </button>
+      </>
+    );
+  };
+
+  const renderCircuit = () => (
+    <>
+      {exercise.reps && <div style={s.targetText}>Reps: {exercise.reps}</div>}
+      {[
+        { label: 'Weight', val: exercise.weight },
+        { label: 'Duration', val: exercise.duration },
+        { label: 'Rest', val: exercise.rest },
+      ]
+        .filter((d) => d.val)
+        .map((d, i) => (
+          <span key={i} style={s.pill}>
+            {d.label}: {d.val}
+          </span>
+        ))}
+      <button style={{ ...s.markBtn, marginTop: '12px' }} onClick={handleMark}>
+        {'\u2713'} Mark Complete
+      </button>
+    </>
+  );
+
+  const renderWarmup = () => (
+    <>
+      {exercise.reps && <div style={s.detailRow}>Reps: {exercise.reps}</div>}
+      {exercise.duration && <div style={s.detailRow}>Duration: {exercise.duration}</div>}
+      {exercise.weight && <div style={s.detailRow}>Weight: {exercise.weight}</div>}
+      {exercise.notes && <div style={s.notesCard}>{exercise.notes}</div>}
+      <TrackingInputs
+        blockIndex={blockIndex}
+        exIndex={exIndex}
+        setIndex={0}
+        weightValue={getTrack(0, 'weight')}
+        repsValue={getTrack(0, 'reps')}
+        weightPlaceholder="Weight (lbs)"
+        repsPlaceholder="Reps"
+        onUpdate={onUpdateTracking}
+      />
+      <button style={s.markBtn} onClick={handleMark}>
+        {'\u2713'} Mark Complete
+      </button>
+    </>
+  );
+
+  return (
+    <div style={{ ...s.card, ...(collapsed ? s.cardCollapsed : {}) }}>
+      <div style={s.header} onClick={() => collapsed && setCollapsed(false)}>
+        <div style={s.headerLeft}>
+          <span>
+            {exIndex + 1}. {exercise.name}
+          </span>
+          {exercise.youtube && (
+            <a
+              href={exercise.youtube}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={s.youtubeBtn}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {'\uD83D\uDCF9'}
+            </a>
+          )}
+        </div>
+        {collapsed && (
+          <button style={s.expandBtn} onClick={() => setCollapsed(false)}>
+            +
+          </button>
+        )}
+      </div>
+
+      {!collapsed && (
+        <div style={s.body}>
+          {isStrength && renderStrength()}
+          {isConditioning && renderConditioning()}
+          {isCircuit && renderCircuit()}
+          {isWarmup && renderWarmup()}
+        </div>
+      )}
+    </div>
+  );
+}
