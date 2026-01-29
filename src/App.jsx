@@ -493,9 +493,9 @@ export default function App() {
         />
       )}
 
-      {/* Floating chatbot - only on program screen */}
-      {screen === 'program' && (
-        <WorkoutChatbot ref={chatbotRef} userName={user.name} />
+      {/* Floating chatbot - on access and program screens */}
+      {(screen === 'access' || screen === 'program') && (
+        <WorkoutChatbot ref={chatbotRef} userName={user?.name || 'there'} />
       )}
 
       {/* Modals */}
