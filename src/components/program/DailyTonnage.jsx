@@ -64,9 +64,7 @@ function calcBlockTonnage(block, maxes, trackingData, blockIndex) {
   block.exercises.forEach((ex, exIndex) => {
     // Only count if marked complete
     const completedKey = `complete-${blockIndex}-${exIndex}`;
-    // Check both direct key and the null-setIndex pattern
-    const isCompleted = trackingData?.[completedKey] ||
-      trackingData?.[`${blockIndex}-${exIndex}-null-${completedKey}`];
+    const isCompleted = trackingData?.[completedKey];
     if (!isCompleted) return;
 
     // Core exercises → crunch equivalents, not tonnage
@@ -76,21 +74,47 @@ function calcBlockTonnage(block, maxes, trackingData, blockIndex) {
     }
 
     const mult = getMultiplier(ex.qualifier);
-    const setsCount = typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 1);
 
-    if (ex.percentageSets && Array.isArray(ex.percentageSets)) {
-      for (const ps of ex.percentageSets) {
-        const pct = parseFloat(ps.percentage) || 0;
-        const reps = parseInt(ps.reps) || 0;
-        const baseMax = ex.baseMax ? (maxes[ex.baseMax] || 0) : 0;
-        const weight = Math.round(baseMax * pct / 100 / 5) * 5;
-        tonnage += weight * reps * mult;
-      }
+    // Determine how many sets this exercise has
+    let setsCount;
+    if (Array.isArray(ex.sets) && ex.sets.length > 0 && typeof ex.sets[0] === 'object') {
+      setsCount = ex.sets.length; // Builder format: array of objects
+    } else if (typeof ex.sets === 'number') {
+      setsCount = ex.sets;
     } else {
-      const weight = parseFloat(ex.weight) || 0;
-      if (weight > 0) {
-        const totalReps = parseRepsTotal(ex.reps, setsCount);
-        tonnage += weight * totalReps * mult;
+      setsCount = parseInt(ex.sets) || parseInt(ex.setsCount) || 1;
+    }
+
+    // Check for percentage-based exercise (builder format or normalized)
+    const isPercentage = ex.isPercentageBased ||
+      (Array.isArray(ex.sets) && ex.sets.length > 0 && typeof ex.sets[0] === 'object' && ex.sets[0]?.percentage != null);
+    const percentages = ex.percentages || (isPercentage && Array.isArray(ex.sets) ? ex.sets.map(s => s.percentage) : null);
+    const repsPerSet = ex.repsPerSet || (isPercentage && Array.isArray(ex.sets) ? ex.sets.map(s => s.reps) : null);
+
+    // Read actual tracked weights/reps from user input
+    for (let si = 0; si < setsCount; si++) {
+      const trackedWeight = parseFloat(trackingData?.[`${blockIndex}-${exIndex}-${si}-weight`]) || 0;
+      const trackedReps = parseFloat(trackingData?.[`${blockIndex}-${exIndex}-${si}-reps`]) || 0;
+
+      if (trackedWeight > 0 && trackedReps > 0) {
+        // User entered actual weight and reps — use those
+        tonnage += trackedWeight * trackedReps * mult;
+      } else if (isPercentage && percentages) {
+        // Fall back to calculated percentage weight
+        const pct = parseFloat(percentages[si]) || 0;
+        const baseMax = ex.baseMax ? (maxes?.[ex.baseMax] || 0) : 0;
+        const calcWeight = trackedWeight || Math.round(baseMax * pct / 100 / 5) * 5;
+        const calcReps = trackedReps || parseFloat(repsPerSet?.[si]) || parseFloat(ex.reps) || 0;
+        if (calcWeight > 0 && calcReps > 0) {
+          tonnage += calcWeight * calcReps * mult;
+        }
+      } else {
+        // Fall back to prescribed weight
+        const prescribedWeight = trackedWeight || parseFloat(ex.weight) || 0;
+        const prescribedReps = trackedReps || parseFloat(ex.reps) || 0;
+        if (prescribedWeight > 0 && prescribedReps > 0) {
+          tonnage += prescribedWeight * prescribedReps * mult;
+        }
       }
     }
   });
@@ -102,9 +126,7 @@ function calcCardio(block, trackingData, blockIndex) {
   let minutes = 0, miles = 0;
   if (!block?.exercises) return { minutes, miles };
   block.exercises.forEach((ex, exIndex) => {
-    const completedKey = `complete-${blockIndex}-${exIndex}`;
-    const isCompleted = trackingData?.[completedKey] ||
-      trackingData?.[`${blockIndex}-${exIndex}-null-${completedKey}`];
+    const isCompleted = trackingData?.[`complete-${blockIndex}-${exIndex}`];
     if (!isCompleted) return;
 
     if (ex.duration) {
