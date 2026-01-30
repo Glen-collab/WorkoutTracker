@@ -177,7 +177,7 @@ const s = {
   },
 };
 
-const recLabels = { up: 'go up', same: 'stay the same', down: 'go down' };
+const recLabels = { up: 'GO HEAVIER', same: 'STAY THE SAME', down: 'GO LIGHTER' };
 
 export default function ExerciseCard({
   exercise,
@@ -188,6 +188,7 @@ export default function ExerciseCard({
   userName,
   savedExerciseData,
   previousRecommendation,
+  previousExerciseData,
   trackingData,
   onUpdateTracking,
   onMarkComplete,
@@ -268,7 +269,15 @@ export default function ExerciseCard({
     <>
       {previousRecommendation && (
         <div style={s.prevRec}>
-          {'\uD83D\uDCC8'} Last time you said to {recLabels[previousRecommendation] || previousRecommendation}
+          {'\uD83D\uDCC8'} Last week you said:{' '}
+          <strong>{recLabels[previousRecommendation] || previousRecommendation}</strong>
+          {(() => {
+            const prevSets = previousExerciseData?.sets;
+            if (!Array.isArray(prevSets) || prevSets.length === 0) return null;
+            const weights = prevSets.map(st => parseFloat(st.weight)).filter(w => w > 0);
+            if (weights.length === 0) return null;
+            return ` (used ${Math.max(...weights)} lbs)`;
+          })()}
         </div>
       )}
       <div style={s.recSection}>

@@ -76,9 +76,12 @@ export default function App() {
   }, []);
 
   const handleUpdateTracking = useCallback((blockIndex, exIndex, setIndex, field, value) => {
+    // If field already looks like a full key (contains 'rec-' or 'complete-' or 'block-notes-'), store it directly
+    const isDirectKey = field.startsWith('rec-') || field.startsWith('complete-') || field.startsWith('block-notes-');
+    const key = isDirectKey ? field : `${blockIndex}-${exIndex}-${setIndex}-${field}`;
     setTrackingData(prev => ({
       ...prev,
-      [`${blockIndex}-${exIndex}-${setIndex}-${field}`]: value,
+      [key]: value,
     }));
   }, []);
 
@@ -387,6 +390,7 @@ export default function App() {
         day: currentDay,
         blocks: program?.blocks?.map((block, blockIndex) => ({
           ...block,
+          clientNotes: trackingData[`block-notes-${blockIndex}`] || '',
           exercises: block.exercises?.map((ex, exIndex) => {
             // sets can be a number (from builder) or an array (from saved workout)
             const setsCount = typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 1);

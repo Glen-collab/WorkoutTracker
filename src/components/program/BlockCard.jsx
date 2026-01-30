@@ -158,6 +158,7 @@ export default function BlockCard({
               previousRecommendation={
                 previousWeekBlock?.exercises?.[exIndex]?.recommendation
               }
+              previousExerciseData={previousWeekBlock?.exercises?.[exIndex]}
               trackingData={trackingData}
               onUpdateTracking={onUpdateTracking}
               onMarkComplete={onMarkComplete}
