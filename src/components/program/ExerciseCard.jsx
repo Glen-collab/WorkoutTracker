@@ -199,6 +199,24 @@ export default function ExerciseCard({
   const isCircuit = blockType === 'circuit';
   const isWarmup = blockType === 'warmup' || blockType === 'mobility';
 
+  // Normalize builder format: sets may be objects [{id, reps, percentage, ...}]
+  // Convert to flat percentages/repsPerSet arrays the tracker expects
+  const normalizedEx = (() => {
+    const ex = { ...exercise };
+    if (Array.isArray(ex.sets) && ex.sets.length > 0 && typeof ex.sets[0] === 'object' && ex.sets[0]?.percentage != null) {
+      // Builder format: sets are objects with percentage/reps
+      ex.percentages = ex.sets.map(s => s.percentage);
+      ex.repsPerSet = ex.sets.map(s => s.reps);
+      ex.isPercentageBased = true;
+      // Keep sets count as number
+      ex.setsCount = ex.sets.length;
+      ex.sets = ex.sets.length;
+    }
+    return ex;
+  })();
+  // Use normalizedEx for rendering
+  const ex = normalizedEx;
+
   const getTrack = (setIdx, field) => {
     if (!trackingData) return '';
     if (setIdx !== null) return trackingData?.[`${blockIndex}-${exIndex}-${setIdx}-${field}`] || '';
@@ -210,7 +228,7 @@ export default function ExerciseCard({
 
   const handleMark = () => {
     const firstName = (userName || '').split(' ')[0];
-    let msg = getMotivationalMessage(exercise.name, blockType);
+    let msg = getMotivationalMessage(ex.name, blockType);
     // ~30% of the time, prepend the user's first name
     if (firstName && Math.random() < 0.3) {
       msg = `${firstName}, ${msg.charAt(0).toLowerCase()}${msg.slice(1)}`;
@@ -228,9 +246,9 @@ export default function ExerciseCard({
       onUpdateTracking(blockIndex, exIndex, null, `rec-${blockIndex}-${exIndex}`, dir);
   };
 
-  // Percentage-based strength
-  const oneRM = isStrength && exercise.isPercentageBased ? get1RM(exercise.name, maxes) : 0;
-  const hasPercentages = exercise.isPercentageBased && exercise.percentages?.length > 0;
+  // Percentage-based strength (use normalized ex)
+  const oneRM = isStrength && ex.isPercentageBased ? get1RM(ex.name, maxes) : 0;
+  const hasPercentages = ex.isPercentageBased && ex.percentages?.length > 0;
 
   const warmupSets =
     oneRM > 225
@@ -292,13 +310,13 @@ export default function ExerciseCard({
             ))}
           </div>
           <div style={{ ...s.targetText, fontWeight: '700' }}>
-            {exercise.schemeName || 'Working Sets'} - Auto-Calculated Weights
+            {ex.schemeName || 'Working Sets'} - Auto-Calculated Weights
           </div>
-          {exercise.percentages.map((pct, si) => (
+          {ex.percentages.map((pct, si) => (
             <div key={si}>
               <div style={s.setLabel}>
                 Set {si + 1}: {calculateWeight(oneRM, pct)} lbs ({pct}% of 1RM) x{' '}
-                {exercise.repsPerSet?.[si] || exercise.reps || '?'} reps
+                {ex.repsPerSet?.[si] || ex.reps || '?'} reps
               </div>
               <TrackingInputs
                 blockIndex={blockIndex}
@@ -307,7 +325,7 @@ export default function ExerciseCard({
                 weightValue={getTrack(si, 'weight')}
                 repsValue={getTrack(si, 'reps')}
                 weightPlaceholder={`${calculateWeight(oneRM, pct)} lbs`}
-                repsPlaceholder={`${exercise.repsPerSet?.[si] || exercise.reps || ''} reps`}
+                repsPlaceholder={`${ex.repsPerSet?.[si] || ex.reps || ''} reps`}
                 onUpdate={onUpdateTracking}
               />
             </div>
@@ -321,8 +339,8 @@ export default function ExerciseCard({
     }
 
     if (hasPercentages && oneRM === 0) {
-      const fallbackSets = exercise.sets || 3;
-      const fallbackReps = exercise.reps || '10';
+      const fallbackSets = typeof ex.sets === 'number' ? ex.sets : (ex.setsCount || 3);
+      const fallbackReps = ex.reps || '10';
       return (
         <>
           <div style={s.warning}>
@@ -355,15 +373,15 @@ export default function ExerciseCard({
     }
 
     // Regular strength
-    const sets = exercise.sets || 1;
+    const sets = typeof ex.sets === 'number' ? ex.sets : (ex.setsCount || parseInt(ex.sets) || 1);
     return (
       <>
         <div style={s.targetText}>
-          {sets} sets x {exercise.reps || '?'} reps
+          {sets} sets x {ex.reps || '?'} reps
         </div>
-        {exercise.weight && <div style={s.detailRow}>Weight: {exercise.weight}</div>}
-        {exercise.rest && <div style={s.detailRow}>Rest: {exercise.rest}</div>}
-        {exercise.notes && <div style={s.notesCard}>{exercise.notes}</div>}
+        {ex.weight && <div style={s.detailRow}>Weight: {ex.weight}</div>}
+        {ex.rest && <div style={s.detailRow}>Rest: {ex.rest}</div>}
+        {ex.notes && <div style={s.notesCard}>{ex.notes}</div>}
         {Array.from({ length: sets }).map((_, si) => (
           <div key={si}>
             <div style={s.setLabel}>Set {si + 1}</div>
@@ -389,13 +407,13 @@ export default function ExerciseCard({
 
   const renderConditioning = () => {
     const details = [
-      { label: 'Reps', val: exercise.reps },
-      { label: 'Weight', val: exercise.weight },
-      { label: 'Duration', val: exercise.duration },
-      { label: 'Distance', val: exercise.distance },
-      { label: 'Speed', val: exercise.speed },
-      { label: 'Intensity', val: exercise.intensity },
-      { label: 'Rest', val: exercise.rest },
+      { label: 'Reps', val: ex.reps },
+      { label: 'Weight', val: ex.weight },
+      { label: 'Duration', val: ex.duration },
+      { label: 'Distance', val: ex.distance },
+      { label: 'Speed', val: ex.speed },
+      { label: 'Intensity', val: ex.intensity },
+      { label: 'Rest', val: ex.rest },
     ].filter((d) => d.val);
 
     return (
@@ -409,10 +427,10 @@ export default function ExerciseCard({
             ))}
           </div>
         )}
-        {exercise.notes && <div style={s.notesCard}>{exercise.notes}</div>}
-        {exercise.description && (
+        {ex.notes && <div style={s.notesCard}>{ex.notes}</div>}
+        {ex.description && (
           <div style={{ ...s.detailRow, fontStyle: 'italic', marginBottom: '10px' }}>
-            {exercise.description}
+            {ex.description}
           </div>
         )}
         {['Duration', 'Distance', 'Speed/Intensity', 'Intervals/Notes'].map((field) => (
@@ -442,11 +460,11 @@ export default function ExerciseCard({
 
   const renderCircuit = () => (
     <>
-      {exercise.reps && <div style={s.targetText}>Reps: {exercise.reps}</div>}
+      {ex.reps && <div style={s.targetText}>Reps: {ex.reps}</div>}
       {[
-        { label: 'Weight', val: exercise.weight },
-        { label: 'Duration', val: exercise.duration },
-        { label: 'Rest', val: exercise.rest },
+        { label: 'Weight', val: ex.weight },
+        { label: 'Duration', val: ex.duration },
+        { label: 'Rest', val: ex.rest },
       ]
         .filter((d) => d.val)
         .map((d, i) => (
@@ -462,10 +480,10 @@ export default function ExerciseCard({
 
   const renderWarmup = () => (
     <>
-      {exercise.reps && <div style={s.detailRow}>Reps: {exercise.reps}</div>}
-      {exercise.duration && <div style={s.detailRow}>Duration: {exercise.duration}</div>}
-      {exercise.weight && <div style={s.detailRow}>Weight: {exercise.weight}</div>}
-      {exercise.notes && <div style={s.notesCard}>{exercise.notes}</div>}
+      {ex.reps && <div style={s.detailRow}>Reps: {ex.reps}</div>}
+      {ex.duration && <div style={s.detailRow}>Duration: {ex.duration}</div>}
+      {ex.weight && <div style={s.detailRow}>Weight: {ex.weight}</div>}
+      {ex.notes && <div style={s.notesCard}>{ex.notes}</div>}
       <TrackingInputs
         blockIndex={blockIndex}
         exIndex={exIndex}
@@ -487,11 +505,11 @@ export default function ExerciseCard({
       <div style={s.header} onClick={() => collapsed && setCollapsed(false)}>
         <div style={s.headerLeft}>
           <span>
-            {exIndex + 1}. {exercise.name}
+            {exIndex + 1}. {ex.name}
           </span>
-          {exercise.youtube && (
+          {ex.youtube && (
             <a
-              href={exercise.youtube}
+              href={ex.youtube}
               target="_blank"
               rel="noopener noreferrer"
               style={s.youtubeBtn}
