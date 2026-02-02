@@ -32,7 +32,7 @@ export function formatAccessCode(value) {
 // Block type display names
 export function getBlockTypeName(type) {
   const names = {
-    'theme': 'Theme / Notes', 'warmup': 'Warm Up', 'mobility': 'Mobility',
+    'theme': 'Theme / Notes', 'warmup': 'Warm Up', 'cooldown': 'Cool Down', 'mobility': 'Mobility',
     'movement': 'Movement', 'straight-set': 'Straight Set', 'superset': 'Superset',
     'triset': 'Triset', 'circuit': 'Circuit / MetCon', 'conditioning': 'Conditioning'
   };
@@ -42,7 +42,7 @@ export function getBlockTypeName(type) {
 // Block type icons
 export function getBlockIcon(type) {
   const icons = {
-    'theme': '\u{1F4CB}', 'warmup': '\u{1F525}', 'mobility': '\u{1F9D8}', 'movement': '\u26A1',
+    'theme': '\u{1F4CB}', 'warmup': '\u{1F525}', 'cooldown': '\u2744\uFE0F', 'mobility': '\u{1F9D8}', 'movement': '\u26A1',
     'straight-set': '\u{1F4AA}', 'superset': '\u{1F504}', 'triset': '\u{1F501}',
     'circuit': '\u{1F3AF}', 'conditioning': '\u{1F3C3}'
   };

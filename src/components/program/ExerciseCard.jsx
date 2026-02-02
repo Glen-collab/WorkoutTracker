@@ -220,7 +220,7 @@ export default function ExerciseCard({
   const isStrength = ['straight-set', 'superset', 'triset'].includes(blockType);
   const isConditioning = ['conditioning', 'movement'].includes(blockType);
   const isCircuit = blockType === 'circuit';
-  const isWarmup = blockType === 'warmup' || blockType === 'mobility';
+  const isWarmup = blockType === 'warmup' || blockType === 'mobility' || blockType === 'cooldown';
 
   // Normalize builder format: sets may be objects [{id, reps, percentage, ...}]
   // Convert to flat percentages/repsPerSet arrays the tracker expects
