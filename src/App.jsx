@@ -391,37 +391,82 @@ export default function App() {
 
   const handleLogWorkout = useCallback(async (clientNotes) => {
     try {
-      // Build workout data from tracking
+      // Build workout data formatted for the PHP email (flat arrays)
       const workoutData = {
         week: currentWeek,
         day: currentDay,
         blocks: program?.blocks?.map((block, blockIndex) => ({
-          ...block,
+          type: block.type || 'straight-set',
+          trainerNotes: block.trainerNotes || block.notes || '',
           clientNotes: trackingData[`block-notes-${blockIndex}`] || '',
           exercises: block.exercises?.map((ex, exIndex) => {
-            // sets can be a number (from builder) or an array (from saved workout)
             const setsCount = typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 1);
-            const setsArray = Array.isArray(ex.sets)
-              ? ex.sets.map((set, setIndex) => ({
-                  ...set,
-                  weight: trackingData[`${blockIndex}-${exIndex}-${setIndex}-weight`] || set.weight || '',
-                  reps: trackingData[`${blockIndex}-${exIndex}-${setIndex}-reps`] || set.reps || '',
-                  completed: trackingData[`${blockIndex}-${exIndex}-${setIndex}-completed`] || false,
-                }))
-              : Array.from({ length: setsCount }, (_, setIndex) => ({
-                  weight: trackingData[`${blockIndex}-${exIndex}-${setIndex}-weight`] || '',
-                  reps: trackingData[`${blockIndex}-${exIndex}-${setIndex}-reps`] || ex.reps || '',
-                  completed: trackingData[`${blockIndex}-${exIndex}-${setIndex}-completed`] || false,
-                }));
-            return {
-              ...ex,
-              sets: setsArray,
-              setsCount,
+
+            // Build flat weights[] and actualReps[] arrays from tracking data
+            const weights = [];
+            const actualReps = [];
+            for (let si = 0; si < setsCount; si++) {
+              const trackedWeight = trackingData[`${blockIndex}-${exIndex}-${si}-weight`];
+              const trackedReps = trackingData[`${blockIndex}-${exIndex}-${si}-reps`];
+              // Fall back to preset weight from sets array
+              const presetWeight = Array.isArray(ex.sets) && ex.sets[si] ? (ex.sets[si].weight || '') : '';
+              const presetReps = Array.isArray(ex.sets) && ex.sets[si] ? (ex.sets[si].reps || '') : '';
+              weights.push(trackedWeight || presetWeight || '');
+              actualReps.push(trackedReps || presetReps || '');
+            }
+
+            const result = {
+              name: ex.name || 'Unknown Exercise',
+              sets: setsCount,
+              targetReps: ex.reps || '',
+              actualReps,
+              weights,
+              isPercentageBased: !!ex.isPercentageBased,
+              percentages: ex.percentages || [],
+              repsPerSet: ex.repsPerSet || [],
+              scheme: ex.schemeName || ex.scheme || '',
               recommendation: recommendations[`${blockIndex}-${exIndex}`] || null,
             };
+
+            return result;
           }),
         })) || [],
       };
+
+      // Build chatbot conversation data for the email
+      let chatbotData = null;
+      if (chatbotRef.current) {
+        const summary = chatbotRef.current.getConversationSummary();
+        if (summary && summary.messages && summary.messages.length > 0) {
+          // Group messages into sections: pain-related, general Q&A
+          const painMessages = [];
+          const responseMessages = [];
+          let isPainSection = false;
+
+          summary.messages.forEach(m => {
+            const text = (m.text || '').replace(/<[^>]*>/g, '').trim(); // strip HTML
+            if (!text) return;
+            // Detect pain-related topics
+            if (text.toLowerCase().includes('pain') || text.toLowerCase().includes('soreness') || text.toLowerCase().includes('massage') || text.toLowerCase().includes('myofascial')) {
+              isPainSection = true;
+            }
+            if (isPainSection && m.isBot) {
+              painMessages.push(text.substring(0, 300));
+            } else if (!m.isBot) {
+              responseMessages.push(text.substring(0, 200));
+            }
+          });
+
+          const sections = [];
+          if (responseMessages.length > 0) {
+            sections.push({ title: 'Client Questions & Selections', type: 'responses', items: responseMessages });
+          }
+          if (painMessages.length > 0) {
+            sections.push({ title: 'Pain / Recovery Guidance Viewed', type: 'pain', items: painMessages });
+          }
+          if (sections.length > 0) chatbotData = sections;
+        }
+      }
 
       let result;
       if (isMockMode) {
@@ -442,6 +487,7 @@ export default function App() {
           one_rm_squat: maxes.squat || null,
           one_rm_deadlift: maxes.deadlift || null,
           one_rm_clean: maxes.clean || null,
+          chatbot_data: chatbotData,
         });
       }
 
