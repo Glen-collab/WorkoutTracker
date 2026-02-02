@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
+import { PAIN_TREE, VIDEO_LIBRARY } from '../../data/painTreeData';
 
 const TREE = {
   // Access screen entry - simple help for new users
@@ -55,31 +56,8 @@ const TREE = {
       { label: "Just saying hi!", next: "checkin" }
     ]
   },
-  pain_intro: {
-    message: "I'm sorry to hear that. Can you tell me more about what you're experiencing? Your trainer will be notified.",
-    options: [
-      { label: "It's muscle soreness", next: "soreness_response" },
-      { label: "It's joint pain", next: "joint_response" },
-      { label: "Something else", next: "other_pain" },
-      { label: "\u2190 Back to menu", next: "entry" }
-    ]
-  },
-  soreness_response: {
-    message: "Muscle soreness is normal, especially after increasing intensity. Make sure you're warming up properly and staying hydrated. If it persists more than 72 hours, let your trainer know.",
-    options: [{ label: "Thanks!", next: "entry" }, { label: "Tell me more about recovery", next: "recovery_tips" }]
-  },
-  joint_response: {
-    message: "Joint pain should be taken seriously. Don't push through sharp or persistent joint pain. Your trainer needs to know so they can modify your program.",
-    options: [{ label: "I'll let them know", next: "entry" }, { label: "What should I do now?", next: "joint_advice" }]
-  },
-  other_pain: {
-    message: "Please describe what you're feeling in your notes section when you log your workout. Your trainer will review it and may adjust your program.",
-    options: [{ label: "Will do, thanks", next: "entry" }]
-  },
-  joint_advice: {
-    message: "For now: 1) Stop any exercise that causes sharp pain, 2) Apply ice for 15-20 min, 3) Use lighter weight or modified movements, 4) Note it in your workout log.",
-    options: [{ label: "Got it, thanks!", next: "entry" }]
-  },
+  // Pain tree nodes are merged from PAIN_TREE (painTreeData.js)
+  ...PAIN_TREE,
   recovery_tips: {
     message: "Great recovery tips: 1) Sleep 7-9 hours, 2) Drink water throughout the day, 3) Eat protein within 2 hours of training, 4) Light movement on rest days (walking, stretching), 5) Foam roll sore areas.",
     options: [{ label: "Thanks!", next: "entry" }, { label: "Back to menu", next: "entry" }]
@@ -164,7 +142,10 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
   const [messages, setMessages] = useState([]);
   const [currentNode, setCurrentNode] = useState('entry');
   const [topicsVisited, setTopicsVisited] = useState([]);
+  const [activeVideo, setActiveVideo] = useState(null);
+  const [scrollToIndex, setScrollToIndex] = useState(null);
   const messagesEndRef = useRef(null);
+  const scrollTargetRef = useRef(null);
   const initialized = useRef(false);
 
   const name = userName || 'there';
@@ -196,10 +177,14 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
     setCurrentNode(currentScreen === 'access' ? 'access_entry' : 'entry');
   }, [currentScreen]);
 
-  // Auto-scroll
+  // Auto-scroll: scroll to user's clicked option so bot response flows below it
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (scrollTargetRef.current) {
+      scrollTargetRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, scrollToIndex]);
 
   const handleOptionClick = useCallback((option) => {
     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -213,11 +198,15 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
     const nextNode = TREE[option.next];
     if (!nextNode) return;
 
-    setMessages(prev => [
-      ...prev,
-      { text: option.label, isBot: false, timestamp: now },
-      { text: formatMessage(nextNode.message), isBot: true, timestamp: now }
-    ]);
+    setActiveVideo(null);
+    setMessages(prev => {
+      setScrollToIndex(prev.length); // index of the user's message about to be added
+      return [
+        ...prev,
+        { text: option.label, isBot: false, timestamp: now },
+        { text: formatMessage(nextNode.message), isBot: true, timestamp: now, videos: nextNode.videos || [] }
+      ];
+    });
     setCurrentNode(option.next);
   }, [formatMessage]);
 
@@ -235,6 +224,7 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
   };
 
   const handleClose = () => {
+    setActiveVideo(null);
     if (isControlled && onClose) {
       onClose();
     } else {
@@ -272,7 +262,7 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
     right: 0,
     width: '100%',
     maxWidth: 380,
-    height: 400,
+    height: 500,
     background: '#fff',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
@@ -346,6 +336,7 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
           {messages.map((msg, i) => (
             <div
               key={i}
+              ref={i === scrollToIndex ? scrollTargetRef : null}
               style={{
                 alignSelf: msg.isBot ? 'flex-start' : 'flex-end',
                 maxWidth: '85%',
@@ -362,7 +353,72 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
                 fontSize: 13,
                 lineHeight: 1.5,
               }}>
-                {msg.text}
+                {msg.isBot && msg.text.includes('<') ? (
+                  <div dangerouslySetInnerHTML={{ __html: msg.text }} />
+                ) : (
+                  msg.text
+                )}
+                {msg.videos && msg.videos.length > 0 && (
+                  <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {msg.videos.map((videoName, vi) => {
+                      const url = VIDEO_LIBRARY[videoName];
+                      const videoKey = `${i}-${vi}`;
+                      const isOpen = activeVideo === videoKey;
+                      return (
+                        <div key={vi}>
+                          {url ? (
+                            <button
+                              onClick={() => setActiveVideo(isOpen ? null : videoKey)}
+                              style={{
+                                padding: '5px 10px',
+                                borderRadius: 12,
+                                border: '1px solid #e67e22',
+                                background: isOpen ? '#e67e22' : 'rgba(230,126,34,0.1)',
+                                color: isOpen ? '#fff' : '#e67e22',
+                                fontSize: 11,
+                                fontWeight: 500,
+                                cursor: 'pointer',
+                                display: 'inline-block',
+                                transition: 'all 0.15s',
+                              }}
+                            >
+                              {isOpen ? '▼' : '▶'} {videoName}
+                            </button>
+                          ) : (
+                            <span style={{ fontSize: 11, color: '#999', fontStyle: 'italic' }}>
+                              {videoName} (Video coming soon)
+                            </span>
+                          )}
+                          {isOpen && url && (
+                            <div style={{
+                              marginTop: 4,
+                              position: 'relative',
+                              paddingBottom: '56.25%',
+                              height: 0,
+                              overflow: 'hidden',
+                              borderRadius: 8,
+                            }}>
+                              <iframe
+                                src={`${url}?autoplay=false`}
+                                style={{
+                                  position: 'absolute',
+                                  top: 0,
+                                  left: 0,
+                                  width: '100%',
+                                  height: '100%',
+                                  border: 'none',
+                                  borderRadius: 8,
+                                }}
+                                allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+                                allowFullScreen
+                              />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               <div style={{
                 fontSize: 10, color: '#999', marginTop: 2,
