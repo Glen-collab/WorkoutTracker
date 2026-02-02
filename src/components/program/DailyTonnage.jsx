@@ -56,7 +56,7 @@ function calcCoreEquiv(ex) {
   return totalReps * mult;
 }
 
-function calcBlockTonnage(block, maxes, trackingData, blockIndex) {
+export function calcBlockTonnage(block, maxes, trackingData, blockIndex) {
   if (!block?.exercises) return { tonnage: 0, coreEquiv: 0 };
   let tonnage = 0;
   let coreEquiv = 0;
@@ -122,7 +122,7 @@ function calcBlockTonnage(block, maxes, trackingData, blockIndex) {
   return { tonnage, coreEquiv };
 }
 
-function calcCardio(block, trackingData, blockIndex) {
+export function calcCardio(block, trackingData, blockIndex) {
   let minutes = 0, miles = 0;
   if (!block?.exercises) return { minutes, miles };
   block.exercises.forEach((ex, exIndex) => {

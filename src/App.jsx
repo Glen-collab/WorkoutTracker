@@ -10,6 +10,7 @@ import CompletionModal from './components/modals/CompletionModal';
 import CongratulationsModal from './components/modals/CongratulationsModal';
 import TestYourMight, { getWeekConfig } from './components/game/TestYourMight';
 import WorkoutChatbot from './components/chatbot/WorkoutChatbot';
+import { calcBlockTonnage, calcCardio } from './components/program/DailyTonnage';
 
 const containerStyle = {
   minHeight: '100vh',
@@ -468,6 +469,24 @@ export default function App() {
         }
       }
 
+      // Calculate volume stats from the actual program blocks + tracking data
+      let totalTonnage = 0, totalCore = 0, totalCardioMin = 0, totalCardioMiles = 0;
+      (program?.blocks || []).forEach((block, blockIndex) => {
+        const bt = calcBlockTonnage(block, maxes || {}, trackingData, blockIndex);
+        totalTonnage += bt.tonnage;
+        totalCore += bt.coreEquiv;
+        const c = calcCardio(block, trackingData, blockIndex);
+        totalCardioMin += c.minutes;
+        totalCardioMiles += c.miles;
+      });
+
+      const volumeStats = {
+        tonnage: Math.round(totalTonnage),
+        core_crunches: Math.round(totalCore),
+        cardio_minutes: totalCardioMin,
+        cardio_miles: parseFloat(totalCardioMiles.toFixed(1)),
+      };
+
       let result;
       if (isMockMode) {
         // In dev mode, simulate successful log
@@ -488,6 +507,7 @@ export default function App() {
           one_rm_deadlift: maxes.deadlift || null,
           one_rm_clean: maxes.clean || null,
           chatbot_data: chatbotData,
+          volume_stats: volumeStats,
         });
       }
 
