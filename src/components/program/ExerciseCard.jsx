@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { get1RM, calculateWeight } from '../../utils/trackerHelpers';
 import TrackingInputs from './TrackingInputs';
 import { getMotivationalMessage } from '../../data/exerciseMotivation';
@@ -49,8 +49,8 @@ const s = {
     fontSize: '15px',
     color: '#333',
   },
-  youtubeBtn: {
-    background: '#ff0000',
+  videoBtn: {
+    background: 'linear-gradient(135deg, #f5851f 0%, #f6a623 100%)',
     color: '#fff',
     border: 'none',
     borderRadius: '6px',
@@ -58,6 +58,27 @@ const s = {
     fontSize: '12px',
     cursor: 'pointer',
     textDecoration: 'none',
+    fontWeight: '600',
+  },
+  videoBtnActive: {
+    background: 'linear-gradient(135deg, #1565c0 0%, #42a5f5 100%)',
+  },
+  videoContainer: {
+    position: 'relative',
+    width: '100%',
+    paddingTop: '56.25%',
+    background: '#000',
+    borderRadius: '8px',
+    overflow: 'hidden',
+    marginBottom: '10px',
+  },
+  videoIframe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    border: 'none',
   },
   body: { padding: '0 14px 14px' },
   targetText: {
@@ -195,6 +216,7 @@ export default function ExerciseCard({
   onSetRecommendation,
 }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
   const isStrength = ['straight-set', 'superset', 'triset'].includes(blockType);
   const isConditioning = ['conditioning', 'movement'].includes(blockType);
   const isCircuit = blockType === 'circuit';
@@ -517,15 +539,12 @@ export default function ExerciseCard({
             {exIndex + 1}. {ex.name}
           </span>
           {ex.youtube && (
-            <a
-              href={ex.youtube}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={s.youtubeBtn}
-              onClick={(e) => e.stopPropagation()}
+            <button
+              style={{ ...s.videoBtn, ...(showVideo ? s.videoBtnActive : {}) }}
+              onClick={(e) => { e.stopPropagation(); setShowVideo(v => !v); }}
             >
-              {'\uD83D\uDCF9'}
-            </a>
+              {showVideo ? '\u2716' : '\uD83D\uDCF9'}
+            </button>
           )}
         </div>
         {collapsed && (
@@ -534,6 +553,19 @@ export default function ExerciseCard({
           </button>
         )}
       </div>
+
+      {showVideo && ex.youtube && (
+        <div style={{ padding: '0 14px 10px' }}>
+          <div style={s.videoContainer}>
+            <iframe
+              src={`${ex.youtube}?preload=metadata`}
+              style={s.videoIframe}
+              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        </div>
+      )}
 
       {!collapsed && (
         <div style={s.body}>

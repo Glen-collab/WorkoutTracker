@@ -234,7 +234,7 @@ export default function App() {
                   percentages: [65, 70, 75, 80],
                   repsPerSet: [8, 8, 6, 5],
                   scheme: '5/3/1',
-                  youtube: 'https://www.youtube.com/watch?v=example',
+                  youtube: 'https://iframe.videodelivery.net/4401f79b1c197056394175ac3bc5b369',
                 },
                 {
                   name: 'Incline Dumbbell Press',
