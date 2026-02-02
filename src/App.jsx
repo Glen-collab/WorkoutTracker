@@ -354,6 +354,8 @@ export default function App() {
     handleLoadProgramFromAPI();
   }, [api, user, painAreas, handleLoadProgramFromAPI]);
 
+  const isMockMode = window.location.hostname === 'localhost';
+
   const handleNavigateDay = useCallback(async (direction) => {
     if (!daysPerWeek || !totalWeeks) return;
 
@@ -370,8 +372,10 @@ export default function App() {
     setTrackingData({});
     setRecommendations({});
 
-    await handleLoadProgramFromAPI(newWeek, newDay);
-  }, [currentWeek, currentDay, daysPerWeek, totalWeeks, setCurrentWeek, setCurrentDay, setRecommendations, handleLoadProgramFromAPI]);
+    if (!isMockMode) {
+      await handleLoadProgramFromAPI(newWeek, newDay);
+    }
+  }, [currentWeek, currentDay, daysPerWeek, totalWeeks, isMockMode, setCurrentWeek, setCurrentDay, setRecommendations, handleLoadProgramFromAPI]);
 
   const handleNavigateToDay = useCallback(async (week, day) => {
     if (week === currentWeek && day === currentDay) return;
@@ -379,8 +383,10 @@ export default function App() {
     setCurrentDay(day);
     setTrackingData({});
     setRecommendations({});
-    await handleLoadProgramFromAPI(week, day);
-  }, [currentWeek, currentDay, setCurrentWeek, setCurrentDay, setRecommendations, handleLoadProgramFromAPI]);
+    if (!isMockMode) {
+      await handleLoadProgramFromAPI(week, day);
+    }
+  }, [currentWeek, currentDay, isMockMode, setCurrentWeek, setCurrentDay, setRecommendations, handleLoadProgramFromAPI]);
 
   const handleLogWorkout = useCallback(async (clientNotes) => {
     try {
@@ -416,21 +422,27 @@ export default function App() {
         })) || [],
       };
 
-      const result = await api.logWorkout({
-        user_name: user.name,
-        user_email: user.email,
-        program_code: user.accessCode,
-        program_name: program?.name || 'Workout',
-        workout_data: workoutData,
-        current_week: currentWeek,
-        current_day: currentDay,
-        days_per_week: daysPerWeek,
-        total_weeks: totalWeeks,
-        one_rm_bench: maxes.bench || null,
-        one_rm_squat: maxes.squat || null,
-        one_rm_deadlift: maxes.deadlift || null,
-        one_rm_clean: maxes.clean || null,
-      });
+      let result;
+      if (isMockMode) {
+        // In dev mode, simulate successful log
+        result = { success: true, data: {} };
+      } else {
+        result = await api.logWorkout({
+          user_name: user.name,
+          user_email: user.email,
+          program_code: user.accessCode,
+          program_name: program?.name || 'Workout',
+          workout_data: workoutData,
+          current_week: currentWeek,
+          current_day: currentDay,
+          days_per_week: daysPerWeek,
+          total_weeks: totalWeeks,
+          one_rm_bench: maxes.bench || null,
+          one_rm_squat: maxes.squat || null,
+          one_rm_deadlift: maxes.deadlift || null,
+          one_rm_clean: maxes.clean || null,
+        });
+      }
 
       if (result.success) {
         // Save exercise history to localStorage
