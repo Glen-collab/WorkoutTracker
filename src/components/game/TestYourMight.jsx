@@ -53,7 +53,7 @@ const TIPS = [
 
 // Build full progression: 8 belts × 5 weeks = 40, then 9 stars, then 2nd degree = 50 weeks
 // Beyond 50, keeps repeating at max difficulty
-function getWeekConfig(weekNumber) {
+export function getWeekConfig(weekNumber) {
   const w = Math.max(weekNumber || 1, 1);
 
   // Weeks 1-40: Belt progression with tips

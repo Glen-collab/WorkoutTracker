@@ -8,7 +8,7 @@ import ProgramView from './components/program/ProgramView';
 import PainModal from './components/modals/PainModal';
 import CompletionModal from './components/modals/CompletionModal';
 import CongratulationsModal from './components/modals/CongratulationsModal';
-import TestYourMight from './components/game/TestYourMight';
+import TestYourMight, { getWeekConfig } from './components/game/TestYourMight';
 import WorkoutChatbot from './components/chatbot/WorkoutChatbot';
 
 const containerStyle = {
@@ -52,6 +52,7 @@ export default function App() {
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [showCongratsModal, setShowCongratsModal] = useState(false);
   const [showGame, setShowGame] = useState(false);
+  const [showGamePrompt, setShowGamePrompt] = useState(false);
   const [gameWeek, setGameWeek] = useState(1);
 
   const chatbotRef = useRef(null);
@@ -476,11 +477,11 @@ export default function App() {
           }
         }
 
-        // If last day of week, trigger game after delay
+        // If last day of week, prompt for game after delay
         if (currentDay === daysPerWeek) {
           setGameWeek(currentWeek);
           setTimeout(() => {
-            setShowGame(true);
+            setShowGamePrompt(true);
           }, 1500);
         }
       }
@@ -569,6 +570,24 @@ export default function App() {
         isOpen={showCongratsModal}
         onClose={() => setShowCongratsModal(false)}
       />
+      {showGamePrompt && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 10000, fontFamily: "'Press Start 2P', Arial, cursive" }}>
+          <div style={{ fontSize: 'clamp(18px, 5vw, 28px)', color: '#FFD700', textShadow: '3px 3px 0px #8B0000', marginBottom: 24, textAlign: 'center' }}>
+            TEST YOUR MIGHT?
+          </div>
+          <div style={{ fontSize: 'clamp(10px, 2.5vw, 14px)', color: '#fff', marginBottom: 24, textAlign: 'center' }}>
+            Week {gameWeek} &mdash; {getWeekConfig(gameWeek).fullName} 🥋
+          </div>
+          <div style={{ display: 'flex', gap: 16 }}>
+            <button onClick={() => { setShowGamePrompt(false); setShowGame(true); }} style={{ padding: '14px 28px', fontFamily: "'Press Start 2P', cursive", fontSize: 'clamp(11px, 3vw, 14px)', background: '#228B22', border: '3px solid #FFD700', color: '#FFD700', cursor: 'pointer' }}>
+              LET'S GO!
+            </button>
+            <button onClick={() => setShowGamePrompt(false)} style={{ padding: '14px 28px', fontFamily: "'Press Start 2P', cursive", fontSize: 'clamp(11px, 3vw, 14px)', background: '#8B0000', border: '3px solid #FFD700', color: '#FFD700', cursor: 'pointer' }}>
+              SKIP
+            </button>
+          </div>
+        </div>
+      )}
       <TestYourMight
         isOpen={showGame}
         onClose={() => setShowGame(false)}
