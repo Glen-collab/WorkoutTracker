@@ -31,21 +31,126 @@ const FRAMES = {
   SUCCESS: 12,
 };
 
-// 12-Week Belt Progression (matches old chatbot exactly)
-const WEEKLY_PROGRESSION = [
-  { weight: 45,  targetTaps: 40,  belt: 'White Belt',         color: '#FFFFFF', textColor: '#000000' },
-  { weight: 95,  targetTaps: 50,  belt: 'Yellow Belt',        color: '#FFFF00', textColor: '#000000' },
-  { weight: 135, targetTaps: 60,  belt: 'Orange Belt',        color: '#FFA500', textColor: '#000000' },
-  { weight: 185, targetTaps: 70,  belt: 'Green Belt',         color: '#228B22', textColor: '#FFFFFF' },
-  { weight: 225, targetTaps: 80,  belt: 'Blue Belt',          color: '#0000FF', textColor: '#FFFFFF' },
-  { weight: 275, targetTaps: 90,  belt: 'High Blue Belt',     color: '#4169E1', textColor: '#FFFFFF' },
-  { weight: 300, targetTaps: 100, belt: 'Red Belt',           color: '#FF0000', textColor: '#FFFFFF' },
-  { weight: 315, targetTaps: 110, belt: 'High Red Belt',      color: '#DC143C', textColor: '#FFFFFF' },
-  { weight: 350, targetTaps: 120, belt: 'Brown Belt',         color: '#8B4513', textColor: '#FFFFFF' },
-  { weight: 365, targetTaps: 130, belt: 'High Brown Belt',    color: '#A0522D', textColor: '#FFFFFF' },
-  { weight: 405, targetTaps: 140, belt: 'Deputy Black Belt',  color: '#2F4F4F', textColor: '#FFFFFF' },
-  { weight: 450, targetTaps: 150, belt: 'Black Belt Master',  color: '#000000', textColor: '#FFD700' },
+// Belt definitions (8 core belts, each with 5 weeks: base + 4 tips)
+const BELTS = [
+  { name: 'White Belt',  color: '#FFFFFF', textColor: '#000000', baseWeight: 45,  baseTaps: 30 },
+  { name: 'Yellow Belt', color: '#FFFF00', textColor: '#000000', baseWeight: 95,  baseTaps: 40 },
+  { name: 'Orange Belt', color: '#FFA500', textColor: '#000000', baseWeight: 135, baseTaps: 50 },
+  { name: 'Green Belt',  color: '#228B22', textColor: '#FFFFFF', baseWeight: 185, baseTaps: 60 },
+  { name: 'Blue Belt',   color: '#0000FF', textColor: '#FFFFFF', baseWeight: 225, baseTaps: 70 },
+  { name: 'Red Belt',    color: '#FF0000', textColor: '#FFFFFF', baseWeight: 275, baseTaps: 80 },
+  { name: 'Brown Belt',  color: '#8B4513', textColor: '#FFFFFF', baseWeight: 315, baseTaps: 90 },
+  { name: 'Black Belt',  color: '#000000', textColor: '#FFD700', baseWeight: 365, baseTaps: 100 },
 ];
+
+const TIPS = [
+  null,                                                         // base belt week (no tip)
+  { name: 'Red Tip',   tipColor: '#FF0000' },
+  { name: 'Blue Tip',  tipColor: '#0000FF' },
+  { name: 'White Tip', tipColor: '#FFFFFF' },
+  { name: 'Black Tip', tipColor: '#000000' },
+];
+
+// Build full progression: 8 belts × 5 weeks = 40, then 9 stars, then 2nd degree = 50 weeks
+// Beyond 50, keeps repeating at max difficulty
+function getWeekConfig(weekNumber) {
+  const w = Math.max(weekNumber || 1, 1);
+
+  // Weeks 1-40: Belt progression with tips
+  if (w <= 40) {
+    const beltIndex = Math.floor((w - 1) / 5);
+    const tipIndex = (w - 1) % 5;
+    const belt = BELTS[beltIndex];
+    const tip = TIPS[tipIndex];
+    const tapIncrease = tipIndex * 3; // each tip adds 3 taps
+    const weightIncrease = tipIndex * 5; // each tip adds 5 lbs
+
+    return {
+      weight: belt.baseWeight + weightIncrease,
+      targetTaps: belt.baseTaps + tapIncrease,
+      belt: belt.name,
+      tip: tip,
+      fullName: tip ? `${belt.name} - ${tip.name}` : belt.name,
+      color: belt.color,
+      textColor: belt.textColor,
+      tipColor: tip?.tipColor || null,
+      beltIndex,
+      tipIndex,
+    };
+  }
+
+  // Weeks 41-49: Black Belt Stars (1-9)
+  if (w <= 49) {
+    const stars = w - 40;
+    const bb = BELTS[7]; // Black Belt
+    return {
+      weight: bb.baseWeight + 20 + (stars * 10),
+      targetTaps: bb.baseTaps + 12 + (stars * 4),
+      belt: 'Black Belt',
+      tip: null,
+      fullName: `Black Belt - ${'⭐'.repeat(stars)}`,
+      stars,
+      color: '#000000',
+      textColor: '#FFD700',
+      tipColor: null,
+      beltIndex: 7,
+      tipIndex: 0,
+    };
+  }
+
+  // Week 50+: 2nd Degree Black Belt (caps here)
+  const bb = BELTS[7];
+  return {
+    weight: bb.baseWeight + 120,
+    targetTaps: bb.baseTaps + 50,
+    belt: '2nd Degree Black Belt',
+    tip: null,
+    fullName: '2nd Degree Black Belt',
+    color: '#000000',
+    textColor: '#FFD700',
+    tipColor: null,
+    beltIndex: 8,
+    tipIndex: 0,
+  };
+}
+
+// Get the "next goal" message after success
+function getCongratsMessage(weekConfig, weekNumber) {
+  const w = weekNumber;
+
+  // 2nd degree or beyond
+  if (w >= 50) return 'You have achieved the highest rank! True mastery!';
+
+  // Stars phase
+  if (w >= 41 && w <= 49) {
+    const stars = w - 40;
+    if (stars < 9) return `Work hard for ${stars + 1} Star${ stars + 1 > 1 ? 's' : ''} and keep climbing!`;
+    return 'One more week and you earn 2nd Degree Black Belt!';
+  }
+
+  // Belt + tips phase (weeks 1-40)
+  const beltIndex = Math.floor((w - 1) / 5);
+  const tipIndex = (w - 1) % 5;
+  const currentBelt = BELTS[beltIndex];
+
+  if (tipIndex < 4) {
+    // Still have tips left in this belt
+    const nextTip = TIPS[tipIndex + 1];
+    const isLastTip = tipIndex + 1 === 4;
+    const nextBeltName = beltIndex < 7 ? BELTS[beltIndex + 1].name : 'Black Belt Stars';
+    if (isLastTip) {
+      return `Work hard for the ${nextTip.name} and then you'll be ready for ${nextBeltName}!`;
+    }
+    return `Next up: ${currentBelt.name} - ${nextTip.name}. Keep pushing!`;
+  }
+
+  // Last tip of belt → next belt
+  if (beltIndex < 7) {
+    return `You've mastered ${currentBelt.name}! Next challenge: ${BELTS[beltIndex + 1].name}!`;
+  }
+  // Last tip of Black Belt → stars
+  return "You've earned your Black Belt! Now it's time to earn your Stars!";
+}
 
 const STATES = { IDLE: 'IDLE', INTRO: 'INTRO', COUNTDOWN: 'COUNTDOWN', ACTIVE: 'ACTIVE', SUCCESS: 'SUCCESS', FAIL: 'FAIL' };
 
@@ -70,8 +175,8 @@ export default function TestYourMight({ isOpen, onClose, weekNumber, benchMax })
   const [canvasScale, setCanvasScale] = useState(1);
   const [introVisible, setIntroVisible] = useState(true);
 
-  const week = Math.min(Math.max(weekNumber || 1, 1), 12);
-  const config = WEEKLY_PROGRESSION[week - 1];
+  const week = Math.max(weekNumber || 1, 1);
+  const config = getWeekConfig(week);
   const progress = config.targetTaps > 0 ? Math.min(taps / config.targetTaps, 1) : 0;
 
   // Get tier info (matches old chatbot logic)
@@ -79,8 +184,8 @@ export default function TestYourMight({ isOpen, onClose, weekNumber, benchMax })
     if (progress < 0.25) return { name: 'Big Air', color: '#4169E1', textColor: '#FFFFFF' };
     if (progress < 0.5) return { name: 'Drive', color: '#FF8C00', textColor: '#FFFFFF' };
     if (progress < 0.75) return { name: 'Stay Tight', color: '#FFD700', textColor: '#000000' };
-    if (progress < 1.0) return { name: config.belt, color: config.color, textColor: config.textColor };
-    return { name: config.belt + ' Master!', color: config.color, textColor: config.textColor };
+    if (progress < 1.0) return { name: config.fullName, color: config.color, textColor: config.textColor };
+    return { name: config.fullName + ' Master!', color: config.color, textColor: config.textColor };
   }, [progress, config]);
 
   // ============================================
@@ -324,6 +429,20 @@ export default function TestYourMight({ isOpen, onClose, weekNumber, benchMax })
   }, [gameState, config.targetTaps, playSound]);
 
   // ============================================
+  // DESTROY AUDIO (fully remove Audio objects)
+  // ============================================
+  const destroyAllAudio = useCallback(() => {
+    [musicRef, wonSoundRef, loseSoundRef].forEach(ref => {
+      if (ref.current) {
+        ref.current.pause();
+        ref.current.removeAttribute('src');
+        ref.current.load();
+        ref.current = null;
+      }
+    });
+  }, []);
+
+  // ============================================
   // AUTO-START / CLEANUP
   // ============================================
   useEffect(() => {
@@ -332,15 +451,26 @@ export default function TestYourMight({ isOpen, onClose, weekNumber, benchMax })
       startGame();
     } else {
       setGameState(STATES.IDLE);
-      stopAllAudio();
+      destroyAllAudio();
       if (timerRef.current) clearInterval(timerRef.current);
     }
     return () => {
-      stopAllAudio();
+      destroyAllAudio();
       if (timerRef.current) clearInterval(timerRef.current);
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [isOpen, startGame, stopAllAudio]);
+  }, [isOpen, startGame, destroyAllAudio]);
+
+  // Pause audio when tab/window loses focus
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden) {
+        stopAllAudio();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [stopAllAudio]);
 
   // ============================================
   // RENDER LOOP
@@ -383,7 +513,7 @@ export default function TestYourMight({ isOpen, onClose, weekNumber, benchMax })
   };
 
   const handleClose = () => {
-    stopAllAudio();
+    destroyAllAudio();
     if (timerRef.current) clearInterval(timerRef.current);
     onClose();
   };
@@ -496,8 +626,14 @@ export default function TestYourMight({ isOpen, onClose, weekNumber, benchMax })
             TEST YOUR MIGHT
           </div>
           <div style={{ fontSize: 'clamp(9px, 2.5vw, 12px)', color: '#FFF', marginTop: 10 }}>
-            Week {week} &mdash; {config.belt}
+            Week {week} &mdash; {config.fullName}
           </div>
+          {config.tipColor && (
+            <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <span style={{ display: 'inline-block', width: 40, height: 8, background: config.color, border: '1px solid #555' }} />
+              <span style={{ display: 'inline-block', width: 12, height: 12, borderRadius: '50%', background: config.tipColor, border: '2px solid #FFD700' }} />
+            </div>
+          )}
         </div>
       )}
 
@@ -523,7 +659,7 @@ export default function TestYourMight({ isOpen, onClose, weekNumber, benchMax })
           <div style={infoPanelStyle}>
             <div style={statStyle}>Week: <span style={statValueStyle}>{week}</span></div>
             <div style={statStyle}>Weight: <span style={statValueStyle}>{config.weight} lbs</span></div>
-            <div style={statStyle}>Belt: <span style={statValueStyle}>{config.belt} 🥋</span></div>
+            <div style={statStyle}>Rank: <span style={statValueStyle}>{config.fullName} 🥋</span></div>
             <div style={statStyle}>Time: <span style={statValueStyle}>{timeLeft.toFixed(1)}s</span></div>
             <div style={statStyle}>Tier: <span style={tierBadgeStyle}>{tier.name}</span></div>
             <div style={statStyle}>
@@ -538,6 +674,10 @@ export default function TestYourMight({ isOpen, onClose, weekNumber, benchMax })
               <div style={funnyStyle}>{funnyMessage}</div>
               <div style={{ fontSize: 'clamp(9px, 2.5vw, 11px)', marginTop: 8, color: '#aaa' }}>
                 {taps} taps in {GAME_DURATION}s &mdash; {Math.round(progress * 100)}%
+              </div>
+              <div style={{ fontSize: 'clamp(9px, 2.5vw, 12px)', marginTop: 12, color: '#FFD700', padding: '8px 12px', background: 'rgba(255,215,0,0.1)', border: '1px solid #FFD700', borderRadius: 6, maxWidth: 340 }}>
+                Congrats on earning <strong>{config.fullName}</strong>!<br />
+                {getCongratsMessage(config, week)}
               </div>
               <button style={btnStyle} onClick={handleClose}>Continue</button>
             </div>
