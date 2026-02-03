@@ -554,23 +554,52 @@ export default function ExerciseCard({
     </>
   );
 
-  // Warmup/Cooldown/Mobility: foam rolling, stretches, bird dogs - just show info and mark complete
+  // Warmup/Cooldown/Mobility/Core: foam rolling, stretches, bird dogs, crunches - editable inputs
   const renderWarmup = () => {
-    const details = [
-      { label: 'Reps', val: ex.reps },
-      { label: 'Sets', val: ex.sets },
-      { label: 'Duration', val: ex.duration },
-    ].filter((d) => d.val);
+    const hasSets = ex.sets && (typeof ex.sets === 'number' ? ex.sets > 0 : true);
+    const hasReps = ex.reps;
+    const hasDuration = ex.duration;
+    const setsCount = typeof ex.sets === 'number' ? ex.sets : 1;
 
     return (
       <>
-        {details.length > 0 && (
+        {/* Editable sets/reps for core and warmup exercises */}
+        {(hasSets || hasReps) && (
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+              {hasSets && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '13px', color: '#666' }}>Sets:</span>
+                  <input
+                    type="number"
+                    placeholder={String(setsCount)}
+                    value={getTrack(0, 'sets') || ''}
+                    onChange={(e) => onUpdateTracking(blockIndex, exIndex, 0, 'sets', e.target.value)}
+                    style={{ width: '50px', padding: '6px 8px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', textAlign: 'center' }}
+                  />
+                </div>
+              )}
+              {hasReps && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '13px', color: '#666' }}>Reps:</span>
+                  <input
+                    type="number"
+                    placeholder={String(ex.reps).replace(/[^\d]/g, '') || '10'}
+                    value={getTrack(0, 'reps') || ''}
+                    onChange={(e) => onUpdateTracking(blockIndex, exIndex, 0, 'reps', e.target.value)}
+                    style={{ width: '50px', padding: '6px 8px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', textAlign: 'center' }}
+                  />
+                </div>
+              )}
+            </div>
+            <div style={{ fontSize: '12px', color: '#999' }}>
+              Target: {ex.sets ? `${ex.sets} sets` : ''} {ex.reps ? `× ${ex.reps}` : ''} {ex.duration || ''}
+            </div>
+          </div>
+        )}
+        {hasDuration && !hasReps && !hasSets && (
           <div style={s.pillGrid}>
-            {details.map((d, i) => (
-              <span key={i} style={s.pill}>
-                {d.label}: {d.val}
-              </span>
-            ))}
+            <span style={s.pill}>Duration: {ex.duration}</span>
           </div>
         )}
         {ex.notes && <div style={s.notesCard}>{ex.notes}</div>}

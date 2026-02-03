@@ -35,12 +35,18 @@ function parseRepsTotal(reps, setsCount) {
 // Calculate crunch-equivalents for a core exercise
 // Timed exercises (planks, holds): seconds / 2 = crunch equivalent
 // Rep-based: actual total reps × qualifier multiplier
-function calcCoreEquiv(ex) {
+function calcCoreEquiv(ex, trackingData, blockIndex, exIndex) {
   const mult = getMultiplier(ex.qualifier);
-  const setsCount = typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 1);
+
+  // Check for tracked sets/reps (user-entered values)
+  const trackedSets = parseFloat(trackingData?.[`${blockIndex}-${exIndex}-0-sets`]) || 0;
+  const trackedReps = parseFloat(trackingData?.[`${blockIndex}-${exIndex}-0-reps`]) || 0;
+
+  // Use tracked values if available, otherwise fall back to preset
+  const setsCount = trackedSets > 0 ? trackedSets : (typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 1));
 
   // Check for duration-based (planks, holds)
-  if (ex.duration) {
+  if (ex.duration && !trackedReps) {
     const match = String(ex.duration).match(/(\d+)/);
     if (match) {
       const seconds = parseInt(match[1]);
@@ -51,8 +57,9 @@ function calcCoreEquiv(ex) {
     }
   }
 
-  // Rep-based core
-  const totalReps = parseRepsTotal(ex.reps, setsCount);
+  // Rep-based core - use tracked reps if available
+  const repsPerSet = trackedReps > 0 ? trackedReps : (parseFloat(String(ex.reps).replace(/[^\d]/g, '')) || 0);
+  const totalReps = repsPerSet * setsCount;
   return totalReps * mult;
 }
 
@@ -73,16 +80,17 @@ export function calcBlockTonnage(block, maxes, trackingData, blockIndex, userWei
   let coreEquiv = 0;
 
   block.exercises.forEach((ex, exIndex) => {
-    // Only count if marked complete
     const completedKey = `complete-${blockIndex}-${exIndex}`;
     const isCompleted = trackingData?.[completedKey];
-    if (!isCompleted) return;
 
-    // Core exercises → crunch equivalents, not tonnage
+    // Core exercises → auto-count crunch equivalents (no mark complete needed)
     if (isCore(ex.name)) {
-      coreEquiv += calcCoreEquiv(ex);
+      coreEquiv += calcCoreEquiv(ex, trackingData, blockIndex, exIndex);
       return;
     }
+
+    // Non-core exercises require mark complete
+    if (!isCompleted) return;
 
     const mult = getMultiplier(ex.qualifier);
 
