@@ -346,6 +346,63 @@ const exerciseSpecific = {
   'stretch': [
     "Flexibility is strength you haven't unlocked yet. Keep stretching! 🧘‍♂️",
   ],
+
+  // ── CORE / ABS ──
+  'crunch': [
+    "Strong core, strong everything! Those abs are earning their six-pack! 💪🔥",
+    "Crunch time — and you delivered! Lean and mean! 🎯",
+    "Every crunch is a step toward that washboard! Keep going! ✨",
+    "Core strength is the foundation of everything. Building that foundation! 🏗️",
+  ],
+  'sit-up': [
+    "Sit-ups done right build a bulletproof core! Strong and functional! 💪",
+    "Old school, new results! That core is getting STRONG! 🔥",
+    "Posture starts with core strength — you're building both! 📐",
+  ],
+  'plank': [
+    "Time under tension builds iron abs! You held strong! 🔥💪",
+    "Planks don't lie — that core is getting SOLID! 💎",
+    "Stability, posture, strength — planks build it all! ⚡",
+    "The longer you hold, the stronger you get! Beast mode core! 🦁",
+  ],
+  'russian twist': [
+    "Obliques on fire! Rotational power unlocked! 🔥",
+    "Twisting your way to a lean, athletic waist! 💪",
+  ],
+  'leg raise': [
+    "Lower abs are the hardest to hit — and you just nailed them! 🎯",
+    "Leg raises build that V-cut everyone wants! Keep going! ✨",
+  ],
+  'mountain climber': [
+    "Cardio AND core in one move! Efficient and effective! 🏔️🔥",
+    "Climbing your way to a shredded midsection! 💪",
+  ],
+  'hollow': [
+    "Gymnast-level core work! That hollow hold builds REAL stability! 🤸",
+    "Core engaged, body aligned — textbook hollow position! 💎",
+  ],
+  'dead bug': [
+    "Dead bugs build the core stability athletes need! Smart training! 🧠💪",
+    "Controlled movement, engaged core — that's how champions train! 🏆",
+  ],
+  'bird dog': [
+    "Balance and core working together! Functional strength at its finest! 🐕",
+    "Posture, stability, strength — bird dogs deliver all three! ✨",
+  ],
+  'ab': [
+    "That core work is building a strong, lean midsection! 🔥💪",
+    "Abs are made in the gym and revealed in the kitchen — you did YOUR part! 🍽️",
+    "Strong core = strong everything. Foundation work done! 🏗️",
+    "Every rep bringing you closer to that lean, athletic look! ✨",
+    "Core strength improves EVERYTHING — posture, lifting, life! 💎",
+  ],
+  'core': [
+    "Core crushed! Strong midsection, strong body! 💪🔥",
+    "The core is your powerhouse — and yours just got stronger! ⚡",
+    "Lean, mean, core machine! Great work! 🎯",
+    "Posture improves, back pain decreases — that's what core work does! 🙌",
+    "Building the foundation that supports every other lift! 🏗️",
+  ],
 };
 
 // ──────────────────────────────────────────────

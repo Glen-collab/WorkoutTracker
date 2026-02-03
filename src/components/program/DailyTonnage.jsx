@@ -83,14 +83,14 @@ export function calcBlockTonnage(block, maxes, trackingData, blockIndex, userWei
     const completedKey = `complete-${blockIndex}-${exIndex}`;
     const isCompleted = trackingData?.[completedKey];
 
-    // Core exercises → auto-count crunch equivalents (no mark complete needed)
+    // All exercises require mark complete
+    if (!isCompleted) return;
+
+    // Core exercises → crunch equivalents, not tonnage
     if (isCore(ex.name)) {
       coreEquiv += calcCoreEquiv(ex, trackingData, blockIndex, exIndex);
       return;
     }
-
-    // Non-core exercises require mark complete
-    if (!isCompleted) return;
 
     const mult = getMultiplier(ex.qualifier);
 

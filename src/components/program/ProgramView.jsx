@@ -211,6 +211,7 @@ export default function ProgramView({
           userEmail={userEmail}
           currentWeek={currentWeek}
           daysPerWeek={daysPerWeek}
+          totalWeeks={totalWeeks}
           getWeeklyStats={getWeeklyStats}
         />
 
