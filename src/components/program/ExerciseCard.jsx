@@ -215,7 +215,11 @@ export default function ExerciseCard({
   onMarkComplete,
   onSetRecommendation,
 }) {
-  const [collapsed, setCollapsed] = useState(false);
+  // Collapsed if marked complete, but allow manual expand
+  const isMarkedComplete = trackingData?.[`complete-${blockIndex}-${exIndex}`] || false;
+  const [forceExpanded, setForceExpanded] = useState(false);
+  const collapsed = isMarkedComplete && !forceExpanded;
+
   const [showVideo, setShowVideo] = useState(false);
   const isStrength = ['straight-set', 'superset', 'triset'].includes(blockType);
   const isCardio = blockType === 'cardio';
@@ -258,7 +262,7 @@ export default function ExerciseCard({
       msg = `${firstName}, ${msg.charAt(0).toLowerCase()}${msg.slice(1)}`;
     }
     showToast(msg);
-    setCollapsed(true);
+    setForceExpanded(false); // Collapse after marking complete
     // Save completed flag to trackingData for tonnage calculations
     if (onUpdateTracking) onUpdateTracking(blockIndex, exIndex, null, `complete-${blockIndex}-${exIndex}`, true);
     if (onMarkComplete) onMarkComplete(blockIndex, exIndex);
@@ -584,7 +588,7 @@ export default function ExerciseCard({
 
   return (
     <div style={{ ...s.card, ...(collapsed ? s.cardCollapsed : {}) }}>
-      <div style={s.header} onClick={() => collapsed && setCollapsed(false)}>
+      <div style={s.header} onClick={() => collapsed && setForceExpanded(true)}>
         <div style={s.headerLeft}>
           <span>
             {exIndex + 1}. {ex.name}
@@ -600,7 +604,7 @@ export default function ExerciseCard({
           )}
         </div>
         {collapsed && (
-          <button style={s.expandBtn} onClick={() => setCollapsed(false)}>
+          <button style={s.expandBtn} onClick={() => setForceExpanded(true)}>
             +
           </button>
         )}
