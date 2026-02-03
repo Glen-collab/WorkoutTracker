@@ -299,9 +299,17 @@ export default function App() {
               timeLimit: 10,
               notes: '10 minute AMRAP',
               exercises: [
-                { name: 'Push-ups', reps: '15' },
-                { name: 'Air Squats', reps: '20' },
-                { name: 'Sit-ups', reps: '10' },
+                { name: 'Push-ups', sets: 1, reps: '15' },
+                { name: 'Air Squats', sets: 1, reps: '20' },
+              ]
+            },
+            {
+              type: 'warmup',
+              notes: 'Core finisher',
+              exercises: [
+                { name: 'Crunches', sets: 3, reps: '20' },
+                { name: 'Plank', sets: 3, duration: '30 sec' },
+                { name: 'Russian Twists', sets: 2, reps: '20 each side', qualifier: 'each side' },
               ]
             },
             {
