@@ -218,7 +218,8 @@ export default function ExerciseCard({
   const [collapsed, setCollapsed] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
   const isStrength = ['straight-set', 'superset', 'triset'].includes(blockType);
-  const isConditioning = ['conditioning', 'movement', 'cardio'].includes(blockType);
+  const isCardio = blockType === 'cardio';
+  const isMovement = blockType === 'movement' || blockType === 'conditioning';
   const isCircuit = blockType === 'circuit';
   const isWarmup = blockType === 'warmup' || blockType === 'mobility' || blockType === 'cooldown';
 
@@ -447,14 +448,61 @@ export default function ExerciseCard({
     );
   };
 
-  const renderConditioning = () => {
+  // Cardio: treadmill, bike, rowing - just duration and optional distance
+  const renderCardio = () => {
     const details = [
-      { label: 'Reps', val: ex.reps },
-      { label: 'Weight', val: ex.weight },
       { label: 'Duration', val: ex.duration },
       { label: 'Distance', val: ex.distance },
       { label: 'Speed', val: ex.speed },
       { label: 'Intensity', val: ex.intensity },
+    ].filter((d) => d.val);
+
+    return (
+      <>
+        {details.length > 0 && (
+          <div style={s.pillGrid}>
+            {details.map((d, i) => (
+              <span key={i} style={s.pill}>
+                {d.label}: {d.val}
+              </span>
+            ))}
+          </div>
+        )}
+        {ex.notes && <div style={s.notesCard}>{ex.notes}</div>}
+        {ex.description && (
+          <div style={{ ...s.detailRow, fontStyle: 'italic', marginBottom: '10px' }}>
+            {ex.description}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+          <input
+            type="text"
+            placeholder="Duration (min)"
+            value={getTrack(null, 'duration')}
+            onChange={(e) => onUpdateTracking(blockIndex, exIndex, null, 'duration', e.target.value)}
+            style={{ ...s.condInput, flex: 1, marginBottom: 0 }}
+          />
+          <input
+            type="text"
+            placeholder="Distance (mi)"
+            value={getTrack(null, 'distance')}
+            onChange={(e) => onUpdateTracking(blockIndex, exIndex, null, 'distance', e.target.value)}
+            style={{ ...s.condInput, flex: 1, marginBottom: 0 }}
+          />
+        </div>
+        <button style={s.markBtn} onClick={handleMark}>
+          {'\u2713'} Mark Complete
+        </button>
+      </>
+    );
+  };
+
+  // Movement/Conditioning: med ball, agility, plyos - reps or duration based
+  const renderMovement = () => {
+    const details = [
+      { label: 'Reps', val: ex.reps },
+      { label: 'Duration', val: ex.duration },
+      { label: 'Distance', val: ex.distance },
       { label: 'Rest', val: ex.rest },
     ].filter((d) => d.val);
 
@@ -475,24 +523,6 @@ export default function ExerciseCard({
             {ex.description}
           </div>
         )}
-        {['Duration', 'Distance', 'Speed/Intensity', 'Intervals/Notes'].map((field) => (
-          <input
-            key={field}
-            type="text"
-            placeholder={field}
-            value={getTrack(null, field.toLowerCase().replace(/[/ ]/g, '_'))}
-            onChange={(e) =>
-              onUpdateTracking(
-                blockIndex,
-                exIndex,
-                null,
-                field.toLowerCase().replace(/[/ ]/g, '_'),
-                e.target.value
-              )
-            }
-            style={s.condInput}
-          />
-        ))}
         <button style={s.markBtn} onClick={handleMark}>
           {'\u2713'} Mark Complete
         </button>
@@ -520,27 +550,37 @@ export default function ExerciseCard({
     </>
   );
 
-  const renderWarmup = () => (
-    <>
-      {ex.reps && <div style={s.detailRow}>Reps: {ex.reps}</div>}
-      {ex.duration && <div style={s.detailRow}>Duration: {ex.duration}</div>}
-      {ex.weight && <div style={s.detailRow}>Weight: {ex.weight}</div>}
-      {ex.notes && <div style={s.notesCard}>{ex.notes}</div>}
-      <TrackingInputs
-        blockIndex={blockIndex}
-        exIndex={exIndex}
-        setIndex={0}
-        weightValue={getTrack(0, 'weight')}
-        repsValue={getTrack(0, 'reps')}
-        weightPlaceholder="Weight (lbs)"
-        repsPlaceholder="Reps"
-        onUpdate={onUpdateTracking}
-      />
-      <button style={s.markBtn} onClick={handleMark}>
-        {'\u2713'} Mark Complete
-      </button>
-    </>
-  );
+  // Warmup/Cooldown/Mobility: foam rolling, stretches, bird dogs - just show info and mark complete
+  const renderWarmup = () => {
+    const details = [
+      { label: 'Reps', val: ex.reps },
+      { label: 'Sets', val: ex.sets },
+      { label: 'Duration', val: ex.duration },
+    ].filter((d) => d.val);
+
+    return (
+      <>
+        {details.length > 0 && (
+          <div style={s.pillGrid}>
+            {details.map((d, i) => (
+              <span key={i} style={s.pill}>
+                {d.label}: {d.val}
+              </span>
+            ))}
+          </div>
+        )}
+        {ex.notes && <div style={s.notesCard}>{ex.notes}</div>}
+        {ex.description && (
+          <div style={{ ...s.detailRow, fontStyle: 'italic', marginBottom: '10px' }}>
+            {ex.description}
+          </div>
+        )}
+        <button style={s.markBtn} onClick={handleMark}>
+          {'\u2713'} Mark Complete
+        </button>
+      </>
+    );
+  };
 
   return (
     <div style={{ ...s.card, ...(collapsed ? s.cardCollapsed : {}) }}>
@@ -582,7 +622,8 @@ export default function ExerciseCard({
       {!collapsed && (
         <div style={s.body}>
           {isStrength && renderStrength()}
-          {isConditioning && renderConditioning()}
+          {isCardio && renderCardio()}
+          {isMovement && renderMovement()}
           {isCircuit && renderCircuit()}
           {isWarmup && renderWarmup()}
         </div>
