@@ -311,8 +311,26 @@ const exerciseSpecific = {
   'bike': [
     "Pedal power! Heart rate up, lungs burning — that's fitness! 🚴‍♂️🔥",
   ],
-  'row': [
+  'rower': [
     "Row after row, meter after meter — you put in the work! 🚣💪",
+  ],
+  'rowing machine': [
+    "Row after row, meter after meter — you put in the work! 🚣💪",
+  ],
+  'row': [
+    "Building a big back — go muscles over show muscles! 💪🔥",
+    "Strong back, strong posture! You're building the foundation! 🏋️",
+    "Rows build the back that carries you through life! Keep pulling! 💪",
+  ],
+  'dumbbell row': [
+    "One arm at a time, building that thick back! Go muscles activated! 💪",
+    "Dumbbell rows: the secret to a powerful, balanced back! 🔥",
+  ],
+  'barbell row': [
+    "Heavy rows for a heavy back! Posture gains incoming! 🏋️💪",
+  ],
+  'cable row': [
+    "Constant tension, constant gains! Your back is thanking you! 💪",
   ],
 
   // ── WARMUP / MOBILITY / CORRECTIVE ──
