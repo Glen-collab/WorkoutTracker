@@ -88,7 +88,6 @@ export default function ProgramView({
   const [tempInches, setTempInches] = useState('');
   const [tempWeight, setTempWeight] = useState('');
   const [tempAge, setTempAge] = useState('');
-  const [tempGender, setTempGender] = useState('');
 
   const heightTotal = profile?.height || 0;
   const displayFeet = heightTotal ? Math.floor(heightTotal / 12) : '';
@@ -149,7 +148,6 @@ export default function ProgramView({
               setTempInches(displayInches);
               setTempWeight(profile?.weight || '');
               setTempAge(profile?.age || '');
-              setTempGender(profile?.gender || '');
             }}
           >
             {profile?.weight || heightTotal || profile?.gender
@@ -162,41 +160,37 @@ export default function ProgramView({
               : 'Set your stats for calorie estimates'}
           </span>
           {showProfileEdit && (
-            <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '10px', padding: '12px', marginTop: '8px' }}>
-              {/* Gender selector */}
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', justifyContent: 'center' }}>
-                <button
-                  onClick={() => setTempGender('M')}
-                  style={{
-                    flex: 1, padding: '8px', borderRadius: '8px', border: 'none', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
-                    background: tempGender === 'M' ? '#667eea' : '#fff',
-                    color: tempGender === 'M' ? '#fff' : '#333',
-                  }}
-                >Male</button>
-                <button
-                  onClick={() => setTempGender('F')}
-                  style={{
-                    flex: 1, padding: '8px', borderRadius: '8px', border: 'none', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
-                    background: tempGender === 'F' ? '#667eea' : '#fff',
-                    color: tempGender === 'F' ? '#fff' : '#333',
-                  }}
-                >Female</button>
-              </div>
+            <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '10px', padding: '12px', marginTop: '8px', maxWidth: '280px', margin: '8px auto 0' }}>
+              {/* Gender display (read-only, set in registration) */}
+              {profile?.gender && (
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', justifyContent: 'center' }}>
+                  <div style={{
+                    flex: 1, padding: '8px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', textAlign: 'center',
+                    background: profile.gender === 'M' ? '#667eea' : 'rgba(255,255,255,0.2)',
+                    color: profile.gender === 'M' ? '#fff' : 'rgba(255,255,255,0.5)',
+                  }}>Male</div>
+                  <div style={{
+                    flex: 1, padding: '8px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', textAlign: 'center',
+                    background: profile.gender === 'F' ? '#667eea' : 'rgba(255,255,255,0.2)',
+                    color: profile.gender === 'F' ? '#fff' : 'rgba(255,255,255,0.5)',
+                  }}>Female</div>
+                </div>
+              )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
-                <input type="number" placeholder="Feet" value={tempFeet} onChange={(e) => setTempFeet(e.target.value)}
-                  style={{ padding: '8px', borderRadius: '8px', border: 'none', fontSize: '14px', textAlign: 'center' }} />
-                <input type="number" placeholder="Inches" value={tempInches} onChange={(e) => setTempInches(e.target.value)}
-                  style={{ padding: '8px', borderRadius: '8px', border: 'none', fontSize: '14px', textAlign: 'center' }} />
-                <input type="number" placeholder="Weight (lbs)" value={tempWeight} onChange={(e) => setTempWeight(e.target.value)}
-                  style={{ padding: '8px', borderRadius: '8px', border: 'none', fontSize: '14px', textAlign: 'center' }} />
+                <input type="number" placeholder="Ft" value={tempFeet} onChange={(e) => setTempFeet(e.target.value)}
+                  style={{ padding: '8px', borderRadius: '8px', border: 'none', fontSize: '14px', textAlign: 'center', width: '100%', boxSizing: 'border-box', minWidth: 0 }} />
+                <input type="number" placeholder="In" value={tempInches} onChange={(e) => setTempInches(e.target.value)}
+                  style={{ padding: '8px', borderRadius: '8px', border: 'none', fontSize: '14px', textAlign: 'center', width: '100%', boxSizing: 'border-box', minWidth: 0 }} />
+                <input type="number" placeholder="Lbs" value={tempWeight} onChange={(e) => setTempWeight(e.target.value)}
+                  style={{ padding: '8px', borderRadius: '8px', border: 'none', fontSize: '14px', textAlign: 'center', width: '100%', boxSizing: 'border-box', minWidth: 0 }} />
                 <input type="number" placeholder="Age" value={tempAge} onChange={(e) => setTempAge(e.target.value)}
-                  style={{ padding: '8px', borderRadius: '8px', border: 'none', fontSize: '14px', textAlign: 'center' }} />
+                  style={{ padding: '8px', borderRadius: '8px', border: 'none', fontSize: '14px', textAlign: 'center', width: '100%', boxSizing: 'border-box', minWidth: 0 }} />
               </div>
               <button
                 onClick={() => {
                   if (onUpdateProfile) {
                     onUpdateProfile({
-                      gender: tempGender || profile?.gender || '',
+                      gender: profile?.gender || '',
                       height: (tempFeet || tempInches) ? (Number(tempFeet || 0) * 12 + Number(tempInches || 0)) : profile?.height || '',
                       weight: tempWeight ? Number(tempWeight) : profile?.weight || '',
                       age: tempAge ? Number(tempAge) : profile?.age || '',

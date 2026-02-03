@@ -140,6 +140,7 @@ export default function NewUserForm({ onSubmit, onBack, error }) {
   const [cleanMax, setCleanMax] = useState('');
   const [showMaxes, setShowMaxes] = useState(false);
   const [showBodyStats, setShowBodyStats] = useState(false);
+  const [gender, setGender] = useState('');
   const [heightFeet, setHeightFeet] = useState('');
   const [heightInches, setHeightInches] = useState('');
   const [weight, setWeight] = useState('');
@@ -165,6 +166,7 @@ export default function NewUserForm({ onSubmit, onBack, error }) {
       squatMax: squatMax ? Number(squatMax) : null,
       deadliftMax: deadliftMax ? Number(deadliftMax) : null,
       cleanMax: cleanMax ? Number(cleanMax) : null,
+      gender: gender || null,
       height: (heightFeet || heightInches) ? (Number(heightFeet || 0) * 12 + Number(heightInches || 0)) : null,
       weight: weight ? Number(weight) : null,
       age: age ? Number(age) : null,
@@ -277,48 +279,87 @@ export default function NewUserForm({ onSubmit, onBack, error }) {
           </div>
 
           {showBodyStats && (
-            <div style={styles.grid}>
-              <div style={styles.gridItem}>
-                <label style={styles.gridLabel}>Height (ft)</label>
-                <input
-                  style={styles.gridInput}
-                  type="number"
-                  placeholder="5"
-                  value={heightFeet}
-                  onChange={(e) => setHeightFeet(e.target.value)}
-                />
+            <>
+              {/* Gender selector */}
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setGender('M')}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    borderRadius: '10px',
+                    border: gender === 'M' ? '2px solid #667eea' : '2px solid #e0e0e0',
+                    fontSize: '15px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    background: gender === 'M' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#fff',
+                    color: gender === 'M' ? '#fff' : '#333',
+                  }}
+                >
+                  Male
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGender('F')}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    borderRadius: '10px',
+                    border: gender === 'F' ? '2px solid #667eea' : '2px solid #e0e0e0',
+                    fontSize: '15px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    background: gender === 'F' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#fff',
+                    color: gender === 'F' ? '#fff' : '#333',
+                  }}
+                >
+                  Female
+                </button>
               </div>
-              <div style={styles.gridItem}>
-                <label style={styles.gridLabel}>Height (in)</label>
-                <input
-                  style={styles.gridInput}
-                  type="number"
-                  placeholder="10"
-                  value={heightInches}
-                  onChange={(e) => setHeightInches(e.target.value)}
-                />
+              <div style={styles.grid}>
+                <div style={styles.gridItem}>
+                  <label style={styles.gridLabel}>Height (ft)</label>
+                  <input
+                    style={styles.gridInput}
+                    type="number"
+                    placeholder="5"
+                    value={heightFeet}
+                    onChange={(e) => setHeightFeet(e.target.value)}
+                  />
+                </div>
+                <div style={styles.gridItem}>
+                  <label style={styles.gridLabel}>Height (in)</label>
+                  <input
+                    style={styles.gridInput}
+                    type="number"
+                    placeholder="10"
+                    value={heightInches}
+                    onChange={(e) => setHeightInches(e.target.value)}
+                  />
+                </div>
+                <div style={styles.gridItem}>
+                  <label style={styles.gridLabel}>Weight (lbs)</label>
+                  <input
+                    style={styles.gridInput}
+                    type="number"
+                    placeholder="180"
+                    value={weight}
+                    onChange={(e) => setWeight(e.target.value)}
+                  />
+                </div>
+                <div style={styles.gridItem}>
+                  <label style={styles.gridLabel}>Age</label>
+                  <input
+                    style={styles.gridInput}
+                    type="number"
+                    placeholder="30"
+                    value={age}
+                    onChange={(e) => setAge(e.target.value)}
+                  />
+                </div>
               </div>
-              <div style={styles.gridItem}>
-                <label style={styles.gridLabel}>Weight (lbs)</label>
-                <input
-                  style={styles.gridInput}
-                  type="number"
-                  placeholder="180"
-                  value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
-                />
-              </div>
-              <div style={styles.gridItem}>
-                <label style={styles.gridLabel}>Age</label>
-                <input
-                  style={styles.gridInput}
-                  type="number"
-                  placeholder="30"
-                  value={age}
-                  onChange={(e) => setAge(e.target.value)}
-                />
-              </div>
-            </div>
+            </>
           )}
 
           <button type="submit" style={styles.btnSubmit}>
