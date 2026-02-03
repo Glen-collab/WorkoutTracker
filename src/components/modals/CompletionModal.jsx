@@ -11,7 +11,6 @@ const INTEREST_OPTIONS = [
 
 export default function CompletionModal({ isOpen, onSubmit, onClose }) {
   const [rating, setRating] = useState(0);
-  const [hoverRating, setHoverRating] = useState(0);
   const [improvements, setImprovements] = useState('');
   const [interests, setInterests] = useState(new Set());
   const [comments, setComments] = useState('');
@@ -59,7 +58,7 @@ export default function CompletionModal({ isOpen, onSubmit, onClose }) {
     resize: 'vertical', boxSizing: 'border-box', marginBottom: 16,
   };
 
-  const displayRating = hoverRating || rating;
+  const displayRating = rating;
 
   return (
     <div style={overlay}>
@@ -73,21 +72,26 @@ export default function CompletionModal({ isOpen, onSubmit, onClose }) {
           {/* Star Rating */}
           <div style={{ textAlign: 'center', marginBottom: 20 }}>
             <div style={{ fontSize: 14, color: '#aaa', marginBottom: 8 }}>Rate your experience:</div>
-            <div>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
               {[1, 2, 3, 4, 5].map(star => (
-                <span
+                <button
+                  type="button"
                   key={star}
                   onClick={() => setRating(star)}
-                  onMouseEnter={() => setHoverRating(star)}
-                  onMouseLeave={() => setHoverRating(0)}
+                  onTouchEnd={(e) => { e.preventDefault(); setRating(star); }}
                   style={{
-                    fontSize: 40, cursor: 'pointer', display: 'inline-block',
-                    color: star <= displayRating ? '#ffc107' : '#444',
-                    transition: 'color 0.15s',
+                    fontSize: 36, cursor: 'pointer', display: 'inline-flex',
+                    alignItems: 'center', justifyContent: 'center',
+                    width: 48, height: 48, padding: 0,
+                    background: 'transparent', border: 'none',
+                    color: star <= displayRating ? '#ffc107' : '#555',
+                    transition: 'color 0.15s, transform 0.1s',
+                    transform: star <= displayRating ? 'scale(1.1)' : 'scale(1)',
+                    WebkitTapHighlightColor: 'transparent',
                   }}
                 >
-                  &#11088;
-                </span>
+                  ★
+                </button>
               ))}
             </div>
           </div>
