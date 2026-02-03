@@ -118,6 +118,9 @@ export function calcBlockTonnage(block, maxes, trackingData, blockIndex, userWei
         const calcReps = trackedReps || parseFloat(repsPerSet?.[si]) || parseFloat(ex.reps) || 0;
         if (calcWeight > 0 && calcReps > 0) {
           tonnage += calcWeight * calcReps * mult;
+        } else if (calcReps > 0) {
+          // No max entered and no tracked weight - use 25% bodyweight as fallback
+          tonnage += effectiveWeight * 0.25 * calcReps * mult;
         }
       } else {
         // Check if user explicitly cleared the weight field (key exists but value is empty/0)
@@ -152,12 +155,19 @@ export function calcCardio(block, trackingData, blockIndex) {
     const isCompleted = trackingData?.[`complete-${blockIndex}-${exIndex}`];
     if (!isCompleted) return;
 
-    if (ex.duration) {
-      const m = String(ex.duration).match(/(\d+)/);
+    // Check trackingData first for user-entered values, then fall back to preset
+    const trackedDuration = trackingData?.[`${blockIndex}-${exIndex}-null-duration`];
+    const trackedDistance = trackingData?.[`${blockIndex}-${exIndex}-null-distance`];
+
+    const durationVal = trackedDuration || ex.duration;
+    const distanceVal = trackedDistance || ex.distance;
+
+    if (durationVal) {
+      const m = String(durationVal).match(/(\d+)/);
       if (m) minutes += parseInt(m[1]);
     }
-    if (ex.distance) {
-      const d = String(ex.distance).match(/([\d.]+)/);
+    if (distanceVal) {
+      const d = String(distanceVal).match(/([\d.]+)/);
       if (d) miles += parseFloat(d[1]);
     }
   });
