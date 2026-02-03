@@ -80,7 +80,6 @@ export default function ProgramView({
   profile,
   onUpdateProfile,
   accessCode,
-  estCalories,
   getWeeklyStats,
 }) {
   const blocks = program?.blocks || [];
@@ -89,6 +88,7 @@ export default function ProgramView({
   const [tempInches, setTempInches] = useState('');
   const [tempWeight, setTempWeight] = useState('');
   const [tempAge, setTempAge] = useState('');
+  const [tempGender, setTempGender] = useState('');
 
   const heightTotal = profile?.height || 0;
   const displayFeet = heightTotal ? Math.floor(heightTotal / 12) : '';
@@ -122,7 +122,7 @@ export default function ProgramView({
 
         {blocks.map((block, blockIndex) => (
           <BlockCard
-            key={blockIndex}
+            key={`${currentWeek}-${currentDay}-${blockIndex}`}
             block={block}
             blockIndex={blockIndex}
             maxes={maxes}
@@ -137,7 +137,7 @@ export default function ProgramView({
           />
         ))}
 
-        <DailyTonnage blocks={blocks} maxes={maxes} trackingData={trackingData} userWeight={profile?.weight || 0} estCalories={estCalories || 0} />
+        <DailyTonnage blocks={blocks} maxes={maxes} trackingData={trackingData} userWeight={profile?.weight || 0} userGender={profile?.gender} />
 
         {/* Profile Widget */}
         <div style={{ marginTop: '12px', textAlign: 'center' }}>
@@ -149,10 +149,12 @@ export default function ProgramView({
               setTempInches(displayInches);
               setTempWeight(profile?.weight || '');
               setTempAge(profile?.age || '');
+              setTempGender(profile?.gender || '');
             }}
           >
-            {profile?.weight || heightTotal
+            {profile?.weight || heightTotal || profile?.gender
               ? [
+                  profile?.gender === 'M' ? 'Male' : profile?.gender === 'F' ? 'Female' : null,
                   heightTotal ? `${displayFeet}'${displayInches}"` : null,
                   profile?.weight ? `${profile.weight} lbs` : null,
                   profile?.age ? `Age ${profile.age}` : null,
@@ -161,6 +163,25 @@ export default function ProgramView({
           </span>
           {showProfileEdit && (
             <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '10px', padding: '12px', marginTop: '8px' }}>
+              {/* Gender selector */}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', justifyContent: 'center' }}>
+                <button
+                  onClick={() => setTempGender('M')}
+                  style={{
+                    flex: 1, padding: '8px', borderRadius: '8px', border: 'none', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
+                    background: tempGender === 'M' ? '#667eea' : '#fff',
+                    color: tempGender === 'M' ? '#fff' : '#333',
+                  }}
+                >Male</button>
+                <button
+                  onClick={() => setTempGender('F')}
+                  style={{
+                    flex: 1, padding: '8px', borderRadius: '8px', border: 'none', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
+                    background: tempGender === 'F' ? '#667eea' : '#fff',
+                    color: tempGender === 'F' ? '#fff' : '#333',
+                  }}
+                >Female</button>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
                 <input type="number" placeholder="Feet" value={tempFeet} onChange={(e) => setTempFeet(e.target.value)}
                   style={{ padding: '8px', borderRadius: '8px', border: 'none', fontSize: '14px', textAlign: 'center' }} />
@@ -175,6 +196,7 @@ export default function ProgramView({
                 onClick={() => {
                   if (onUpdateProfile) {
                     onUpdateProfile({
+                      gender: tempGender || profile?.gender || '',
                       height: (tempFeet || tempInches) ? (Number(tempFeet || 0) * 12 + Number(tempInches || 0)) : profile?.height || '',
                       weight: tempWeight ? Number(tempWeight) : profile?.weight || '',
                       age: tempAge ? Number(tempAge) : profile?.age || '',

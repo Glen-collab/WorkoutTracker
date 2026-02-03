@@ -56,8 +56,19 @@ function calcCoreEquiv(ex) {
   return totalReps * mult;
 }
 
-export function calcBlockTonnage(block, maxes, trackingData, blockIndex, userWeight) {
+// Get default weight based on gender (or 175 as neutral default)
+export function getDefaultWeight(gender) {
+  if (gender === 'M') return 200;
+  if (gender === 'F') return 150;
+  return 175; // neutral default
+}
+
+export function calcBlockTonnage(block, maxes, trackingData, blockIndex, userWeight, gender) {
   if (!block?.exercises) return { tonnage: 0, coreEquiv: 0 };
+
+  // Use provided weight or gender-based default
+  const effectiveWeight = userWeight > 0 ? userWeight : getDefaultWeight(gender);
+
   let tonnage = 0;
   let coreEquiv = 0;
 
@@ -109,14 +120,19 @@ export function calcBlockTonnage(block, maxes, trackingData, blockIndex, userWei
           tonnage += calcWeight * calcReps * mult;
         }
       } else {
-        // Fall back to prescribed weight
-        const prescribedWeight = trackedWeight || parseFloat(ex.weight) || 0;
+        // Check if user explicitly cleared the weight field (key exists but value is empty/0)
+        const weightKey = `${blockIndex}-${exIndex}-${si}-weight`;
+        const userClearedWeight = weightKey in (trackingData || {}) && !trackedWeight;
+
+        // Fall back to prescribed weight (unless user explicitly cleared it)
+        const prescribedWeight = userClearedWeight ? 0 : (trackedWeight || parseFloat(ex.weight) || 0);
         const prescribedReps = trackedReps || parseFloat(ex.reps) || 0;
+
         if (prescribedWeight > 0 && prescribedReps > 0) {
           tonnage += prescribedWeight * prescribedReps * mult;
-        } else if (userWeight > 0 && !isConditioningBlock(block) && prescribedReps > 0) {
-          // Bodyweight exercise: use 25% of user bodyweight
-          tonnage += userWeight * 0.25 * prescribedReps * mult;
+        } else if (!isConditioningBlock(block) && prescribedReps > 0) {
+          // No weight (bodyweight exercise or user cleared it): use 25% of effective bodyweight
+          tonnage += effectiveWeight * 0.25 * prescribedReps * mult;
         }
       }
     }
@@ -212,20 +228,32 @@ const s = {
   },
 };
 
-export default function DailyTonnage({ blocks, maxes, trackingData, userWeight, estCalories }) {
-  const { tonnage, cardio, coreEquiv } = useMemo(() => {
+export default function DailyTonnage({ blocks, maxes, trackingData, userWeight, userGender }) {
+  const { tonnage, cardio, coreEquiv, estCalories } = useMemo(() => {
+    const effectiveWeight = userWeight > 0 ? userWeight : getDefaultWeight(userGender);
+    const weightKg = effectiveWeight * 0.453592;
     let ton = 0, core = 0;
     let min = 0, mi = 0;
+    let completedExercises = 0;
     (blocks || []).forEach((block, blockIndex) => {
-      const bt = calcBlockTonnage(block, maxes || {}, trackingData, blockIndex, userWeight || 0);
+      const bt = calcBlockTonnage(block, maxes || {}, trackingData, blockIndex, userWeight || 0, userGender);
       ton += bt.tonnage;
       core += bt.coreEquiv;
       const c = calcCardio(block, trackingData, blockIndex);
       min += c.minutes;
       mi += c.miles;
+      // Count completed exercises for calorie estimate
+      (block.exercises || []).forEach((ex, exIndex) => {
+        if (trackingData?.[`complete-${blockIndex}-${exIndex}`]) completedExercises++;
+      });
     });
-    return { tonnage: ton, cardio: { minutes: min, miles: mi }, coreEquiv: core };
-  }, [blocks, maxes, trackingData, userWeight]);
+    // Calorie estimate: MET formula (same as handleLogWorkout)
+    const strengthMinutes = completedExercises * 3;
+    const strengthCal = 6 * weightKg * (strengthMinutes / 60);
+    const cardioCal = 7.5 * weightKg * (min / 60);
+    const calories = Math.round(strengthCal + cardioCal);
+    return { tonnage: ton, cardio: { minutes: min, miles: mi }, coreEquiv: core, estCalories: calories };
+  }, [blocks, maxes, trackingData, userWeight, userGender]);
 
   const hasAnything = tonnage > 0 || cardio.minutes > 0 || cardio.miles > 0 || coreEquiv > 0 || estCalories > 0;
 

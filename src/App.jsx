@@ -11,7 +11,7 @@ import CongratulationsModal from './components/modals/CongratulationsModal';
 import WeeklySummaryModal from './components/modals/WeeklySummaryModal';
 import TestYourMight, { getWeekConfig } from './components/game/TestYourMight';
 import WorkoutChatbot from './components/chatbot/WorkoutChatbot';
-import { calcBlockTonnage, calcCardio } from './components/program/DailyTonnage';
+import { calcBlockTonnage, calcCardio, getDefaultWeight } from './components/program/DailyTonnage';
 
 const containerStyle = {
   minHeight: '100vh',
@@ -118,6 +118,7 @@ export default function App() {
         height: p.height || null,
         weight: p.weight || null,
         age: p.age || null,
+        gender: p.gender || null,
       };
       if (requestedWeek) params.requested_week = requestedWeek;
       if (requestedDay) params.requested_day = requestedDay;
@@ -144,6 +145,7 @@ export default function App() {
           }));
           // Auto-fill profile from database
           setProfile(prev => ({
+            gender: prev.gender || pos.gender || '',
             height: prev.height || parseFloat(pos.heightInches) || '',
             weight: prev.weight || parseFloat(pos.weightLbs) || '',
             age: prev.age || parseInt(pos.age) || '',
@@ -328,8 +330,9 @@ export default function App() {
     };
     setMaxes(newMaxes);
 
-    if (formData.height || formData.weight || formData.age) {
+    if (formData.height || formData.weight || formData.age || formData.gender) {
       setProfile({
+        gender: formData.gender || '',
         height: formData.height || '',
         weight: formData.weight || '',
         age: formData.age || '',
@@ -494,12 +497,13 @@ export default function App() {
       }
 
       // Calculate volume stats from the actual program blocks + tracking data
-      const userWeight = profile?.weight || 150; // default 150 lbs if not set
+      const userGender = profile?.gender || '';
+      const userWeight = profile?.weight || getDefaultWeight(userGender);
       const weightKg = userWeight * 0.453592;
       let totalTonnage = 0, totalCore = 0, totalCardioMin = 0, totalCardioMiles = 0;
       let completedExercises = 0;
       (program?.blocks || []).forEach((block, blockIndex) => {
-        const bt = calcBlockTonnage(block, maxes || {}, trackingData, blockIndex, userWeight);
+        const bt = calcBlockTonnage(block, maxes || {}, trackingData, blockIndex, userWeight, userGender);
         totalTonnage += bt.tonnage;
         totalCore += bt.coreEquiv;
         const c = calcCardio(block, trackingData, blockIndex);
