@@ -137,6 +137,11 @@ export default function ReturningUserForm({ onSubmit, onBack, error }) {
   const [deadliftMax, setDeadliftMax] = useState('');
   const [cleanMax, setCleanMax] = useState('');
   const [showMaxes, setShowMaxes] = useState(false);
+  const [showBodyStats, setShowBodyStats] = useState(false);
+  const [heightFeet, setHeightFeet] = useState('');
+  const [heightInches, setHeightInches] = useState('');
+  const [weight, setWeight] = useState('');
+  const [age, setAge] = useState('');
 
   const handleCodeChange = (e) => {
     setCode(formatAccessCode(e.target.value));
@@ -157,6 +162,9 @@ export default function ReturningUserForm({ onSubmit, onBack, error }) {
       squatMax: squatMax ? Number(squatMax) : null,
       deadliftMax: deadliftMax ? Number(deadliftMax) : null,
       cleanMax: cleanMax ? Number(cleanMax) : null,
+      height: (heightFeet || heightInches) ? (Number(heightFeet || 0) * 12 + Number(heightInches || 0)) : null,
+      weight: weight ? Number(weight) : null,
+      age: age ? Number(age) : null,
     });
   };
 
@@ -242,6 +250,59 @@ export default function ReturningUserForm({ onSubmit, onBack, error }) {
                   placeholder="0"
                   value={cleanMax}
                   onChange={(e) => setCleanMax(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
+          <div
+            style={styles.collapseHeader}
+            onClick={() => setShowBodyStats(!showBodyStats)}
+          >
+            <span>&#x2696; Body Stats (Optional)</span>
+            <span>{showBodyStats ? '\u25B2' : '\u25BC'}</span>
+          </div>
+
+          {showBodyStats && (
+            <div style={styles.grid}>
+              <div style={styles.gridItem}>
+                <label style={styles.gridLabel}>Height (ft)</label>
+                <input
+                  style={styles.gridInput}
+                  type="number"
+                  placeholder="5"
+                  value={heightFeet}
+                  onChange={(e) => setHeightFeet(e.target.value)}
+                />
+              </div>
+              <div style={styles.gridItem}>
+                <label style={styles.gridLabel}>Height (in)</label>
+                <input
+                  style={styles.gridInput}
+                  type="number"
+                  placeholder="10"
+                  value={heightInches}
+                  onChange={(e) => setHeightInches(e.target.value)}
+                />
+              </div>
+              <div style={styles.gridItem}>
+                <label style={styles.gridLabel}>Weight (lbs)</label>
+                <input
+                  style={styles.gridInput}
+                  type="number"
+                  placeholder="180"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                />
+              </div>
+              <div style={styles.gridItem}>
+                <label style={styles.gridLabel}>Age</label>
+                <input
+                  style={styles.gridInput}
+                  type="number"
+                  placeholder="30"
+                  value={age}
+                  onChange={(e) => setAge(e.target.value)}
                 />
               </div>
             </div>

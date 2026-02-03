@@ -11,7 +11,16 @@ const QUOTES = [
   "Discipline is choosing between what you want now and what you want most.",
 ];
 
-export default function CongratulationsModal({ isOpen, onClose }) {
+const pillRow = {
+  display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', margin: '16px 0',
+};
+
+const pill = {
+  background: 'rgba(255,255,255,0.2)', borderRadius: '20px', padding: '6px 14px',
+  fontSize: '13px', fontWeight: '600',
+};
+
+export default function CongratulationsModal({ isOpen, onClose, volumeStats }) {
   const quote = useMemo(() => QUOTES[Math.floor(Math.random() * QUOTES.length)], [isOpen]);
 
   if (!isOpen) return null;
@@ -35,6 +44,14 @@ export default function CongratulationsModal({ isOpen, onClose }) {
         <p style={{ fontSize: 16, opacity: 0.9, margin: '0 0 24px' }}>
           Great work! Your trainer has been notified.
         </p>
+        {volumeStats && (
+          <div style={pillRow}>
+            {volumeStats.tonnage > 0 && <span style={pill}>{volumeStats.tonnage.toLocaleString()} lbs</span>}
+            {volumeStats.core_crunches > 0 && <span style={pill}>{volumeStats.core_crunches} crunches</span>}
+            {volumeStats.cardio_minutes > 0 && <span style={pill}>{volumeStats.cardio_minutes} min cardio</span>}
+            {volumeStats.est_calories > 0 && <span style={pill}>{Math.round(volumeStats.est_calories)} cal</span>}
+          </div>
+        )}
         <p style={{ fontSize: 14, fontStyle: 'italic', opacity: 0.8, margin: '0 0 32px', lineHeight: 1.5 }}>
           "{quote}"
         </p>

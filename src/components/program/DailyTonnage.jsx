@@ -56,7 +56,7 @@ function calcCoreEquiv(ex) {
   return totalReps * mult;
 }
 
-export function calcBlockTonnage(block, maxes, trackingData, blockIndex) {
+export function calcBlockTonnage(block, maxes, trackingData, blockIndex, userWeight) {
   if (!block?.exercises) return { tonnage: 0, coreEquiv: 0 };
   let tonnage = 0;
   let coreEquiv = 0;
@@ -114,12 +114,19 @@ export function calcBlockTonnage(block, maxes, trackingData, blockIndex) {
         const prescribedReps = trackedReps || parseFloat(ex.reps) || 0;
         if (prescribedWeight > 0 && prescribedReps > 0) {
           tonnage += prescribedWeight * prescribedReps * mult;
+        } else if (userWeight > 0 && !isConditioningBlock(block) && prescribedReps > 0) {
+          // Bodyweight exercise: use 25% of user bodyweight
+          tonnage += userWeight * 0.25 * prescribedReps * mult;
         }
       }
     }
   });
 
   return { tonnage, coreEquiv };
+}
+
+function isConditioningBlock(block) {
+  return block?.type === 'conditioning' || block?.type === 'cardio';
 }
 
 export function calcCardio(block, trackingData, blockIndex) {
@@ -205,12 +212,12 @@ const s = {
   },
 };
 
-export default function DailyTonnage({ blocks, maxes, trackingData }) {
+export default function DailyTonnage({ blocks, maxes, trackingData, userWeight, estCalories }) {
   const { tonnage, cardio, coreEquiv } = useMemo(() => {
     let ton = 0, core = 0;
     let min = 0, mi = 0;
     (blocks || []).forEach((block, blockIndex) => {
-      const bt = calcBlockTonnage(block, maxes || {}, trackingData, blockIndex);
+      const bt = calcBlockTonnage(block, maxes || {}, trackingData, blockIndex, userWeight || 0);
       ton += bt.tonnage;
       core += bt.coreEquiv;
       const c = calcCardio(block, trackingData, blockIndex);
@@ -218,9 +225,9 @@ export default function DailyTonnage({ blocks, maxes, trackingData }) {
       mi += c.miles;
     });
     return { tonnage: ton, cardio: { minutes: min, miles: mi }, coreEquiv: core };
-  }, [blocks, maxes, trackingData]);
+  }, [blocks, maxes, trackingData, userWeight]);
 
-  const hasAnything = tonnage > 0 || cardio.minutes > 0 || cardio.miles > 0 || coreEquiv > 0;
+  const hasAnything = tonnage > 0 || cardio.minutes > 0 || cardio.miles > 0 || coreEquiv > 0 || estCalories > 0;
 
   return (
     <div style={s.card}>
@@ -251,6 +258,15 @@ export default function DailyTonnage({ blocks, maxes, trackingData }) {
           <div style={s.cardioStat}>
             <div style={s.statLabel}>DISTANCE</div>
             <div style={s.statValue}>{cardio.miles.toFixed(1)} mi</div>
+          </div>
+        )}
+        {estCalories > 0 && (
+          <div style={{
+            ...s.stat,
+            background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+          }}>
+            <div style={s.statLabel}>EST. CALORIES</div>
+            <div style={s.statValue}>{Math.round(estCalories)}</div>
           </div>
         )}
       </div>

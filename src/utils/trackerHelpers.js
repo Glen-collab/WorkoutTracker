@@ -9,8 +9,12 @@ export function calculateWeight(oneRM, percentage) {
 }
 
 // Get 1RM based on exercise name and user's maxes
-export function get1RM(exerciseName, maxes) {
-  if (!exerciseName || !maxes) return 0;
+// Also checks ex.baseMax property (set by builder) as primary lookup
+export function get1RM(exerciseName, maxes, baseMax) {
+  if (!maxes) return 0;
+  // If builder set a baseMax reference (e.g. "bench", "squat"), use that first
+  if (baseMax && maxes[baseMax]) return maxes[baseMax];
+  if (!exerciseName) return 0;
   if (exerciseName.includes('Bench Press')) return maxes.bench || 0;
   if (exerciseName.includes('Back Squat') || exerciseName.includes('Front Squat') || exerciseName.includes('Overhead Squat')) return maxes.squat || 0;
   if (exerciseName.includes('Deadlift') && !exerciseName.includes('Romanian')) return maxes.deadlift || 0;

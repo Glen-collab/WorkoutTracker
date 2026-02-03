@@ -218,7 +218,7 @@ export default function ExerciseCard({
   const [collapsed, setCollapsed] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
   const isStrength = ['straight-set', 'superset', 'triset'].includes(blockType);
-  const isConditioning = ['conditioning', 'movement'].includes(blockType);
+  const isConditioning = ['conditioning', 'movement', 'cardio'].includes(blockType);
   const isCircuit = blockType === 'circuit';
   const isWarmup = blockType === 'warmup' || blockType === 'mobility' || blockType === 'cooldown';
 
@@ -270,10 +270,18 @@ export default function ExerciseCard({
   };
 
   // Percentage-based strength (use normalized ex)
-  const oneRM = isStrength && ex.isPercentageBased ? get1RM(ex.name, maxes) : 0;
+  const oneRM = isStrength && ex.isPercentageBased ? get1RM(ex.name, maxes, ex.baseMax) : 0;
   const hasPercentages = ex.isPercentageBased && ex.percentages?.length > 0;
 
-  const warmupSets =
+  // Only show auto warm-up for flat barbell bench and back squat
+  const showWarmup = (() => {
+    const name = (ex.name || '').toLowerCase();
+    const isBench = name.includes('bench press') && !name.includes('incline') && !name.includes('decline') && !name.includes('dumbbell') && !name.includes('db');
+    const isBackSquat = name.includes('back squat');
+    return isBench || isBackSquat;
+  })();
+
+  const warmupSets = showWarmup ? (
     oneRM > 225
       ? [
           { reps: 5, pct: 60 },
@@ -285,7 +293,8 @@ export default function ExerciseCard({
           { reps: 5, pct: 60 },
           { reps: 3, pct: 65 },
           { reps: 1, pct: 80 },
-        ];
+        ]
+  ) : [];
 
   const renderRecSection = () => (
     <>
@@ -332,14 +341,16 @@ export default function ExerciseCard({
     if (hasPercentages && oneRM > 0) {
       return (
         <>
-          <div style={s.warmup}>
-            <strong>Warm-Up Protocol</strong>
-            {warmupSets.map((ws, i) => (
-              <div key={i}>
-                {ws.reps} reps @ {ws.pct}% = {calculateWeight(oneRM, ws.pct)} lbs
-              </div>
-            ))}
-          </div>
+          {warmupSets.length > 0 && (
+            <div style={s.warmup}>
+              <strong>Warm-Up Protocol</strong>
+              {warmupSets.map((ws, i) => (
+                <div key={i}>
+                  {ws.reps} reps @ {ws.pct}% = {calculateWeight(oneRM, ws.pct)} lbs
+                </div>
+              ))}
+            </div>
+          )}
           <div style={{ ...s.targetText, fontWeight: '700' }}>
             {ex.schemeName || 'Working Sets'} - Auto-Calculated Weights
           </div>
@@ -355,7 +366,7 @@ export default function ExerciseCard({
                 setIndex={si}
                 weightValue={getTrack(si, 'weight')}
                 repsValue={getTrack(si, 'reps')}
-                weightPlaceholder={`${calculateWeight(oneRM, pct)} lbs`}
+                weightPlaceholder={`${calculateWeight(oneRM, pct)} lbs${ex.qualifier ? ' ' + ex.qualifier : ''}`}
                 repsPlaceholder={`${ex.repsPerSet?.[si] || ex.reps || ''} reps`}
                 onUpdate={onUpdateTracking}
               />
@@ -410,7 +421,7 @@ export default function ExerciseCard({
         <div style={s.targetText}>
           {sets} sets x {ex.reps || '?'} reps
         </div>
-        {ex.weight && <div style={s.detailRow}>Weight: {ex.weight}</div>}
+        {ex.weight && <div style={s.detailRow}>Weight: {ex.weight}{ex.qualifier ? ` ${ex.qualifier}` : ''}</div>}
         {ex.rest && <div style={s.detailRow}>Rest: {ex.rest}</div>}
         {ex.notes && <div style={s.notesCard}>{ex.notes}</div>}
         {Array.from({ length: sets }).map((_, si) => (
@@ -537,6 +548,7 @@ export default function ExerciseCard({
         <div style={s.headerLeft}>
           <span>
             {exIndex + 1}. {ex.name}
+            {ex.qualifier && <span style={{ fontSize: '12px', color: '#888', fontWeight: '400' }}> ({ex.qualifier})</span>}
           </span>
           {ex.youtube && (
             <button

@@ -35,6 +35,7 @@ export default function useTrackerAPI() {
   const logWorkout = useCallback((params) => apiCall('log-workout.php', params), [apiCall]);
   const submitQuestionnaire = useCallback((params) => apiCall('submit-questionnaire.php', params), [apiCall]);
   const submitCompletion = useCallback((params) => apiCall('submit-completion.php', params), [apiCall]);
+  const getWeeklyStats = useCallback((params) => apiCall('get-weekly-stats.php', params), [apiCall]);
 
-  return { loading, error, loadProgram, loadUserOverride, logWorkout, submitQuestionnaire, submitCompletion };
+  return { loading, error, loadProgram, loadUserOverride, logWorkout, submitQuestionnaire, submitCompletion, getWeeklyStats };
 }

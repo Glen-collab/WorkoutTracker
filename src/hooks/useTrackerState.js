@@ -9,6 +9,7 @@ export default function useTrackerState() {
     name: '', email: '', accessCode: '', isReturningUser: false
   });
   const [maxes, setMaxes] = useState({ bench: 0, squat: 0, deadlift: 0, clean: 0 });
+  const [profile, setProfile] = useState({ height: '', weight: '', age: '' });
 
   // Consent
   const [consentAccepted, setConsentAccepted] = useState(false);
@@ -72,6 +73,7 @@ export default function useTrackerState() {
     screen, setScreen,
     user, setUser,
     maxes, setMaxes,
+    profile, setProfile,
     consentAccepted, setConsentAccepted,
     consentTimestamp, setConsentTimestamp,
     program, setProgram,

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import ProgramHeader from './ProgramHeader';
 import BlockCard from './BlockCard';
 import DailyTonnage from './DailyTonnage';
+import WeeklyStatsCard from './WeeklyStatsCard';
 
 const s = {
   container: {
@@ -76,8 +77,22 @@ export default function ProgramView({
   onLogout,
   trackingData,
   onUpdateTracking,
+  profile,
+  onUpdateProfile,
+  accessCode,
+  estCalories,
+  getWeeklyStats,
 }) {
   const blocks = program?.blocks || [];
+  const [showProfileEdit, setShowProfileEdit] = useState(false);
+  const [tempFeet, setTempFeet] = useState('');
+  const [tempInches, setTempInches] = useState('');
+  const [tempWeight, setTempWeight] = useState('');
+  const [tempAge, setTempAge] = useState('');
+
+  const heightTotal = profile?.height || 0;
+  const displayFeet = heightTotal ? Math.floor(heightTotal / 12) : '';
+  const displayInches = heightTotal ? heightTotal % 12 : '';
 
   return (
     <div style={s.container}>
@@ -122,7 +137,66 @@ export default function ProgramView({
           />
         ))}
 
-        <DailyTonnage blocks={blocks} maxes={maxes} trackingData={trackingData} />
+        <DailyTonnage blocks={blocks} maxes={maxes} trackingData={trackingData} userWeight={profile?.weight || 0} estCalories={estCalories || 0} />
+
+        {/* Profile Widget */}
+        <div style={{ marginTop: '12px', textAlign: 'center' }}>
+          <span
+            style={{ fontSize: '13px', color: '#fff', opacity: 0.7, cursor: 'pointer', textDecoration: 'underline' }}
+            onClick={() => {
+              setShowProfileEdit(!showProfileEdit);
+              setTempFeet(displayFeet);
+              setTempInches(displayInches);
+              setTempWeight(profile?.weight || '');
+              setTempAge(profile?.age || '');
+            }}
+          >
+            {profile?.weight || heightTotal
+              ? [
+                  heightTotal ? `${displayFeet}'${displayInches}"` : null,
+                  profile?.weight ? `${profile.weight} lbs` : null,
+                  profile?.age ? `Age ${profile.age}` : null,
+                ].filter(Boolean).join(' | ')
+              : 'Set your stats for calorie estimates'}
+          </span>
+          {showProfileEdit && (
+            <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '10px', padding: '12px', marginTop: '8px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                <input type="number" placeholder="Feet" value={tempFeet} onChange={(e) => setTempFeet(e.target.value)}
+                  style={{ padding: '8px', borderRadius: '8px', border: 'none', fontSize: '14px', textAlign: 'center' }} />
+                <input type="number" placeholder="Inches" value={tempInches} onChange={(e) => setTempInches(e.target.value)}
+                  style={{ padding: '8px', borderRadius: '8px', border: 'none', fontSize: '14px', textAlign: 'center' }} />
+                <input type="number" placeholder="Weight (lbs)" value={tempWeight} onChange={(e) => setTempWeight(e.target.value)}
+                  style={{ padding: '8px', borderRadius: '8px', border: 'none', fontSize: '14px', textAlign: 'center' }} />
+                <input type="number" placeholder="Age" value={tempAge} onChange={(e) => setTempAge(e.target.value)}
+                  style={{ padding: '8px', borderRadius: '8px', border: 'none', fontSize: '14px', textAlign: 'center' }} />
+              </div>
+              <button
+                onClick={() => {
+                  if (onUpdateProfile) {
+                    onUpdateProfile({
+                      height: (tempFeet || tempInches) ? (Number(tempFeet || 0) * 12 + Number(tempInches || 0)) : profile?.height || '',
+                      weight: tempWeight ? Number(tempWeight) : profile?.weight || '',
+                      age: tempAge ? Number(tempAge) : profile?.age || '',
+                    });
+                  }
+                  setShowProfileEdit(false);
+                }}
+                style={{ padding: '8px 24px', borderRadius: '8px', border: 'none', background: '#fff', color: '#764ba2', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}
+              >
+                Save
+              </button>
+            </div>
+          )}
+        </div>
+
+        <WeeklyStatsCard
+          accessCode={accessCode}
+          userEmail={userEmail}
+          currentWeek={currentWeek}
+          daysPerWeek={daysPerWeek}
+          getWeeklyStats={getWeeklyStats}
+        />
 
         <div style={s.actionBar}>
           <button style={s.logBtn} onClick={onLogWorkout}>

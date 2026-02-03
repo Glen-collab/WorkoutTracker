@@ -8,6 +8,7 @@ import ProgramView from './components/program/ProgramView';
 import PainModal from './components/modals/PainModal';
 import CompletionModal from './components/modals/CompletionModal';
 import CongratulationsModal from './components/modals/CongratulationsModal';
+import WeeklySummaryModal from './components/modals/WeeklySummaryModal';
 import TestYourMight, { getWeekConfig } from './components/game/TestYourMight';
 import WorkoutChatbot from './components/chatbot/WorkoutChatbot';
 import { calcBlockTonnage, calcCardio } from './components/program/DailyTonnage';
@@ -26,6 +27,7 @@ export default function App() {
     screen, setScreen,
     user, setUser,
     maxes, setMaxes,
+    profile, setProfile,
     consentAccepted, setConsentAccepted,
     consentTimestamp, setConsentTimestamp,
     program, setProgram,
@@ -54,6 +56,9 @@ export default function App() {
   const [showCongratsModal, setShowCongratsModal] = useState(false);
   const [showGame, setShowGame] = useState(false);
   const [showGamePrompt, setShowGamePrompt] = useState(false);
+  const [showWeeklySummary, setShowWeeklySummary] = useState(false);
+  const [lastVolumeStats, setLastVolumeStats] = useState(null);
+  const [isLastDayOfWeek, setIsLastDayOfWeek] = useState(false);
   const [gameWeek, setGameWeek] = useState(1);
 
   const chatbotRef = useRef(null);
@@ -92,14 +97,16 @@ export default function App() {
   // Use a ref to always have latest user/maxes without stale closures
   const userRef = useRef(user);
   const maxesRef = useRef(maxes);
+  const profileRef = useRef(profile);
   useEffect(() => { userRef.current = user; }, [user]);
   useEffect(() => { maxesRef.current = maxes; }, [maxes]);
+  useEffect(() => { profileRef.current = profile; }, [profile]);
 
   const handleLoadProgramFromAPI = useCallback(async (requestedWeek, requestedDay) => {
     const u = userRef.current;
     const m = maxesRef.current;
+    const p = profileRef.current;
     try {
-      // Match the PHP API field names: email, code, name, benchMax, squatMax, deadliftMax, cleanMax
       const params = {
         email: u.email,
         code: u.accessCode,
@@ -108,6 +115,9 @@ export default function App() {
         squatMax: m.squat || 0,
         deadliftMax: m.deadlift || 0,
         cleanMax: m.clean || 0,
+        height: p.height || null,
+        weight: p.weight || null,
+        age: p.age || null,
       };
       if (requestedWeek) params.requested_week = requestedWeek;
       if (requestedDay) params.requested_day = requestedDay;
@@ -131,6 +141,12 @@ export default function App() {
             squat: prev.squat || parseFloat(pos.oneRmSquat) || 0,
             deadlift: prev.deadlift || parseFloat(pos.oneRmDeadlift) || 0,
             clean: prev.clean || parseFloat(pos.oneRmClean) || 0,
+          }));
+          // Auto-fill profile from database
+          setProfile(prev => ({
+            height: prev.height || parseFloat(pos.heightInches) || '',
+            weight: prev.weight || parseFloat(pos.weightLbs) || '',
+            age: prev.age || parseInt(pos.age) || '',
           }));
         }
         if (prog.daysPerWeek) setDaysPerWeek(prog.daysPerWeek);
@@ -312,6 +328,14 @@ export default function App() {
     };
     setMaxes(newMaxes);
 
+    if (formData.height || formData.weight || formData.age) {
+      setProfile({
+        height: formData.height || '',
+        weight: formData.weight || '',
+        age: formData.age || '',
+      });
+    }
+
     if (isReturningUser) {
       // Skip consent, go straight to loading
       // Use setTimeout so state updates propagate before API call
@@ -470,21 +494,35 @@ export default function App() {
       }
 
       // Calculate volume stats from the actual program blocks + tracking data
+      const userWeight = profile?.weight || 150; // default 150 lbs if not set
+      const weightKg = userWeight * 0.453592;
       let totalTonnage = 0, totalCore = 0, totalCardioMin = 0, totalCardioMiles = 0;
+      let completedExercises = 0;
       (program?.blocks || []).forEach((block, blockIndex) => {
-        const bt = calcBlockTonnage(block, maxes || {}, trackingData, blockIndex);
+        const bt = calcBlockTonnage(block, maxes || {}, trackingData, blockIndex, userWeight);
         totalTonnage += bt.tonnage;
         totalCore += bt.coreEquiv;
         const c = calcCardio(block, trackingData, blockIndex);
         totalCardioMin += c.minutes;
         totalCardioMiles += c.miles;
+        // Count completed exercises for calorie estimate
+        (block.exercises || []).forEach((ex, exIndex) => {
+          if (trackingData?.[`complete-${blockIndex}-${exIndex}`]) completedExercises++;
+        });
       });
+
+      // Calorie estimate: MET formula
+      const strengthMinutes = completedExercises * 3;
+      const strengthCal = 6 * weightKg * (strengthMinutes / 60);
+      const cardioCal = 7.5 * weightKg * (totalCardioMin / 60);
+      const estCalories = Math.round(strengthCal + cardioCal);
 
       const volumeStats = {
         tonnage: Math.round(totalTonnage),
         core_crunches: Math.round(totalCore),
         cardio_minutes: totalCardioMin,
         cardio_miles: parseFloat(totalCardioMiles.toFixed(1)),
+        est_calories: estCalories,
       };
 
       let result;
@@ -519,9 +557,12 @@ export default function App() {
           existing[`w${currentWeek}d${currentDay}`] = {
             logged_at: new Date().toISOString(),
             data: workoutData,
+            volume_stats: volumeStats,
           };
           localStorage.setItem(historyKey, JSON.stringify(existing));
         } catch { /* ignore */ }
+
+        setLastVolumeStats(volumeStats);
 
         if (result.data?.program_complete) {
           setShowCompletionModal(true);
@@ -543,18 +584,18 @@ export default function App() {
           }
         }
 
-        // If last day of week, prompt for game after delay
+        // If last day of week, set up weekly summary + game flow (triggered on congrats close)
         if (currentDay === daysPerWeek) {
           setGameWeek(currentWeek);
-          setTimeout(() => {
-            setShowGamePrompt(true);
-          }, 1500);
+          setIsLastDayOfWeek(true);
+        } else {
+          setIsLastDayOfWeek(false);
         }
       }
     } catch (err) {
       console.error('Failed to log workout:', err);
     }
-  }, [currentWeek, currentDay, program, trackingData, recommendations, api, user, daysPerWeek, totalWeeks, maxes, setCurrentWeek, setCurrentDay, setRecommendations, handleLoadProgramFromAPI]);
+  }, [currentWeek, currentDay, program, trackingData, recommendations, api, user, daysPerWeek, totalWeeks, maxes, profile, setCurrentWeek, setCurrentDay, setRecommendations, handleLoadProgramFromAPI]);
 
   const handleSubmitCompletion = useCallback(async (completionData) => {
     try {
@@ -612,6 +653,10 @@ export default function App() {
           onLogout={logout}
           trackingData={trackingData}
           onUpdateTracking={handleUpdateTracking}
+          profile={profile}
+          onUpdateProfile={setProfile}
+          accessCode={user.accessCode}
+          getWeeklyStats={api.getWeeklyStats}
         />
       )}
 
@@ -634,7 +679,27 @@ export default function App() {
       />
       <CongratulationsModal
         isOpen={showCongratsModal}
-        onClose={() => setShowCongratsModal(false)}
+        onClose={() => {
+          setShowCongratsModal(false);
+          // If last day of week, show weekly summary before game prompt
+          if (isLastDayOfWeek) {
+            setShowWeeklySummary(true);
+            setIsLastDayOfWeek(false);
+          }
+        }}
+        volumeStats={lastVolumeStats}
+      />
+      <WeeklySummaryModal
+        isOpen={showWeeklySummary}
+        onClose={() => {
+          setShowWeeklySummary(false);
+          setShowGamePrompt(true);
+        }}
+        weekNumber={gameWeek}
+        accessCode={user.accessCode}
+        userEmail={user.email}
+        daysPerWeek={daysPerWeek}
+        getWeeklyStats={api.getWeeklyStats}
       />
       {showGamePrompt && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 10000, fontFamily: "'Press Start 2P', Arial, cursive" }}>
