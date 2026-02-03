@@ -71,7 +71,8 @@ export default function App() {
     saved.data.blocks.forEach((block, blockIndex) => {
       if (!block.exercises) return;
       block.exercises.forEach((ex, exIndex) => {
-        if (!ex.sets) return;
+        // sets can be a number or an array - only iterate if it's an array
+        if (!ex.sets || !Array.isArray(ex.sets)) return;
         ex.sets.forEach((set, setIndex) => {
           if (set.weight !== undefined) newTracking[`${blockIndex}-${exIndex}-${setIndex}-weight`] = set.weight;
           if (set.reps !== undefined) newTracking[`${blockIndex}-${exIndex}-${setIndex}-reps`] = set.reps;
