@@ -140,7 +140,6 @@ export default function NewUserForm({ onSubmit, onBack, error }) {
   const [deadliftMax, setDeadliftMax] = useState('');
   const [cleanMax, setCleanMax] = useState('');
   const [showMaxes, setShowMaxes] = useState(false);
-  const [showBodyStats, setShowBodyStats] = useState(false);
   const [gender, setGender] = useState('');
   const [heightFeet, setHeightFeet] = useState('');
   const [heightInches, setHeightInches] = useState('');
@@ -218,6 +217,89 @@ export default function NewUserForm({ onSubmit, onBack, error }) {
             required
           />
 
+          {/* Body Stats - Always visible, not optional */}
+          <label style={styles.label}>Body Stats</label>
+          {/* Gender selector */}
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
+            <button
+              type="button"
+              onClick={() => setGender('M')}
+              style={{
+                flex: 1,
+                padding: '12px',
+                borderRadius: '10px',
+                border: gender === 'M' ? '2px solid #667eea' : '2px solid #e0e0e0',
+                fontSize: '15px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                background: gender === 'M' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#fff',
+                color: gender === 'M' ? '#fff' : '#333',
+              }}
+            >
+              Male
+            </button>
+            <button
+              type="button"
+              onClick={() => setGender('F')}
+              style={{
+                flex: 1,
+                padding: '12px',
+                borderRadius: '10px',
+                border: gender === 'F' ? '2px solid #667eea' : '2px solid #e0e0e0',
+                fontSize: '15px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                background: gender === 'F' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#fff',
+                color: gender === 'F' ? '#fff' : '#333',
+              }}
+            >
+              Female
+            </button>
+          </div>
+          <div style={{ ...styles.grid, marginBottom: '16px' }}>
+            <div style={styles.gridItem}>
+              <label style={styles.gridLabel}>Height (ft)</label>
+              <input
+                style={styles.gridInput}
+                type="number"
+                placeholder="5"
+                value={heightFeet}
+                onChange={(e) => setHeightFeet(e.target.value)}
+              />
+            </div>
+            <div style={styles.gridItem}>
+              <label style={styles.gridLabel}>Height (in)</label>
+              <input
+                style={styles.gridInput}
+                type="number"
+                placeholder="10"
+                value={heightInches}
+                onChange={(e) => setHeightInches(e.target.value)}
+              />
+            </div>
+            <div style={styles.gridItem}>
+              <label style={styles.gridLabel}>Weight (lbs)</label>
+              <input
+                style={styles.gridInput}
+                type="number"
+                placeholder="180"
+                value={weight}
+                onChange={(e) => setWeight(e.target.value)}
+              />
+            </div>
+            <div style={styles.gridItem}>
+              <label style={styles.gridLabel}>Age</label>
+              <input
+                style={styles.gridInput}
+                type="number"
+                placeholder="30"
+                value={age}
+                onChange={(e) => setAge(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* 1RM Values - Collapsible, Optional */}
           <div
             style={styles.collapseHeader}
             onClick={() => setShowMaxes(!showMaxes)}
@@ -227,136 +309,49 @@ export default function NewUserForm({ onSubmit, onBack, error }) {
           </div>
 
           {showMaxes && (
-            <div style={styles.grid}>
-              <div style={styles.gridItem}>
-                <label style={styles.gridLabel}>Bench (lbs)</label>
-                <input
-                  style={styles.gridInput}
-                  type="number"
-                  placeholder="0"
-                  value={benchMax}
-                  onChange={(e) => setBenchMax(e.target.value)}
-                />
-              </div>
-              <div style={styles.gridItem}>
-                <label style={styles.gridLabel}>Squat (lbs)</label>
-                <input
-                  style={styles.gridInput}
-                  type="number"
-                  placeholder="0"
-                  value={squatMax}
-                  onChange={(e) => setSquatMax(e.target.value)}
-                />
-              </div>
-              <div style={styles.gridItem}>
-                <label style={styles.gridLabel}>Deadlift (lbs)</label>
-                <input
-                  style={styles.gridInput}
-                  type="number"
-                  placeholder="0"
-                  value={deadliftMax}
-                  onChange={(e) => setDeadliftMax(e.target.value)}
-                />
-              </div>
-              <div style={styles.gridItem}>
-                <label style={styles.gridLabel}>Clean (lbs)</label>
-                <input
-                  style={styles.gridInput}
-                  type="number"
-                  placeholder="0"
-                  value={cleanMax}
-                  onChange={(e) => setCleanMax(e.target.value)}
-                />
-              </div>
-            </div>
-          )}
-
-          <div
-            style={styles.collapseHeader}
-            onClick={() => setShowBodyStats(!showBodyStats)}
-          >
-            <span>&#x2696; Body Stats (Optional)</span>
-            <span>{showBodyStats ? '\u25B2' : '\u25BC'}</span>
-          </div>
-
-          {showBodyStats && (
             <>
-              {/* Gender selector */}
-              <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
-                <button
-                  type="button"
-                  onClick={() => setGender('M')}
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    borderRadius: '10px',
-                    border: gender === 'M' ? '2px solid #667eea' : '2px solid #e0e0e0',
-                    fontSize: '15px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    background: gender === 'M' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#fff',
-                    color: gender === 'M' ? '#fff' : '#333',
-                  }}
-                >
-                  Male
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGender('F')}
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    borderRadius: '10px',
-                    border: gender === 'F' ? '2px solid #667eea' : '2px solid #e0e0e0',
-                    fontSize: '15px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    background: gender === 'F' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#fff',
-                    color: gender === 'F' ? '#fff' : '#333',
-                  }}
-                >
-                  Female
-                </button>
-              </div>
+              <p style={{ fontSize: '13px', color: '#666', margin: '0 0 12px 0', textAlign: 'center', fontStyle: 'italic' }}>
+                Don't worry if you don't know your 1 rep max — most people don't! Just leave these blank and we'll work with you.
+              </p>
               <div style={styles.grid}>
                 <div style={styles.gridItem}>
-                  <label style={styles.gridLabel}>Height (ft)</label>
+                  <label style={styles.gridLabel}>Bench (lbs)</label>
                   <input
                     style={styles.gridInput}
                     type="number"
-                    placeholder="5"
-                    value={heightFeet}
-                    onChange={(e) => setHeightFeet(e.target.value)}
+                    placeholder="0"
+                    value={benchMax}
+                    onChange={(e) => setBenchMax(e.target.value)}
                   />
                 </div>
                 <div style={styles.gridItem}>
-                  <label style={styles.gridLabel}>Height (in)</label>
+                  <label style={styles.gridLabel}>Squat (lbs)</label>
                   <input
                     style={styles.gridInput}
                     type="number"
-                    placeholder="10"
-                    value={heightInches}
-                    onChange={(e) => setHeightInches(e.target.value)}
+                    placeholder="0"
+                    value={squatMax}
+                    onChange={(e) => setSquatMax(e.target.value)}
                   />
                 </div>
                 <div style={styles.gridItem}>
-                  <label style={styles.gridLabel}>Weight (lbs)</label>
+                  <label style={styles.gridLabel}>Deadlift (lbs)</label>
                   <input
                     style={styles.gridInput}
                     type="number"
-                    placeholder="180"
-                    value={weight}
-                    onChange={(e) => setWeight(e.target.value)}
+                    placeholder="0"
+                    value={deadliftMax}
+                    onChange={(e) => setDeadliftMax(e.target.value)}
                   />
                 </div>
                 <div style={styles.gridItem}>
-                  <label style={styles.gridLabel}>Age</label>
+                  <label style={styles.gridLabel}>Clean (lbs)</label>
                   <input
                     style={styles.gridInput}
                     type="number"
-                    placeholder="30"
-                    value={age}
-                    onChange={(e) => setAge(e.target.value)}
+                    placeholder="0"
+                    value={cleanMax}
+                    onChange={(e) => setCleanMax(e.target.value)}
                   />
                 </div>
               </div>
