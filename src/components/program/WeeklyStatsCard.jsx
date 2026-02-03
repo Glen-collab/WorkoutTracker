@@ -206,13 +206,15 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
               </button>
             ))}
           </div>
-          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: '8px' }}>
+          <div style={{ overflowX: allWeeks.length > 8 ? 'auto' : 'hidden', WebkitOverflowScrolling: 'touch', paddingBottom: '8px' }}>
             {(() => {
               const pad = { top: 20, right: 16, bottom: 28, left: 40 };
-              // Each week gets 40px width minimum, or fit to container if fewer weeks
-              const weekWidth = 40;
-              const minWidth = 280;
-              const w = Math.max(minWidth, pad.left + pad.right + (allWeeks.length - 1) * weekWidth + 20);
+              // For 8 or fewer weeks, fill container (use percentage width via viewBox)
+              // For more weeks, use fixed width per week for scrolling
+              const weekWidth = 45;
+              const scrollThreshold = 8;
+              const useScroll = allWeeks.length > scrollThreshold;
+              const w = useScroll ? pad.left + pad.right + (allWeeks.length - 1) * weekWidth + 20 : 300;
               const h = 120;
               const innerW = w - pad.left - pad.right;
               const innerH = h - pad.top - pad.bottom;
@@ -230,7 +232,7 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
               const fmt = v => v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v;
 
               return (
-                <svg viewBox={`0 0 ${w} ${h}`} style={{ width: w, height: 'auto', minWidth: w }}>
+                <svg viewBox={`0 0 ${w} ${h}`} style={{ width: useScroll ? w : '100%', height: 'auto', minWidth: useScroll ? w : 'auto' }}>
                   {/* Grid lines */}
                   {yTicks.map((t, i) => {
                     const y = pad.top + innerH - (maxVal > 0 ? (t / maxVal) * innerH : 0);

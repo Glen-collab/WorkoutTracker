@@ -71,13 +71,33 @@ export default function App() {
     saved.data.blocks.forEach((block, blockIndex) => {
       if (!block.exercises) return;
       block.exercises.forEach((ex, exIndex) => {
-        // sets can be a number or an array - only iterate if it's an array
-        if (!ex.sets || !Array.isArray(ex.sets)) return;
-        ex.sets.forEach((set, setIndex) => {
-          if (set.weight !== undefined) newTracking[`${blockIndex}-${exIndex}-${setIndex}-weight`] = set.weight;
-          if (set.reps !== undefined) newTracking[`${blockIndex}-${exIndex}-${setIndex}-reps`] = set.reps;
-          if (set.completed !== undefined) newTracking[`${blockIndex}-${exIndex}-${setIndex}-completed`] = set.completed;
-        });
+        // Saved format uses weights[] and actualReps[] arrays (not sets[].weight)
+        const weights = ex.weights || [];
+        const actualReps = ex.actualReps || [];
+        const setsCount = typeof ex.sets === 'number' ? ex.sets : (weights.length || actualReps.length || 1);
+
+        for (let setIndex = 0; setIndex < setsCount; setIndex++) {
+          if (weights[setIndex] !== undefined && weights[setIndex] !== '') {
+            newTracking[`${blockIndex}-${exIndex}-${setIndex}-weight`] = weights[setIndex];
+          }
+          if (actualReps[setIndex] !== undefined && actualReps[setIndex] !== '') {
+            newTracking[`${blockIndex}-${exIndex}-${setIndex}-reps`] = actualReps[setIndex];
+          }
+        }
+
+        // Also mark as complete if there's any data for this exercise
+        if (weights.some(w => w) || actualReps.some(r => r)) {
+          newTracking[`complete-${blockIndex}-${exIndex}`] = true;
+        }
+
+        // Legacy format: sets as array of objects with weight/reps
+        if (Array.isArray(ex.sets) && ex.sets.length > 0 && typeof ex.sets[0] === 'object') {
+          ex.sets.forEach((set, setIndex) => {
+            if (set.weight !== undefined) newTracking[`${blockIndex}-${exIndex}-${setIndex}-weight`] = set.weight;
+            if (set.reps !== undefined) newTracking[`${blockIndex}-${exIndex}-${setIndex}-reps`] = set.reps;
+            if (set.completed !== undefined) newTracking[`${blockIndex}-${exIndex}-${setIndex}-completed`] = set.completed;
+          });
+        }
       });
     });
     setTrackingData(newTracking);
