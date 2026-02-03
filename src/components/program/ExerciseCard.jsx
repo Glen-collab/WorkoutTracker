@@ -563,45 +563,44 @@ export default function ExerciseCard({
 
     return (
       <>
-        {/* Editable sets/reps for core and warmup exercises */}
-        {(hasSets || hasReps) && (
-          <div style={{ marginBottom: '12px' }}>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-              {hasSets && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '13px', color: '#666' }}>Sets:</span>
-                  <input
-                    type="number"
-                    placeholder={String(setsCount)}
-                    value={getTrack(0, 'sets') || ''}
-                    onChange={(e) => onUpdateTracking(blockIndex, exIndex, 0, 'sets', e.target.value)}
-                    style={{ width: '50px', padding: '6px 8px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', textAlign: 'center' }}
-                  />
-                </div>
-              )}
-              {hasReps && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '13px', color: '#666' }}>Reps:</span>
-                  <input
-                    type="number"
-                    placeholder={String(ex.reps).replace(/[^\d]/g, '') || '10'}
-                    value={getTrack(0, 'reps') || ''}
-                    onChange={(e) => onUpdateTracking(blockIndex, exIndex, 0, 'reps', e.target.value)}
-                    style={{ width: '50px', padding: '6px 8px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', textAlign: 'center' }}
-                  />
-                </div>
-              )}
-            </div>
-            <div style={{ fontSize: '12px', color: '#999' }}>
-              Target: {ex.sets ? `${ex.sets} sets` : ''} {ex.reps ? `× ${ex.reps}` : ''} {ex.duration || ''}
-            </div>
+        {/* Editable sets/reps/duration for core and warmup exercises */}
+        <div style={{ marginBottom: '12px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+            {hasSets && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '13px', color: '#666' }}>Sets:</span>
+                <input
+                  type="number"
+                  placeholder={String(setsCount)}
+                  value={getTrack(0, 'sets') || ''}
+                  onChange={(e) => onUpdateTracking(blockIndex, exIndex, 0, 'sets', e.target.value)}
+                  style={{ width: '50px', padding: '6px 8px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', textAlign: 'center' }}
+                />
+              </div>
+            )}
+            {hasReps && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '13px', color: '#666' }}>Reps:</span>
+                <input
+                  type="number"
+                  placeholder={String(ex.reps).replace(/[^\d]/g, '') || '10'}
+                  value={getTrack(0, 'reps') || ''}
+                  onChange={(e) => onUpdateTracking(blockIndex, exIndex, 0, 'reps', e.target.value)}
+                  style={{ width: '50px', padding: '6px 8px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', textAlign: 'center' }}
+                />
+              </div>
+            )}
+            {hasDuration && !hasReps && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '13px', color: '#666' }}>Duration:</span>
+                <span style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>{ex.duration}</span>
+              </div>
+            )}
           </div>
-        )}
-        {hasDuration && !hasReps && !hasSets && (
-          <div style={s.pillGrid}>
-            <span style={s.pill}>Duration: {ex.duration}</span>
+          <div style={{ fontSize: '12px', color: '#999' }}>
+            Target: {ex.sets ? `${ex.sets} sets` : ''} {ex.reps ? `× ${ex.reps}` : ''} {hasDuration && !hasReps ? `× ${ex.duration}` : ''}
           </div>
-        )}
+        </div>
         {ex.notes && <div style={s.notesCard}>{ex.notes}</div>}
         {ex.description && (
           <div style={{ ...s.detailRow, fontStyle: 'italic', marginBottom: '10px' }}>
