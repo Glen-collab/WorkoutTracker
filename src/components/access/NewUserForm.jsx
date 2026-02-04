@@ -207,13 +207,15 @@ export default function NewUserForm({ onSubmit, onBack, error }) {
 
           <label style={styles.label}>Access Code *</label>
           <input
-            style={styles.input}
+            style={{ ...styles.input, textAlign: 'center', letterSpacing: '4px', fontSize: '18px' }}
             type="text"
-            placeholder="XXXXX-XXXXX"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            placeholder=""
             value={code}
             onChange={handleCodeChange}
             onPaste={handlePaste}
-            maxLength={11}
+            maxLength={4}
             required
           />
 

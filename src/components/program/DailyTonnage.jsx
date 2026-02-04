@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 
 const QUALIFIER_2X = ['each', 'each arm', 'each leg', 'each side', 'all one arm first', 'all one leg first'];
+const COMBO_QUALIFIERS = { 'x2 combo': 2, 'x3 combo': 3, 'x4 combo': 4 };
 
 // Core exercise name patterns (count as crunch equivalents, not tonnage)
 const CORE_PATTERNS = [
@@ -45,7 +46,11 @@ function isTonnageBlock(blockType) {
 
 function getMultiplier(qualifier) {
   if (!qualifier) return 1;
-  return QUALIFIER_2X.includes(qualifier.toLowerCase().trim()) ? 2 : 1;
+  const q = qualifier.toLowerCase().trim();
+  // Check for combo multipliers first (x2, x3, x4)
+  if (COMBO_QUALIFIERS[q]) return COMBO_QUALIFIERS[q];
+  // Check for bilateral qualifiers (each arm, each leg, etc.)
+  return QUALIFIER_2X.includes(q) ? 2 : 1;
 }
 
 function parseRepsTotal(reps, setsCount) {

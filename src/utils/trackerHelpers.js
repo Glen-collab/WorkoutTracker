@@ -24,13 +24,10 @@ export function get1RM(exerciseName, maxes, baseMax) {
   return 0;
 }
 
-// Format access code: "XXXXXMFKLK" -> "XXXXX-MFKLK"
+// Format access code: 4 digits only
 export function formatAccessCode(value) {
-  let cleaned = value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-  if (cleaned.length > 5) {
-    cleaned = cleaned.substring(0, 5) + '-' + cleaned.substring(5, 10);
-  }
-  return cleaned;
+  // Only allow digits, limit to 4 characters
+  return value.replace(/[^0-9]/g, '').substring(0, 4);
 }
 
 // Block type display names
