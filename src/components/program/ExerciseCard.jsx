@@ -503,14 +503,16 @@ export default function ExerciseCard({
     );
   };
 
-  // Movement/Conditioning: med ball, agility, plyos - reps or duration based
+  // Movement/Conditioning: med ball, agility, plyos, rowing, ski erg - reps or duration based
   const renderMovement = () => {
+    // Show preset values as info pills
     const details = [
       { label: 'Reps', val: ex.reps },
-      { label: 'Duration', val: ex.duration },
-      { label: 'Distance', val: ex.distance },
       { label: 'Rest', val: ex.rest },
     ].filter((d) => d.val);
+
+    // Check if this is a cardio-type conditioning exercise (has duration or distance)
+    const hasCardioFields = ex.duration || ex.distance;
 
     return (
       <>
@@ -523,10 +525,35 @@ export default function ExerciseCard({
             ))}
           </div>
         )}
+        {/* Show preset duration/distance as reference */}
+        {(ex.duration || ex.distance) && (
+          <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
+            Target: {ex.duration ? `${ex.duration}` : ''} {ex.distance ? `/ ${ex.distance}` : ''}
+          </div>
+        )}
         {ex.notes && <div style={s.notesCard}>{ex.notes}</div>}
         {ex.description && (
           <div style={{ ...s.detailRow, fontStyle: 'italic', marginBottom: '10px' }}>
             {ex.description}
+          </div>
+        )}
+        {/* Editable duration/distance inputs for cardio-type conditioning (rowing, ski erg, bike, etc.) */}
+        {hasCardioFields && (
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+            <input
+              type="text"
+              placeholder="Duration (min)"
+              value={getTrack(null, 'duration')}
+              onChange={(e) => onUpdateTracking(blockIndex, exIndex, null, 'duration', e.target.value)}
+              style={{ ...s.condInput, flex: 1, marginBottom: 0 }}
+            />
+            <input
+              type="text"
+              placeholder="Distance (mi/m)"
+              value={getTrack(null, 'distance')}
+              onChange={(e) => onUpdateTracking(blockIndex, exIndex, null, 'distance', e.target.value)}
+              style={{ ...s.condInput, flex: 1, marginBottom: 0 }}
+            />
           </div>
         )}
         <button style={s.markBtn} onClick={handleMark}>
