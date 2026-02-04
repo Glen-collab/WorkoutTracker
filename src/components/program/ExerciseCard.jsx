@@ -225,7 +225,9 @@ export default function ExerciseCard({
   const isCardio = blockType === 'cardio';
   const isMovement = blockType === 'movement' || blockType === 'conditioning';
   const isCircuit = blockType === 'circuit';
-  const isWarmup = blockType === 'warmup' || blockType === 'mobility' || blockType === 'cooldown';
+  const isWarmup = ['warmup', 'mobility', 'cooldown', 'core', 'abs', 'finisher'].includes(blockType);
+  // Fallback: if no specific type matches, treat as generic exercise
+  const isGeneric = !isStrength && !isCardio && !isMovement && !isCircuit && !isWarmup;
 
   // Normalize builder format: sets may be objects [{id, reps, percentage, ...}]
   // Convert to flat percentages/repsPerSet arrays the tracker expects
@@ -658,6 +660,7 @@ export default function ExerciseCard({
           {isMovement && renderMovement()}
           {isCircuit && renderCircuit()}
           {isWarmup && renderWarmup()}
+          {isGeneric && renderWarmup()}
         </div>
       )}
     </div>
