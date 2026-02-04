@@ -116,11 +116,13 @@ export default function ProgramView({
       });
     });
 
-    // Calorie estimate: MET formula
+    // Calorie estimate: MET formula + tonnage bonus
     const strengthMinutes = completedExercises * 3;
-    const strengthCal = 6 * weightKg * (strengthMinutes / 60);
+    const baseMET = 6;
+    const strengthCal = baseMET * weightKg * (strengthMinutes / 60);
+    const tonnageBonus = (tonnage / 1000) * 10; // Extra calories for heavier lifting
     const cardioCal = 7.5 * weightKg * (cardioMinutes / 60);
-    const estCalories = Math.round(strengthCal + cardioCal);
+    const estCalories = Math.round(strengthCal + tonnageBonus + cardioCal);
 
     return { tonnage: Math.round(tonnage), coreEquiv, cardioMinutes, cardioMiles, estCalories };
   }, [blocks, maxes, trackingData, profile]);
