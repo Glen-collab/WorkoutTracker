@@ -550,11 +550,13 @@ export default function App() {
       const strengthCal = baseMET * weightKg * (strengthMinutes / 60);
       const tonnageBonus = (totalTonnage / 1000) * 10; // ~10 cal per 1000 lbs lifted
 
+      // Cardio: pick the higher of time-based OR distance-based (not both)
       const cardioMET = 7.5;
-      const cardioCal = cardioMET * weightKg * (totalCardioMin / 60);
-      const distanceBonus = totalCardioMiles * 80; // ~80 cal per mile
+      const cardioTimeCal = cardioMET * weightKg * (totalCardioMin / 60);
+      const cardioDistanceCal = totalCardioMiles * 100; // ~100 cal per mile
+      const cardioCal = Math.max(cardioTimeCal, cardioDistanceCal);
 
-      const estCalories = Math.round(strengthCal + tonnageBonus + cardioCal + distanceBonus);
+      const estCalories = Math.round(strengthCal + tonnageBonus + cardioCal);
 
       const volumeStats = {
         tonnage: Math.round(totalTonnage),

@@ -122,11 +122,13 @@ export default function ProgramView({
     const strengthCal = baseMET * weightKg * (strengthMinutes / 60);
     const tonnageBonus = (tonnage / 1000) * 10; // ~10 cal per 1000 lbs lifted
 
+    // Cardio: pick the higher of time-based OR distance-based (not both)
     const cardioMET = 7.5;
-    const cardioCal = cardioMET * weightKg * (cardioMinutes / 60);
-    const distanceBonus = cardioMiles * 80; // ~80 cal per mile
+    const cardioTimeCal = cardioMET * weightKg * (cardioMinutes / 60);
+    const cardioDistanceCal = cardioMiles * 100; // ~100 cal per mile
+    const cardioCal = Math.max(cardioTimeCal, cardioDistanceCal);
 
-    const estCalories = Math.round(strengthCal + tonnageBonus + cardioCal + distanceBonus);
+    const estCalories = Math.round(strengthCal + tonnageBonus + cardioCal);
 
     return { tonnage: Math.round(tonnage), coreEquiv, cardioMinutes, cardioMiles, estCalories };
   }, [blocks, maxes, trackingData, profile]);

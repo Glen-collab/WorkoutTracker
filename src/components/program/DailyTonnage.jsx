@@ -308,17 +308,19 @@ export default function DailyTonnage({ blocks, maxes, trackingData, userWeight, 
     });
     // Calorie estimate: MET formula + work bonuses
     // Strength: base MET + tonnage bonus (heavier = more calories)
-    // Cardio: base MET + distance bonus (farther = more calories)
+    // Cardio: use HIGHER of time-based OR distance-based (not both)
     const strengthMinutes = completedExercises * 3;
     const baseMET = 6;
     const strengthCal = baseMET * weightKg * (strengthMinutes / 60);
     const tonnageBonus = (ton / 1000) * 10; // ~10 cal per 1000 lbs lifted
 
+    // Cardio: pick the higher calculation to avoid double-counting
     const cardioMET = 7.5;
-    const cardioCal = cardioMET * weightKg * (min / 60);
-    const distanceBonus = mi * 80; // ~80 cal per mile (running/walking average)
+    const cardioTimeCal = cardioMET * weightKg * (min / 60);
+    const cardioDistanceCal = mi * 100; // ~100 cal per mile
+    const cardioCal = Math.max(cardioTimeCal, cardioDistanceCal);
 
-    const calories = Math.round(strengthCal + tonnageBonus + cardioCal + distanceBonus);
+    const calories = Math.round(strengthCal + tonnageBonus + cardioCal);
     return { tonnage: ton, cardio: { minutes: min, miles: mi }, coreEquiv: core, estCalories: calories };
   }, [blocks, maxes, trackingData, userWeight, userGender]);
 
