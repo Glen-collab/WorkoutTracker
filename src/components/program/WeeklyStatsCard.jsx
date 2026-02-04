@@ -114,7 +114,7 @@ const GRAPH_METRICS = [
   { key: 'cardio_minutes', label: 'Cardio', color: '#f59e0b', suffix: ' min' },
 ];
 
-export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, daysPerWeek, totalWeeks, getWeeklyStats }) {
+export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, daysPerWeek, totalWeeks, getWeeklyStats, liveStats }) {
   const [weeklyData, setWeeklyData] = useState([]);
   const [graphMetric, setGraphMetric] = useState('tonnage');
   const [loaded, setLoaded] = useState(false);
@@ -137,7 +137,20 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
   const allWeeks = [];
   for (let w = 1; w <= numWeeks; w++) {
     const existing = weeklyData.find(d => d.week === w);
-    allWeeks.push(existing || { week: w, workouts: 0, tonnage: 0, core_crunches: 0, cardio_minutes: 0, cardio_miles: 0, est_calories: 0 });
+    let weekData = existing || { week: w, workouts: 0, tonnage: 0, core_crunches: 0, cardio_minutes: 0, cardio_miles: 0, est_calories: 0 };
+
+    // Merge live stats for current week (add current session's progress)
+    if (w === currentWeek && liveStats) {
+      weekData = {
+        ...weekData,
+        tonnage: (weekData.tonnage || 0) + (liveStats.tonnage || 0),
+        core_crunches: (weekData.core_crunches || 0) + (liveStats.coreEquiv || 0),
+        cardio_minutes: (weekData.cardio_minutes || 0) + (liveStats.cardioMinutes || 0),
+        cardio_miles: (weekData.cardio_miles || 0) + (liveStats.cardioMiles || 0),
+        est_calories: (weekData.est_calories || 0) + (liveStats.estCalories || 0),
+      };
+    }
+    allWeeks.push(weekData);
   }
 
   const currentStats = allWeeks.find(w => w.week === currentWeek);

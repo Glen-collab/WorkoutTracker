@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import ProgramHeader from './ProgramHeader';
 import BlockCard from './BlockCard';
-import DailyTonnage from './DailyTonnage';
+import DailyTonnage, { calcBlockTonnage, calcCardio, getDefaultWeight } from './DailyTonnage';
 import WeeklyStatsCard from './WeeklyStatsCard';
 
 const s = {
@@ -92,6 +92,38 @@ export default function ProgramView({
   const heightTotal = profile?.height || 0;
   const displayFeet = heightTotal ? Math.floor(heightTotal / 12) : '';
   const displayInches = heightTotal ? heightTotal % 12 : '';
+
+  // Calculate live stats for current session (to update weekly card in real-time)
+  const liveStats = useMemo(() => {
+    const userWeight = profile?.weight || 0;
+    const userGender = profile?.gender || '';
+    const effectiveWeight = userWeight > 0 ? userWeight : getDefaultWeight(userGender);
+    const weightKg = effectiveWeight * 0.453592;
+
+    let tonnage = 0, coreEquiv = 0, cardioMinutes = 0, cardioMiles = 0;
+    let completedExercises = 0;
+
+    (blocks || []).forEach((block, blockIndex) => {
+      const bt = calcBlockTonnage(block, maxes || {}, trackingData, blockIndex, userWeight, userGender);
+      tonnage += bt.tonnage;
+      coreEquiv += bt.coreEquiv;
+      const c = calcCardio(block, trackingData, blockIndex);
+      cardioMinutes += c.minutes;
+      cardioMiles += c.miles;
+      // Count completed exercises for calorie estimate
+      (block.exercises || []).forEach((ex, exIndex) => {
+        if (trackingData?.[`complete-${blockIndex}-${exIndex}`]) completedExercises++;
+      });
+    });
+
+    // Calorie estimate: MET formula
+    const strengthMinutes = completedExercises * 3;
+    const strengthCal = 6 * weightKg * (strengthMinutes / 60);
+    const cardioCal = 7.5 * weightKg * (cardioMinutes / 60);
+    const estCalories = Math.round(strengthCal + cardioCal);
+
+    return { tonnage: Math.round(tonnage), coreEquiv, cardioMinutes, cardioMiles, estCalories };
+  }, [blocks, maxes, trackingData, profile]);
 
   return (
     <div style={s.container}>
@@ -213,6 +245,7 @@ export default function ProgramView({
           daysPerWeek={daysPerWeek}
           totalWeeks={totalWeeks}
           getWeeklyStats={getWeeklyStats}
+          liveStats={liveStats}
         />
 
         <div style={s.actionBar}>
