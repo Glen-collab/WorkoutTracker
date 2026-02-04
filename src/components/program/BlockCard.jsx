@@ -117,6 +117,9 @@ export default function BlockCard({
   const [expanded, setExpanded] = useState(false);
   const isTheme = block.type === 'theme';
 
+  // Debug: log block structure to console (always enabled for troubleshooting)
+  console.log(`Block ${blockIndex}:`, { type: block.type, exerciseCount: block.exercises?.length, exercises: block.exercises?.map(e => e.name) });
+
   return (
     <div style={s.card}>
       <div
@@ -126,6 +129,8 @@ export default function BlockCard({
         <div style={s.headerLeft}>
           <span>{getBlockIcon(block.type)}</span>
           <span>{getBlockTypeName(block.type)}</span>
+          {/* Debug: show raw block type */}
+          <span style={{ fontSize: '10px', opacity: 0.6, marginLeft: '4px' }}>({block.type || 'no-type'})</span>
           {block.exercises?.length > 0 && (
             <span style={s.badge}>{block.exercises.length}</span>
           )}
