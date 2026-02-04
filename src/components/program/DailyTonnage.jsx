@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 
 const QUALIFIER_2X = ['each', 'each arm', 'each leg', 'each side', 'all one arm first', 'all one leg first'];
 
-// Core exercise name patterns
+// Core exercise name patterns (count as crunch equivalents, not tonnage)
 const CORE_PATTERNS = [
   /crunch/i, /sit.?up/i, /plank/i, /ab\b/i, /abs\b/i, /core/i,
   /hollow/i, /v.?up/i, /leg.?raise/i, /flutter/i, /bicycle/i,
@@ -13,9 +13,34 @@ const CORE_PATTERNS = [
   /l.?sit/i, /side.?bend/i, /oblique/i, /saxon/i,
 ];
 
+// Mobility/stretch exercises that should NOT count towards tonnage
+const MOBILITY_PATTERNS = [
+  /cat.?(and|&)?.?cow/i, /cat.?cow/i,
+  /stretch/i, /foam.?roll/i, /roll.?out/i,
+  /mobility/i, /activation/i,
+  /world.?greatest/i, /scorpion/i, /90.?90/i,
+  /couch.?stretch/i, /pigeon/i, /frog/i,
+  /spiderman/i, /inchworm/i,
+  /band.?pull.?apart/i, /face.?pull/i,
+  /arm.?circle/i, /leg.?swing/i, /hip.?circle/i,
+  /glute.?bridge/i, /clam/i, /fire.?hydrant/i,
+  /blackburn/i, /black.?bird/i, /prone/i,
+  /y.?t.?w/i, /itw/i, /ytwl/i,
+];
+
 function isCore(exerciseName) {
   if (!exerciseName) return false;
   return CORE_PATTERNS.some(p => p.test(exerciseName));
+}
+
+function isMobility(exerciseName) {
+  if (!exerciseName) return false;
+  return MOBILITY_PATTERNS.some(p => p.test(exerciseName));
+}
+
+// Block types that should count towards tonnage
+function isTonnageBlock(blockType) {
+  return ['straight-set', 'superset', 'triset', 'circuit'].includes(blockType);
 }
 
 function getMultiplier(qualifier) {
@@ -76,8 +101,14 @@ export function calcBlockTonnage(block, maxes, trackingData, blockIndex, userWei
   // Use provided weight or gender-based default
   const effectiveWeight = userWeight > 0 ? userWeight : getDefaultWeight(gender);
 
+  // Bodyweight multiplier: 15% of bodyweight
+  const BODYWEIGHT_MULTIPLIER = 0.15;
+
   let tonnage = 0;
   let coreEquiv = 0;
+
+  // Only calculate tonnage for strength-type blocks (not warmup/cooldown/mobility)
+  const countTonnage = isTonnageBlock(block.type);
 
   block.exercises.forEach((ex, exIndex) => {
     const completedKey = `complete-${blockIndex}-${exIndex}`;
@@ -89,6 +120,16 @@ export function calcBlockTonnage(block, maxes, trackingData, blockIndex, userWei
     // Core exercises → crunch equivalents, not tonnage
     if (isCore(ex.name)) {
       coreEquiv += calcCoreEquiv(ex, trackingData, blockIndex, exIndex);
+      return;
+    }
+
+    // Skip mobility/stretch exercises - they don't count towards tonnage
+    if (isMobility(ex.name)) {
+      return;
+    }
+
+    // Skip tonnage calculation for non-strength blocks (warmup, cooldown, mobility, core)
+    if (!countTonnage) {
       return;
     }
 
@@ -127,8 +168,8 @@ export function calcBlockTonnage(block, maxes, trackingData, blockIndex, userWei
         if (calcWeight > 0 && calcReps > 0) {
           tonnage += calcWeight * calcReps * mult;
         } else if (calcReps > 0) {
-          // No max entered and no tracked weight - use 25% bodyweight as fallback
-          tonnage += effectiveWeight * 0.25 * calcReps * mult;
+          // No max entered and no tracked weight - use 15% bodyweight as fallback
+          tonnage += effectiveWeight * BODYWEIGHT_MULTIPLIER * calcReps * mult;
         }
       } else {
         // Check if user explicitly cleared the weight field (key exists but value is empty/0)
@@ -142,8 +183,8 @@ export function calcBlockTonnage(block, maxes, trackingData, blockIndex, userWei
         if (prescribedWeight > 0 && prescribedReps > 0) {
           tonnage += prescribedWeight * prescribedReps * mult;
         } else if (!isConditioningBlock(block) && prescribedReps > 0) {
-          // No weight (bodyweight exercise or user cleared it): use 25% of effective bodyweight
-          tonnage += effectiveWeight * 0.25 * prescribedReps * mult;
+          // No weight (bodyweight exercise or user cleared it): use 15% of effective bodyweight
+          tonnage += effectiveWeight * BODYWEIGHT_MULTIPLIER * prescribedReps * mult;
         }
       }
     }
