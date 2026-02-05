@@ -148,7 +148,7 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
   const scrollTargetRef = useRef(null);
   const initialized = useRef(false);
 
-  const name = userName || 'there';
+  const name = (userName || 'there').split(' ')[0];
 
   const formatMessage = useCallback((text) => {
     return text.replace(/\{name\}/g, name);

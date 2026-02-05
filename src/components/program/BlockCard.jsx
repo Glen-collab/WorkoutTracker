@@ -149,7 +149,7 @@ export default function BlockCard({
       {expanded && (
         <div style={s.body}>
           {isTheme && block.themeText && (
-            <div style={s.themeCard}>{block.themeText.replace(/\[name\]/gi, userName || 'Athlete')}</div>
+            <div style={s.themeCard}>{block.themeText.replace(/\[name\]/gi, (userName || 'Athlete').split(' ')[0])}</div>
           )}
 
           {block.circuitType && (
