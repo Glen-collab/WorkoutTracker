@@ -21,7 +21,12 @@ export default function TrackingInputs({
   repsPlaceholder,
   onUpdate,
   style,
+  disabled,
 }) {
+  const finalStyle = disabled
+    ? { ...inputStyle, background: '#f5f5f5', color: '#999', cursor: 'not-allowed' }
+    : inputStyle;
+
   return (
     <div
       style={{
@@ -39,7 +44,8 @@ export default function TrackingInputs({
         onChange={(e) =>
           onUpdate(blockIndex, exIndex, setIndex, 'weight', e.target.value)
         }
-        style={inputStyle}
+        style={finalStyle}
+        readOnly={disabled}
       />
       <input
         type="text"
@@ -49,7 +55,8 @@ export default function TrackingInputs({
         onChange={(e) =>
           onUpdate(blockIndex, exIndex, setIndex, 'reps', e.target.value)
         }
-        style={inputStyle}
+        style={finalStyle}
+        readOnly={disabled}
       />
     </div>
   );

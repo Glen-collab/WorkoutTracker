@@ -122,6 +122,24 @@ const s = {
     width: '100%',
     marginTop: '10px',
   },
+  completedBadge: {
+    background: '#e8f5e9',
+    color: '#2e7d32',
+    border: '2px solid #4caf50',
+    borderRadius: '8px',
+    padding: '10px 16px',
+    fontSize: '14px',
+    fontWeight: '600',
+    width: '100%',
+    marginTop: '10px',
+    textAlign: 'center',
+    boxSizing: 'border-box',
+  },
+  lockedInput: {
+    background: '#f5f5f5',
+    color: '#999',
+    cursor: 'not-allowed',
+  },
   expandBtn: {
     background: '#4caf50',
     color: '#fff',
@@ -277,6 +295,22 @@ export default function ExerciseCard({
       onUpdateTracking(blockIndex, exIndex, null, `rec-${blockIndex}-${exIndex}`, dir);
   };
 
+  // Helper: show completed badge or mark button
+  const renderMarkButton = (extraStyle) => {
+    if (isMarkedComplete) {
+      return <div style={{ ...s.completedBadge, ...extraStyle }}>{'\u2705'} Completed</div>;
+    }
+    return (
+      <button style={{ ...s.markBtn, ...extraStyle }} onClick={handleMark}>
+        {'\u2713'} Mark Complete
+      </button>
+    );
+  };
+
+  // Input style when locked
+  const lockStyle = isMarkedComplete ? s.lockedInput : {};
+  const inputLocked = isMarkedComplete;
+
   // Percentage-based strength (use normalized ex)
   const isBodyweight = ex.baseMax === 'bodyweight';
   const oneRM = isStrength && ex.isPercentageBased && !isBodyweight ? get1RM(ex.name, maxes, ex.baseMax) : 0;
@@ -335,8 +369,10 @@ export default function ExerciseCard({
                 borderColor: color,
                 background: activeRec === dir ? color : 'transparent',
                 color: activeRec === dir ? '#fff' : color,
+                ...(isMarkedComplete ? { opacity: 0.5, cursor: 'not-allowed' } : {}),
               }}
-              onClick={() => handleRec(dir)}
+              onClick={() => !isMarkedComplete && handleRec(dir)}
+              disabled={isMarkedComplete}
             >
               {icon}
             </button>
@@ -381,7 +417,8 @@ export default function ExerciseCard({
                   placeholder={String(fnSets)}
                   value={getTrack(0, 'sets') || ''}
                   onChange={(e) => onUpdateTracking(blockIndex, exIndex, 0, 'sets', e.target.value)}
-                  style={{ width: '50px', padding: '6px 8px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', textAlign: 'center' }}
+                  style={{ width: '50px', padding: '6px 8px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', textAlign: 'center', ...lockStyle }}
+                  readOnly={inputLocked}
                 />
               </div>
               {fnHasReps && (
@@ -392,7 +429,8 @@ export default function ExerciseCard({
                     placeholder={String(ex.reps).replace(/[^\d]/g, '') || '10'}
                     value={getTrack(0, 'reps') || ''}
                     onChange={(e) => onUpdateTracking(blockIndex, exIndex, 0, 'reps', e.target.value)}
-                    style={{ width: '50px', padding: '6px 8px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', textAlign: 'center' }}
+                    style={{ width: '50px', padding: '6px 8px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', textAlign: 'center', ...lockStyle }}
+                    readOnly={inputLocked}
                   />
                 </div>
               )}
@@ -408,9 +446,7 @@ export default function ExerciseCard({
             </div>
           </div>
           {ex.notes && <div style={s.notesCard}>{ex.notes}</div>}
-          <button style={s.markBtn} onClick={handleMark}>
-            {'\u2713'} Mark Complete
-          </button>
+          {renderMarkButton()}
         </>
       );
     }
@@ -436,7 +472,8 @@ export default function ExerciseCard({
                     placeholder={`${targetReps} reps`}
                     value={getTrack(si, 'reps')}
                     onChange={(e) => onUpdateTracking(blockIndex, exIndex, si, 'reps', e.target.value)}
-                    style={{ ...s.condInput, flex: 1, marginBottom: 0 }}
+                    style={{ ...s.condInput, flex: 1, marginBottom: 0, ...lockStyle }}
+                    readOnly={inputLocked}
                   />
                 </div>
               </div>
@@ -444,9 +481,7 @@ export default function ExerciseCard({
           })}
           {ex.rest && <div style={s.detailRow}>Rest: {ex.rest}</div>}
           {ex.notes && <div style={s.notesCard}>{ex.notes}</div>}
-          <button style={s.markBtn} onClick={handleMark}>
-            {'\u2713'} Mark Complete
-          </button>
+          {renderMarkButton()}
           {renderRecSection()}
         </>
       );
@@ -483,12 +518,11 @@ export default function ExerciseCard({
                 weightPlaceholder={`${calculateWeight(oneRM, pct)} lbs${ex.qualifier ? ' ' + ex.qualifier : ''}`}
                 repsPlaceholder={`${ex.repsPerSet?.[si] || ex.reps || ''} reps`}
                 onUpdate={onUpdateTracking}
+                disabled={inputLocked}
               />
             </div>
           ))}
-          <button style={s.markBtn} onClick={handleMark}>
-            {'\u2713'} Mark Complete
-          </button>
+          {renderMarkButton()}
           {renderRecSection()}
         </>
       );
@@ -517,12 +551,11 @@ export default function ExerciseCard({
                 weightPlaceholder="Weight (lbs)"
                 repsPlaceholder="Reps"
                 onUpdate={onUpdateTracking}
+                disabled={inputLocked}
               />
             </div>
           ))}
-          <button style={s.markBtn} onClick={handleMark}>
-            {'\u2713'} Mark Complete
-          </button>
+          {renderMarkButton()}
           {renderRecSection()}
         </>
       );
@@ -550,12 +583,11 @@ export default function ExerciseCard({
               weightPlaceholder="Weight (lbs)"
               repsPlaceholder="Reps"
               onUpdate={onUpdateTracking}
+              disabled={inputLocked}
             />
           </div>
         ))}
-        <button style={s.markBtn} onClick={handleMark}>
-          {'\u2713'} Mark Complete
-        </button>
+        {renderMarkButton()}
         {renderRecSection()}
       </>
     );
@@ -619,19 +651,19 @@ export default function ExerciseCard({
             placeholder={`Duration (${dUnit})`}
             value={getTrack(null, 'duration')}
             onChange={(e) => onUpdateTracking(blockIndex, exIndex, null, 'duration', e.target.value)}
-            style={{ ...s.condInput, flex: 1, marginBottom: 0 }}
+            style={{ ...s.condInput, flex: 1, marginBottom: 0, ...lockStyle }}
+            readOnly={inputLocked}
           />
           <input
             type="text"
             placeholder={`Distance (${distUnit})`}
             value={getTrack(null, 'distance')}
             onChange={(e) => onUpdateTracking(blockIndex, exIndex, null, 'distance', e.target.value)}
-            style={{ ...s.condInput, flex: 1, marginBottom: 0 }}
+            style={{ ...s.condInput, flex: 1, marginBottom: 0, ...lockStyle }}
+            readOnly={inputLocked}
           />
         </div>
-        <button style={s.markBtn} onClick={handleMark}>
-          {'\u2713'} Mark Complete
-        </button>
+        {renderMarkButton()}
       </>
     );
   };
@@ -684,20 +716,20 @@ export default function ExerciseCard({
               placeholder={`Duration (${dUnit})`}
               value={getTrack(null, 'duration')}
               onChange={(e) => onUpdateTracking(blockIndex, exIndex, null, 'duration', e.target.value)}
-              style={{ ...s.condInput, flex: 1, marginBottom: 0 }}
+              style={{ ...s.condInput, flex: 1, marginBottom: 0, ...lockStyle }}
+              readOnly={inputLocked}
             />
             <input
               type="text"
               placeholder={`Distance (${distUnit})`}
               value={getTrack(null, 'distance')}
               onChange={(e) => onUpdateTracking(blockIndex, exIndex, null, 'distance', e.target.value)}
-              style={{ ...s.condInput, flex: 1, marginBottom: 0 }}
+              style={{ ...s.condInput, flex: 1, marginBottom: 0, ...lockStyle }}
+              readOnly={inputLocked}
             />
           </div>
         )}
-        <button style={s.markBtn} onClick={handleMark}>
-          {'\u2713'} Mark Complete
-        </button>
+        {renderMarkButton()}
       </>
     );
   };
@@ -716,9 +748,7 @@ export default function ExerciseCard({
             {d.label}: {d.val}
           </span>
         ))}
-      <button style={{ ...s.markBtn, marginTop: '12px' }} onClick={handleMark}>
-        {'\u2713'} Mark Complete
-      </button>
+      {renderMarkButton({ marginTop: '12px' })}
     </>
   );
 
@@ -743,7 +773,8 @@ export default function ExerciseCard({
                   placeholder={String(setsCount)}
                   value={getTrack(0, 'sets') || ''}
                   onChange={(e) => onUpdateTracking(blockIndex, exIndex, 0, 'sets', e.target.value)}
-                  style={{ width: '50px', padding: '6px 8px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', textAlign: 'center' }}
+                  style={{ width: '50px', padding: '6px 8px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', textAlign: 'center', ...lockStyle }}
+                  readOnly={inputLocked}
                 />
               </div>
             )}
@@ -755,7 +786,8 @@ export default function ExerciseCard({
                   placeholder={String(ex.reps).replace(/[^\d]/g, '') || '10'}
                   value={getTrack(0, 'reps') || ''}
                   onChange={(e) => onUpdateTracking(blockIndex, exIndex, 0, 'reps', e.target.value)}
-                  style={{ width: '50px', padding: '6px 8px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', textAlign: 'center' }}
+                  style={{ width: '50px', padding: '6px 8px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', textAlign: 'center', ...lockStyle }}
+                  readOnly={inputLocked}
                 />
               </div>
             )}
@@ -776,9 +808,7 @@ export default function ExerciseCard({
             {ex.description}
           </div>
         )}
-        <button style={s.markBtn} onClick={handleMark}>
-          {'\u2713'} Mark Complete
-        </button>
+        {renderMarkButton()}
       </>
     );
   };
