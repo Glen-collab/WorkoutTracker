@@ -93,11 +93,24 @@ const s = {
 
 function getCircuitConfigText(block) {
   const name = getCircuitTypeName(block.circuitType);
-  if (block.circuitType === 'amrap') return `${name} - ${block.circuitDuration || '?'} min`;
-  if (block.circuitType === 'fortime') return `${name} - ${block.circuitRounds || '?'} rounds`;
-  if (block.circuitType === 'emom') return `${name} - ${block.circuitDuration || '?'} min`;
-  if (block.circuitType === 'tabata') return `${name} - ${block.circuitDuration || '?'} min`;
-  if (block.circuitType === 'rounds') return `${name} - ${block.circuitRounds || '?'} rounds`;
+  // Builder saves: block.timeLimit, block.rounds, block.workInterval, block.restInterval
+  const time = block.timeLimit || block.circuitDuration;
+  const rounds = block.rounds || block.circuitRounds;
+
+  if (block.circuitType === 'amrap') return `${name} - ${time || '?'} min`;
+  if (block.circuitType === 'fortime') {
+    const parts = [`${rounds || '?'} rounds`];
+    if (time) parts.push(`(${time} cap)`);
+    return `${name} - ${parts.join(' ')}`;
+  }
+  if (block.circuitType === 'emom') return `${name} - ${time || '?'} min`;
+  if (block.circuitType === 'tabata') {
+    const work = block.workInterval || '20s';
+    const rest = block.restInterval || '10s';
+    return `${name} - ${time || '?'} min (${work} on / ${rest} off)`;
+  }
+  if (block.circuitType === 'chipper') return name;
+  if (block.circuitType === 'rounds') return `${name} - ${rounds || '?'} rounds`;
   return name;
 }
 
@@ -140,7 +153,12 @@ export default function BlockCard({
           )}
 
           {block.circuitType && (
-            <div style={s.circuitConfig}>{getCircuitConfigText(block)}</div>
+            <div style={s.circuitConfig}>
+              {getCircuitConfigText(block)}
+              {block.restBetweenRounds && (
+                <span style={{ marginLeft: '12px', opacity: 0.8 }}>| Rest: {block.restBetweenRounds}</span>
+              )}
+            </div>
           )}
 
           {block.notes && <div style={s.notesCard}>{block.notes}</div>}

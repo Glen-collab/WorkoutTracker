@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { get1RM, calculateWeight } from '../../utils/trackerHelpers';
 import TrackingInputs from './TrackingInputs';
 import { getMotivationalMessage } from '../../data/exerciseMotivation';
+import { isFunctional } from './DailyTonnage';
 
 function showToast(message) {
   const toast = document.createElement('div');
@@ -277,8 +278,9 @@ export default function ExerciseCard({
   };
 
   // Percentage-based strength (use normalized ex)
-  const oneRM = isStrength && ex.isPercentageBased ? get1RM(ex.name, maxes, ex.baseMax) : 0;
-  const hasPercentages = ex.isPercentageBased && ex.percentages?.length > 0;
+  const isBodyweight = ex.baseMax === 'bodyweight';
+  const oneRM = isStrength && ex.isPercentageBased && !isBodyweight ? get1RM(ex.name, maxes, ex.baseMax) : 0;
+  const hasPercentages = ex.isPercentageBased && ex.percentages?.length > 0 && !isBodyweight;
 
   // Only show auto warm-up for flat barbell bench and back squat
   const showWarmup = (() => {
@@ -345,6 +347,111 @@ export default function ExerciseCard({
   );
 
   const renderStrength = () => {
+    // Functional/corrective exercises: show warmup-style view, no percentage weights
+    if (isFunctional(ex.name)) {
+      const fnSets = typeof ex.sets === 'number' ? ex.sets : (ex.setsCount || parseInt(ex.sets) || 1);
+      const fnDurationUnit = getUnitLabel(ex.durationUnit, 'sec');
+      const fnHasDuration = ex.duration;
+      const fnHasReps = ex.reps;
+
+      // Build info pills
+      const fnDetails = [
+        fnHasReps ? { label: 'Reps', val: `${ex.reps}${ex.qualifier ? ' ' + ex.qualifier : ''}` } : null,
+        fnHasDuration ? { label: 'Duration', val: formatWithUnit(ex.duration, fnDurationUnit) } : null,
+        ex.rest ? { label: 'Rest', val: ex.rest } : null,
+      ].filter(Boolean);
+
+      return (
+        <>
+          {/* Info pills */}
+          {fnDetails.length > 0 && (
+            <div style={s.pillGrid}>
+              {fnDetails.map((d, i) => (
+                <span key={i} style={s.pill}>{d.label}: {d.val}</span>
+              ))}
+            </div>
+          )}
+          {/* Editable tracking */}
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '13px', color: '#666' }}>Sets:</span>
+                <input
+                  type="number"
+                  placeholder={String(fnSets)}
+                  value={getTrack(0, 'sets') || ''}
+                  onChange={(e) => onUpdateTracking(blockIndex, exIndex, 0, 'sets', e.target.value)}
+                  style={{ width: '50px', padding: '6px 8px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', textAlign: 'center' }}
+                />
+              </div>
+              {fnHasReps && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '13px', color: '#666' }}>Reps:</span>
+                  <input
+                    type="number"
+                    placeholder={String(ex.reps).replace(/[^\d]/g, '') || '10'}
+                    value={getTrack(0, 'reps') || ''}
+                    onChange={(e) => onUpdateTracking(blockIndex, exIndex, 0, 'reps', e.target.value)}
+                    style={{ width: '50px', padding: '6px 8px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', textAlign: 'center' }}
+                  />
+                </div>
+              )}
+              {fnHasDuration && !fnHasReps && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '13px', color: '#666' }}>Duration:</span>
+                  <span style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>{formatWithUnit(ex.duration, fnDurationUnit)}</span>
+                </div>
+              )}
+            </div>
+            <div style={{ fontSize: '12px', color: '#999' }}>
+              Target: {fnSets} sets {fnHasReps ? `× ${ex.reps}${ex.qualifier ? ' ' + ex.qualifier : ''}` : ''} {fnHasDuration && !fnHasReps ? `× ${formatWithUnit(ex.duration, fnDurationUnit)}` : ''}
+            </div>
+          </div>
+          {ex.notes && <div style={s.notesCard}>{ex.notes}</div>}
+          <button style={s.markBtn} onClick={handleMark}>
+            {'\u2713'} Mark Complete
+          </button>
+        </>
+      );
+    }
+
+    // Bodyweight exercises (pull-ups, dips, etc.) - sets x reps, no weight inputs
+    if (isBodyweight && ex.isPercentageBased && Array.isArray(ex.percentages)) {
+      const bwSets = ex.percentages.length;
+      return (
+        <>
+          <div style={{ ...s.targetText, fontWeight: '700' }}>
+            Bodyweight — {bwSets} Sets
+          </div>
+          {ex.percentages.map((_, si) => {
+            const targetReps = ex.repsPerSet?.[si] || ex.reps || '?';
+            return (
+              <div key={si}>
+                <div style={s.setLabel}>
+                  Set {si + 1}: {targetReps} reps{ex.qualifier ? ` ${ex.qualifier}` : ''}
+                </div>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
+                  <input
+                    type="number"
+                    placeholder={`${targetReps} reps`}
+                    value={getTrack(si, 'reps')}
+                    onChange={(e) => onUpdateTracking(blockIndex, exIndex, si, 'reps', e.target.value)}
+                    style={{ ...s.condInput, flex: 1, marginBottom: 0 }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+          {ex.rest && <div style={s.detailRow}>Rest: {ex.rest}</div>}
+          {ex.notes && <div style={s.notesCard}>{ex.notes}</div>}
+          <button style={s.markBtn} onClick={handleMark}>
+            {'\u2713'} Mark Complete
+          </button>
+          {renderRecSection()}
+        </>
+      );
+    }
+
     if (hasPercentages && oneRM > 0) {
       return (
         <>
@@ -454,12 +561,38 @@ export default function ExerciseCard({
     );
   };
 
+  // Unit display helpers
+  const UNIT_LABELS = {
+    sec: 'sec', min: 'min', hr: 'hr',
+    m: 'm', yd: 'yd', ft: 'ft', mi: 'mi', km: 'km',
+    mph: 'mph', kph: 'kph', 'min/mi': 'min/mi',
+  };
+  const getUnitLabel = (unit, fallback) => UNIT_LABELS[unit] || fallback || '';
+
+  // Strip embedded unit text from values (legacy data like "5 minutes" → "5")
+  const stripUnits = (val) => {
+    if (!val) return val;
+    return String(val).replace(/\s*(seconds?|sec|minutes?|min|hours?|hr|meters?|miles?|mi|km|yards?|yd|feet|ft|mph|kph)\s*/gi, '').trim();
+  };
+
+  // Format a value with its unit, avoiding "5 minutes min" duplication
+  const formatWithUnit = (val, unitLabel) => {
+    if (!val) return null;
+    const clean = stripUnits(val);
+    return clean ? `${clean} ${unitLabel}` : null;
+  };
+
   // Cardio: treadmill, bike, rowing - just duration and optional distance
   const renderCardio = () => {
+    const dUnit = getUnitLabel(ex.durationUnit, 'min');
+    const distUnit = getUnitLabel(ex.distanceUnit, 'mi');
+    const spdUnit = getUnitLabel(ex.speedUnit, 'mph');
+
     const details = [
-      { label: 'Duration', val: ex.duration },
-      { label: 'Distance', val: ex.distance },
-      { label: 'Speed', val: ex.speed },
+      { label: 'Duration', val: formatWithUnit(ex.duration, dUnit) },
+      { label: 'Distance', val: formatWithUnit(ex.distance, distUnit) },
+      { label: 'Speed', val: formatWithUnit(ex.speed, spdUnit) },
+      { label: 'Incline', val: ex.incline },
       { label: 'Intensity', val: ex.intensity },
     ].filter((d) => d.val);
 
@@ -483,14 +616,14 @@ export default function ExerciseCard({
         <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
           <input
             type="text"
-            placeholder="Duration (min)"
+            placeholder={`Duration (${dUnit})`}
             value={getTrack(null, 'duration')}
             onChange={(e) => onUpdateTracking(blockIndex, exIndex, null, 'duration', e.target.value)}
             style={{ ...s.condInput, flex: 1, marginBottom: 0 }}
           />
           <input
             type="text"
-            placeholder="Distance (mi)"
+            placeholder={`Distance (${distUnit})`}
             value={getTrack(null, 'distance')}
             onChange={(e) => onUpdateTracking(blockIndex, exIndex, null, 'distance', e.target.value)}
             style={{ ...s.condInput, flex: 1, marginBottom: 0 }}
@@ -505,9 +638,15 @@ export default function ExerciseCard({
 
   // Movement/Conditioning: med ball, agility, plyos, rowing, ski erg - reps or duration based
   const renderMovement = () => {
+    const dUnit = getUnitLabel(ex.durationUnit, 'min');
+    const distUnit = getUnitLabel(ex.distanceUnit, 'm');
+    const spdUnit = getUnitLabel(ex.speedUnit, 'mph');
+
     // Show preset values as info pills
     const details = [
       { label: 'Reps', val: ex.reps },
+      { label: 'Speed', val: formatWithUnit(ex.speed, spdUnit) },
+      { label: 'Incline', val: ex.incline },
       { label: 'Rest', val: ex.rest },
     ].filter((d) => d.val);
 
@@ -528,7 +667,7 @@ export default function ExerciseCard({
         {/* Show preset duration/distance as reference */}
         {(ex.duration || ex.distance) && (
           <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
-            Target: {ex.duration ? `${ex.duration}` : ''} {ex.distance ? `/ ${ex.distance}` : ''}
+            Target: {formatWithUnit(ex.duration, dUnit) || ''} {ex.distance ? `/ ${formatWithUnit(ex.distance, distUnit)}` : ''}
           </div>
         )}
         {ex.notes && <div style={s.notesCard}>{ex.notes}</div>}
@@ -542,14 +681,14 @@ export default function ExerciseCard({
           <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
             <input
               type="text"
-              placeholder="Duration (min)"
+              placeholder={`Duration (${dUnit})`}
               value={getTrack(null, 'duration')}
               onChange={(e) => onUpdateTracking(blockIndex, exIndex, null, 'duration', e.target.value)}
               style={{ ...s.condInput, flex: 1, marginBottom: 0 }}
             />
             <input
               type="text"
-              placeholder="Distance (mi/m)"
+              placeholder={`Distance (${distUnit})`}
               value={getTrack(null, 'distance')}
               onChange={(e) => onUpdateTracking(blockIndex, exIndex, null, 'distance', e.target.value)}
               style={{ ...s.condInput, flex: 1, marginBottom: 0 }}
@@ -589,6 +728,7 @@ export default function ExerciseCard({
     const hasReps = ex.reps;
     const hasDuration = ex.duration;
     const setsCount = typeof ex.sets === 'number' ? ex.sets : 1;
+    const dUnit = getUnitLabel(ex.durationUnit, 'sec');
 
     return (
       <>
@@ -622,12 +762,12 @@ export default function ExerciseCard({
             {hasDuration && !hasReps && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{ fontSize: '13px', color: '#666' }}>Duration:</span>
-                <span style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>{ex.duration}</span>
+                <span style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>{formatWithUnit(ex.duration, dUnit)}</span>
               </div>
             )}
           </div>
           <div style={{ fontSize: '12px', color: '#999' }}>
-            Target: {ex.sets ? `${ex.sets} sets` : ''} {ex.reps ? `× ${ex.reps}` : ''} {hasDuration && !hasReps ? `× ${ex.duration}` : ''}
+            Target: {ex.sets ? `${ex.sets} sets` : ''} {ex.reps ? `× ${ex.reps}` : ''} {hasDuration && !hasReps ? `× ${formatWithUnit(ex.duration, dUnit)}` : ''}
           </div>
         </div>
         {ex.notes && <div style={s.notesCard}>{ex.notes}</div>}

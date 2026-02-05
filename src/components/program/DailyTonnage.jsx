@@ -29,6 +29,25 @@ const MOBILITY_PATTERNS = [
   /y.?t.?w/i, /itw/i, /ytwl/i,
 ];
 
+// Functional/corrective exercises — use 15% bodyweight, never prescribed/percentage weight
+// These may appear inside superset/triset blocks but should not use barbell-based tonnage
+const FUNCTIONAL_PATTERNS = [
+  /band.?walk/i, /monster.?walk/i, /lateral.?walk/i, /banded/i,
+  /ankle.?mobility/i, /hip.?mobility/i, /shoulder.?mobility/i,
+  /hip.?circle/i, /hip.?open/i, /hip.?sequence/i,
+  /corrective/i, /prehab/i, /rehab/i,
+  /wall.?slide/i, /wall.?angel/i, /wall.?sit/i,
+  /t.?spine/i, /thoracic/i,
+  /mini.?band/i, /resistance.?band/i,
+  /clamshell/i, /clam/i,
+  /fire.?hydrant/i,
+  /glute.?bridge/i, /hip.?thrust(?!.*barbell)/i,
+  /stability/i, /balance/i, /bosu/i,
+  /brace/i, /breathing/i, /diaphragm/i,
+  /ankle.?circuit/i, /mobility.?circuit/i,
+  /sequence/i,
+];
+
 function isCore(exerciseName) {
   if (!exerciseName) return false;
   return CORE_PATTERNS.some(p => p.test(exerciseName));
@@ -37,6 +56,11 @@ function isCore(exerciseName) {
 function isMobility(exerciseName) {
   if (!exerciseName) return false;
   return MOBILITY_PATTERNS.some(p => p.test(exerciseName));
+}
+
+export function isFunctional(exerciseName) {
+  if (!exerciseName) return false;
+  return FUNCTIONAL_PATTERNS.some(p => p.test(exerciseName));
 }
 
 // Block types that should count towards tonnage
@@ -139,6 +163,7 @@ export function calcBlockTonnage(block, maxes, trackingData, blockIndex, userWei
     }
 
     const mult = getMultiplier(ex.qualifier);
+    const functional = isFunctional(ex.name);
 
     // Determine how many sets this exercise has
     let setsCount;
@@ -148,6 +173,15 @@ export function calcBlockTonnage(block, maxes, trackingData, blockIndex, userWei
       setsCount = ex.sets;
     } else {
       setsCount = parseInt(ex.sets) || parseInt(ex.setsCount) || 1;
+    }
+
+    // Functional/corrective exercises always use 15% bodyweight, never barbell percentages
+    if (functional) {
+      const totalReps = parseRepsTotal(ex.reps, setsCount);
+      if (totalReps > 0) {
+        tonnage += effectiveWeight * BODYWEIGHT_MULTIPLIER * totalReps * mult;
+      }
+      return;
     }
 
     // Check for percentage-based exercise (builder format or normalized)
@@ -202,9 +236,41 @@ function isConditioningBlock(block) {
   return block?.type === 'conditioning' || block?.type === 'cardio';
 }
 
+// Convert duration to minutes based on unit
+function toMinutes(value, unit) {
+  const num = parseFloat(value);
+  if (isNaN(num)) return 0;
+  switch (unit) {
+    case 'sec': return num / 60;
+    case 'hr': return num * 60;
+    case 'min':
+    default: return num;
+  }
+}
+
+// Convert distance to miles based on unit
+function toMiles(value, unit) {
+  const num = parseFloat(value);
+  if (isNaN(num)) return 0;
+  switch (unit) {
+    case 'm': return num / 1609.34;
+    case 'yd': return num / 1760;
+    case 'ft': return num / 5280;
+    case 'km': return num * 0.621371;
+    case 'mi':
+    default: return num;
+  }
+}
+
 export function calcCardio(block, trackingData, blockIndex) {
   let minutes = 0, miles = 0;
   if (!block?.exercises) return { minutes, miles };
+
+  // For conditioning/movement blocks, default distance unit is meters
+  // For cardio blocks, default distance unit is miles
+  const isMovementBlock = block?.type === 'conditioning' || block?.type === 'movement';
+  const defaultDistanceUnit = isMovementBlock ? 'm' : 'mi';
+
   block.exercises.forEach((ex, exIndex) => {
     const isCompleted = trackingData?.[`complete-${blockIndex}-${exIndex}`];
     if (!isCompleted) return;
@@ -216,13 +282,19 @@ export function calcCardio(block, trackingData, blockIndex) {
     const durationVal = trackedDuration || ex.duration;
     const distanceVal = trackedDistance || ex.distance;
 
+    // Get units from exercise - use exercise unit if set, otherwise smart default
+    const durationUnit = ex.durationUnit || 'min';
+    // For distance: use saved unit, or if value >= 100 assume meters (nobody runs 100+ miles)
+    const distNum = parseFloat(String(distanceVal).match(/([\d.]+)/)?.[1] || 0);
+    const distanceUnit = ex.distanceUnit || (distNum >= 100 ? 'm' : defaultDistanceUnit);
+
     if (durationVal) {
-      const m = String(durationVal).match(/(\d+)/);
-      if (m) minutes += parseInt(m[1]);
+      const m = String(durationVal).match(/([\d.]+)/);
+      if (m) minutes += toMinutes(m[1], durationUnit);
     }
     if (distanceVal) {
       const d = String(distanceVal).match(/([\d.]+)/);
-      if (d) miles += parseFloat(d[1]);
+      if (d) miles += toMiles(d[1], distanceUnit);
     }
   });
   return { minutes, miles };
