@@ -29,7 +29,7 @@ const MOBILITY_PATTERNS = [
   /y.?t.?w/i, /itw/i, /ytwl/i,
 ];
 
-// Functional/corrective exercises — use 15% bodyweight, never prescribed/percentage weight
+// Functional/corrective exercises — use tiered calorie system
 // These may appear inside superset/triset blocks but should not use barbell-based tonnage
 const FUNCTIONAL_PATTERNS = [
   /band.?walk/i, /monster.?walk/i, /lateral.?walk/i, /banded/i,
@@ -47,6 +47,73 @@ const FUNCTIONAL_PATTERNS = [
   /ankle.?circuit/i, /mobility.?circuit/i,
   /sequence/i,
 ];
+
+// Tiered bodyweight exercise effort levels for calorie calculation
+// Low effort: 0.25 kcal/rep - corrective, activation, band work
+const LOW_EFFORT_PATTERNS = [
+  /glute.?bridge/i, /clamshell/i, /clam/i, /dead.?bug/i, /bird.?dog/i,
+  /fire.?hydrant/i, /band.?walk/i, /monster.?walk/i, /lateral.?walk/i,
+  /hip.?circle/i, /leg.?swing/i, /arm.?circle/i, /shoulder.?circle/i,
+  /wall.?slide/i, /wall.?angel/i, /face.?pull/i, /band.?pull.?apart/i,
+  /prone/i, /blackburn/i, /y.?t.?w/i, /itw/i, /activation/i,
+  /glute.?extension/i, /donkey.?kick/i, /kickback/i,
+  /banded/i, /mini.?band/i, /resistance.?band/i,
+];
+
+// Moderate effort: 0.5 kcal/rep - standard bodyweight exercises
+const MODERATE_EFFORT_PATTERNS = [
+  /push.?up/i, /pull.?up/i, /chin.?up/i, /dip/i,
+  /bodyweight.?squat/i, /air.?squat/i, /squat(?!.*jump)/i,
+  /lunge/i, /split.?squat/i, /step.?up/i, /step.?down/i,
+  /row(?!.*machine)/i, /inverted.?row/i,
+  /plank/i, /side.?plank/i, /hollow/i, /superman/i,
+  /leg.?raise/i, /knee.?raise/i, /hanging/i,
+  /pike/i, /inchworm/i, /bear.?crawl/i,
+  /wall.?sit/i, /iso.?hold/i, /static/i,
+];
+
+// High effort: 1.0 kcal/rep - plyometric, explosive movements
+const HIGH_EFFORT_PATTERNS = [
+  /jump.?squat/i, /squat.?jump/i, /box.?jump/i, /broad.?jump/i,
+  /burpee/i, /thruster/i, /man.?maker/i,
+  /mountain.?climber/i, /high.?knee/i, /jumping.?jack/i,
+  /tuck.?jump/i, /star.?jump/i, /power.?skip/i,
+  /sprint/i, /shuttle/i, /agility/i,
+  /clap.?push.?up/i, /explosive/i, /plyometric/i, /plyo/i,
+  /skater/i, /bound/i, /hop/i,
+  /snatch(?!.*barbell)/i, /clean(?!.*barbell)/i,
+];
+
+// Get bodyweight effort tier: 'low', 'moderate', 'high', or null if not bodyweight
+function getBodyweightEffort(exerciseName) {
+  if (!exerciseName) return null;
+  if (HIGH_EFFORT_PATTERNS.some(p => p.test(exerciseName))) return 'high';
+  if (MODERATE_EFFORT_PATTERNS.some(p => p.test(exerciseName))) return 'moderate';
+  if (LOW_EFFORT_PATTERNS.some(p => p.test(exerciseName))) return 'low';
+  if (FUNCTIONAL_PATTERNS.some(p => p.test(exerciseName))) return 'low'; // Default functional to low
+  return null;
+}
+
+// Get calorie per rep based on effort tier
+function getCaloriesPerRep(effort, userWeightLbs) {
+  const baseRates = { low: 0.25, moderate: 0.5, high: 1.0 };
+  const base = baseRates[effort] || 0;
+
+  // Scale by weight bracket: <154 lbs (-10%), 154-198 lbs (baseline), 198+ lbs (+10%)
+  let scale = 1.0;
+  if (userWeightLbs < 154) scale = 0.9;
+  else if (userWeightLbs > 198) scale = 1.1;
+
+  return base * scale;
+}
+
+// Calculate bodyweight exercise calories
+export function calcBodyweightCalories(exerciseName, totalReps, userWeightLbs) {
+  const effort = getBodyweightEffort(exerciseName);
+  if (!effort || totalReps <= 0) return 0;
+  const calPerRep = getCaloriesPerRep(effort, userWeightLbs);
+  return Math.round(totalReps * calPerRep);
+}
 
 function isCore(exerciseName) {
   if (!exerciseName) return false;
@@ -125,16 +192,14 @@ export function getDefaultWeight(gender) {
 }
 
 export function calcBlockTonnage(block, maxes, trackingData, blockIndex, userWeight, gender) {
-  if (!block?.exercises) return { tonnage: 0, coreEquiv: 0 };
+  if (!block?.exercises) return { tonnage: 0, coreEquiv: 0, bwCalories: 0 };
 
   // Use provided weight or gender-based default
   const effectiveWeight = userWeight > 0 ? userWeight : getDefaultWeight(gender);
 
-  // Bodyweight multiplier: 15% of bodyweight
-  const BODYWEIGHT_MULTIPLIER = 0.15;
-
   let tonnage = 0;
   let coreEquiv = 0;
+  let bwCalories = 0; // Bodyweight exercise calories (tiered system)
 
   // Only calculate tonnage for strength-type blocks (not warmup/cooldown/mobility)
   const countTonnage = isTonnageBlock(block.type);
@@ -164,6 +229,7 @@ export function calcBlockTonnage(block, maxes, trackingData, blockIndex, userWei
 
     const mult = getMultiplier(ex.qualifier);
     const functional = isFunctional(ex.name);
+    const bwEffort = getBodyweightEffort(ex.name);
 
     // Determine how many sets this exercise has
     let setsCount;
@@ -175,11 +241,11 @@ export function calcBlockTonnage(block, maxes, trackingData, blockIndex, userWei
       setsCount = parseInt(ex.sets) || parseInt(ex.setsCount) || 1;
     }
 
-    // Functional/corrective exercises always use 15% bodyweight, never barbell percentages
-    if (functional) {
-      const totalReps = parseRepsTotal(ex.reps, setsCount);
+    // Functional/corrective/bodyweight exercises use tiered calorie system, not tonnage
+    if (functional || bwEffort) {
+      const totalReps = parseRepsTotal(ex.reps, setsCount) * mult;
       if (totalReps > 0) {
-        tonnage += effectiveWeight * BODYWEIGHT_MULTIPLIER * totalReps * mult;
+        bwCalories += calcBodyweightCalories(ex.name, totalReps, effectiveWeight);
       }
       return;
     }
@@ -207,8 +273,8 @@ export function calcBlockTonnage(block, maxes, trackingData, blockIndex, userWei
         if (calcWeight > 0 && calcReps > 0) {
           tonnage += calcWeight * calcReps * mult;
         } else if (calcReps > 0) {
-          // No max entered and no tracked weight - use 15% bodyweight as fallback
-          tonnage += effectiveWeight * BODYWEIGHT_MULTIPLIER * calcReps * mult;
+          // No max entered and no tracked weight - use tiered bodyweight calories
+          bwCalories += calcBodyweightCalories(ex.name, calcReps * mult, effectiveWeight);
         }
       } else {
         // Check if user explicitly cleared the weight field (key exists but value is empty/0)
@@ -222,14 +288,14 @@ export function calcBlockTonnage(block, maxes, trackingData, blockIndex, userWei
         if (prescribedWeight > 0 && prescribedReps > 0) {
           tonnage += prescribedWeight * prescribedReps * mult;
         } else if (!isConditioningBlock(block) && prescribedReps > 0) {
-          // No weight (bodyweight exercise or user cleared it): use 15% of effective bodyweight
-          tonnage += effectiveWeight * BODYWEIGHT_MULTIPLIER * prescribedReps * mult;
+          // No weight (bodyweight exercise or user cleared it): use tiered bodyweight calories
+          bwCalories += calcBodyweightCalories(ex.name, prescribedReps * mult, effectiveWeight);
         }
       }
     }
   });
 
-  return { tonnage, coreEquiv };
+  return { tonnage, coreEquiv, bwCalories };
 }
 
 function isConditioningBlock(block) {
