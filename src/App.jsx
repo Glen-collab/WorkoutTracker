@@ -356,6 +356,14 @@ export default function App() {
     };
     setUser(userData);
 
+    // Save credentials to localStorage for quick login next time
+    try {
+      localStorage.setItem('gwt_saved_credentials', JSON.stringify({
+        email: formData.email,
+        code: formData.code,
+      }));
+    } catch { /* ignore */ }
+
     const newMaxes = {
       bench: formData.benchMax || 0,
       squat: formData.squatMax || 0,

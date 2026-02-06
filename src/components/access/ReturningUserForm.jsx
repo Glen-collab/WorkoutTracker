@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { formatAccessCode } from '../../utils/trackerHelpers';
+
+const SAVED_CREDS_KEY = 'gwt_saved_credentials';
 
 const styles = {
   container: {
@@ -131,8 +133,15 @@ const styles = {
 };
 
 export default function ReturningUserForm({ onSubmit, onBack, error }) {
-  const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
+  // Load saved credentials from localStorage
+  const savedCreds = (() => {
+    try {
+      return JSON.parse(localStorage.getItem(SAVED_CREDS_KEY) || 'null');
+    } catch { return null; }
+  })();
+
+  const [email, setEmail] = useState(savedCreds?.email || '');
+  const [code, setCode] = useState(savedCreds?.code || '');
   const [benchMax, setBenchMax] = useState('');
   const [squatMax, setSquatMax] = useState('');
   const [deadliftMax, setDeadliftMax] = useState('');
