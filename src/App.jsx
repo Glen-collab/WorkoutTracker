@@ -60,6 +60,7 @@ export default function App() {
   const [lastVolumeStats, setLastVolumeStats] = useState(null);
   const [isLastDayOfWeek, setIsLastDayOfWeek] = useState(false);
   const [gameWeek, setGameWeek] = useState(1);
+  const [cumulativeWeeks, setCumulativeWeeks] = useState(0);
 
   const chatbotRef = useRef(null);
 
@@ -171,6 +172,10 @@ export default function App() {
             weight: prev.weight || parseFloat(pos.weightLbs) || '',
             age: prev.age || parseInt(pos.age) || '',
           }));
+          // Load cumulative weeks for cross-program game progression
+          if (pos.cumulativeWeeks !== undefined) {
+            setCumulativeWeeks(parseInt(pos.cumulativeWeeks) || 0);
+          }
         }
         if (prog.daysPerWeek) setDaysPerWeek(prog.daysPerWeek);
         if (prog.totalWeeks) setTotalWeeks(prog.totalWeeks);
@@ -398,11 +403,13 @@ export default function App() {
   const handleSubmitQuestionnaire = useCallback(async (questionnaireData) => {
     try {
       await api.submitQuestionnaire({
-        email: user.email,
+        user_email: user.email,
         access_code: user.accessCode,
-        name: user.name,
+        user_name: user.name,
+        waiver_accepted: consentAccepted,
+        waiver_timestamp: consentTimestamp ? new Date(consentTimestamp).getTime() : null,
         pain_areas: painAreas,
-        ...questionnaireData,
+        responses: questionnaireData,
       });
       const questionnaireKey = `gwt_questionnaire_${user.accessCode}_${user.email}`;
       localStorage.setItem(questionnaireKey, 'true');
@@ -410,7 +417,7 @@ export default function App() {
       console.error('Questionnaire submit error:', err);
     }
     handleLoadProgramFromAPI();
-  }, [api, user, painAreas, handleLoadProgramFromAPI]);
+  }, [api, user, painAreas, consentAccepted, consentTimestamp, handleLoadProgramFromAPI]);
 
   const isMockMode = window.location.hostname === 'localhost';
 
@@ -531,7 +538,20 @@ export default function App() {
       const weightKg = userWeight * 0.453592;
       let totalTonnage = 0, totalCore = 0, totalCardioMin = 0, totalCardioMiles = 0;
       let completedExercises = 0;
+      let warmupExercises = 0, cooldownExercises = 0;
       (program?.blocks || []).forEach((block, blockIndex) => {
+        const blockType = block.type || 'straight-set';
+
+        // Count warm-up and cooldown exercises for flat-rate calories
+        if (blockType === 'warmup' || blockType === 'mobility') {
+          warmupExercises += (block.exercises || []).length;
+          return; // Skip further processing for warmup/mobility
+        }
+        if (blockType === 'cooldown') {
+          cooldownExercises += (block.exercises || []).length;
+          return; // Skip further processing for cooldown
+        }
+
         const bt = calcBlockTonnage(block, maxes || {}, trackingData, blockIndex, userWeight, userGender);
         totalTonnage += bt.tonnage;
         totalCore += bt.coreEquiv;
@@ -544,7 +564,13 @@ export default function App() {
         });
       });
 
-      // Calorie estimate: MET formula + work bonuses
+      // Calorie estimate
+      // Warm-up: 4 kcal per exercise (more dynamic)
+      // Cooldown: 3 kcal per exercise (slower, parasympathetic)
+      const warmupCal = warmupExercises * 4;
+      const cooldownCal = cooldownExercises * 3;
+
+      // Strength: MET formula + work bonuses
       const strengthMinutes = completedExercises * 3;
       const baseMET = 6;
       const strengthCal = baseMET * weightKg * (strengthMinutes / 60);
@@ -556,7 +582,7 @@ export default function App() {
       const cardioDistanceCal = totalCardioMiles * 100; // ~100 cal per mile
       const cardioCal = Math.max(cardioTimeCal, cardioDistanceCal);
 
-      const estCalories = Math.round(strengthCal + tonnageBonus + cardioCal);
+      const estCalories = Math.round(warmupCal + cooldownCal + strengthCal + tonnageBonus + cardioCal);
 
       const volumeStats = {
         tonnage: Math.round(totalTonnage),
@@ -625,9 +651,17 @@ export default function App() {
           }
         }
 
+        // Update cumulative weeks from API response
+        if (result.data?.cumulative_weeks !== undefined) {
+          setCumulativeWeeks(result.data.cumulative_weeks);
+        }
+
         // If last day of week, set up weekly summary + game flow (triggered on congrats close)
         if (currentDay === daysPerWeek) {
-          setGameWeek(currentWeek);
+          // Use cumulative weeks for game progression (cross-program continuity)
+          // The API just incremented it, so use the returned value
+          const newCumWeeks = result.data?.cumulative_weeks ?? (cumulativeWeeks + 1);
+          setGameWeek(newCumWeeks);
           setIsLastDayOfWeek(true);
         } else {
           setIsLastDayOfWeek(false);
@@ -636,7 +670,7 @@ export default function App() {
     } catch (err) {
       console.error('Failed to log workout:', err);
     }
-  }, [currentWeek, currentDay, program, trackingData, recommendations, api, user, daysPerWeek, totalWeeks, maxes, profile, setCurrentWeek, setCurrentDay, setRecommendations, handleLoadProgramFromAPI]);
+  }, [currentWeek, currentDay, program, trackingData, recommendations, api, user, daysPerWeek, totalWeeks, maxes, profile, cumulativeWeeks, setCurrentWeek, setCurrentDay, setRecommendations, handleLoadProgramFromAPI]);
 
   const handleSubmitCompletion = useCallback(async (completionData) => {
     try {
@@ -644,13 +678,16 @@ export default function App() {
         email: user.email,
         access_code: user.accessCode,
         name: user.name,
-        ...completionData,
+        program_name: program?.name || 'Workout Program',
+        feedback: completionData,
       });
     } catch (err) {
       console.error('Completion submit error:', err);
     }
     setShowCompletionModal(false);
-  }, [api, user]);
+    // After completion modal, show weekly summary → game flow (it's the last day of the program)
+    setShowWeeklySummary(true);
+  }, [api, user, program]);
 
   return (
     <div style={containerStyle}>

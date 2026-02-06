@@ -51,7 +51,7 @@ export default function WeeklySummaryModal({ isOpen, onClose, weekNumber, access
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
 
-  if (!isOpen || !stats) return null;
+  if (!isOpen) return null;
 
   return (
     <div style={overlay}>
@@ -60,42 +60,50 @@ export default function WeeklySummaryModal({ isOpen, onClose, weekNumber, access
         <h2 style={{ fontSize: 26, margin: '0 0 4px', fontWeight: 'bold', color: '#FFD700' }}>
           Week {weekNumber} Complete!
         </h2>
-        <p style={{ fontSize: 14, opacity: 0.7, margin: '0 0 16px' }}>
-          {stats.workouts} / {daysPerWeek || '?'} workouts completed
-        </p>
+        {stats ? (
+          <>
+            <p style={{ fontSize: 14, opacity: 0.7, margin: '0 0 16px' }}>
+              {stats.workouts} / {daysPerWeek || '?'} workouts completed
+            </p>
 
-        <div style={grid}>
-          {stats.tonnage > 0 && (
-            <div style={statBox}>
-              <div style={statLabel}>TOTAL TONNAGE</div>
-              <div style={statValue}>{stats.tonnage.toLocaleString()} lbs</div>
+            <div style={grid}>
+              {stats.tonnage > 0 && (
+                <div style={statBox}>
+                  <div style={statLabel}>TOTAL TONNAGE</div>
+                  <div style={statValue}>{stats.tonnage.toLocaleString()} lbs</div>
+                </div>
+              )}
+              {stats.core_crunches > 0 && (
+                <div style={statBox}>
+                  <div style={statLabel}>CORE WORK</div>
+                  <div style={statValue}>{stats.core_crunches.toLocaleString()} crunches</div>
+                </div>
+              )}
+              {stats.cardio_minutes > 0 && (
+                <div style={statBox}>
+                  <div style={statLabel}>CARDIO</div>
+                  <div style={statValue}>{stats.cardio_minutes} min</div>
+                </div>
+              )}
+              {stats.cardio_miles > 0 && (
+                <div style={statBox}>
+                  <div style={statLabel}>DISTANCE</div>
+                  <div style={statValue}>{stats.cardio_miles.toFixed(1)} mi</div>
+                </div>
+              )}
+              {stats.est_calories > 0 && (
+                <div style={statBox}>
+                  <div style={statLabel}>EST. CALORIES</div>
+                  <div style={statValue}>{stats.est_calories}</div>
+                </div>
+              )}
             </div>
-          )}
-          {stats.core_crunches > 0 && (
-            <div style={statBox}>
-              <div style={statLabel}>CORE WORK</div>
-              <div style={statValue}>{stats.core_crunches.toLocaleString()} crunches</div>
-            </div>
-          )}
-          {stats.cardio_minutes > 0 && (
-            <div style={statBox}>
-              <div style={statLabel}>CARDIO</div>
-              <div style={statValue}>{stats.cardio_minutes} min</div>
-            </div>
-          )}
-          {stats.cardio_miles > 0 && (
-            <div style={statBox}>
-              <div style={statLabel}>DISTANCE</div>
-              <div style={statValue}>{stats.cardio_miles.toFixed(1)} mi</div>
-            </div>
-          )}
-          {stats.est_calories > 0 && (
-            <div style={statBox}>
-              <div style={statLabel}>EST. CALORIES</div>
-              <div style={statValue}>{stats.est_calories}</div>
-            </div>
-          )}
-        </div>
+          </>
+        ) : (
+          <p style={{ fontSize: 14, opacity: 0.7, margin: '0 0 16px' }}>
+            Great work this week!
+          </p>
+        )}
 
         <button
           onClick={onClose}

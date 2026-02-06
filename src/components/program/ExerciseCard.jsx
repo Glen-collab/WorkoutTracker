@@ -506,7 +506,7 @@ export default function ExerciseCard({
           {ex.percentages.map((pct, si) => (
             <div key={si}>
               <div style={s.setLabel}>
-                Set {si + 1}: {calculateWeight(oneRM, pct)} lbs ({pct}% of 1RM) x{' '}
+                Set {si + 1}: {calculateWeight(oneRM, pct)} lbs x{' '}
                 {ex.repsPerSet?.[si] || ex.reps || '?'} reps
               </div>
               <TrackingInputs
