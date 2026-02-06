@@ -108,10 +108,11 @@ const s = {
 };
 
 const GRAPH_METRICS = [
-  { key: 'tonnage', label: 'Tonnage', color: '#667eea', suffix: '' },
+  { key: 'tonnage', label: 'Tonnage (lbs)', color: '#667eea', suffix: '' },
   { key: 'est_calories', label: 'Calories', color: '#ef4444', suffix: '' },
-  { key: 'core_crunches', label: 'Core', color: '#10b981', suffix: '' },
-  { key: 'cardio_minutes', label: 'Cardio', color: '#f59e0b', suffix: ' min' },
+  { key: 'core_crunches', label: 'Core (reps)', color: '#10b981', suffix: '' },
+  { key: 'cardio_minutes', label: 'Time (min)', color: '#f59e0b', suffix: ' min' },
+  { key: 'cardio_miles', label: 'Distance (mi)', color: '#3b82f6', suffix: ' mi' },
 ];
 
 export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, daysPerWeek, totalWeeks, getWeeklyStats, liveStats }) {
