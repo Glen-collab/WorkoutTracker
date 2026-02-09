@@ -477,6 +477,7 @@ export default function App() {
             // Build flat weights[] and actualReps[] arrays from tracking data
             const weights = [];
             const actualReps = [];
+            const prescribedWeights = [];
             for (let si = 0; si < setsCount; si++) {
               const trackedWeight = trackingData[`${blockIndex}-${exIndex}-${si}-weight`];
               const trackedReps = trackingData[`${blockIndex}-${exIndex}-${si}-reps`];
@@ -485,7 +486,24 @@ export default function App() {
               const presetReps = Array.isArray(ex.sets) && ex.sets[si] ? (ex.sets[si].reps || '') : '';
               weights.push(trackedWeight || presetWeight || '');
               actualReps.push(trackedReps || presetReps || '');
+              // Track prescribed weights for comparison
+              if (ex.isPercentageBased && ex.percentages?.[si] && maxes) {
+                const baseMax = ex.baseMax || 'bench';
+                const oneRM = maxes[baseMax] || 0;
+                if (oneRM > 0) {
+                  prescribedWeights.push(Math.round(oneRM * (ex.percentages[si] / 100) / 5) * 5);
+                } else {
+                  prescribedWeights.push('');
+                }
+              } else {
+                prescribedWeights.push(presetWeight || ex.weight || '');
+              }
             }
+
+            // Capture conditioning/cardio fields (duration, distance, speed, incline)
+            const trackedDuration = trackingData[`${blockIndex}-${exIndex}-null-duration`] || '';
+            const trackedDistance = trackingData[`${blockIndex}-${exIndex}-null-distance`] || '';
+            const isCompleted = trackingData[`complete-${blockIndex}-${exIndex}`] || false;
 
             const result = {
               name: ex.name || 'Unknown Exercise',
@@ -493,11 +511,26 @@ export default function App() {
               targetReps: ex.reps || '',
               actualReps,
               weights,
+              prescribedWeights,
               isPercentageBased: !!ex.isPercentageBased,
               percentages: ex.percentages || [],
               repsPerSet: ex.repsPerSet || [],
               scheme: ex.schemeName || ex.scheme || '',
               recommendation: recommendations[`${blockIndex}-${exIndex}`] || null,
+              // Conditioning/cardio fields
+              targetDuration: ex.duration || '',
+              targetDistance: ex.distance || '',
+              targetSpeed: ex.speed || '',
+              targetIncline: ex.incline || '',
+              targetIntensity: ex.intensity || '',
+              actualDuration: trackedDuration,
+              actualDistance: trackedDistance,
+              durationUnit: ex.durationUnit || 'min',
+              distanceUnit: ex.distanceUnit || 'mi',
+              speedUnit: ex.speedUnit || 'mph',
+              completed: isCompleted,
+              qualifier: ex.qualifier || '',
+              notes: ex.notes || '',
             };
 
             return result;
