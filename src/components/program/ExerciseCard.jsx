@@ -256,6 +256,11 @@ export default function ExerciseCard({
       // Builder format: sets are objects with percentage/reps
       ex.percentages = ex.sets.map(s => s.percentage);
       ex.repsPerSet = ex.sets.map(s => s.reps);
+      // Preserve drop/strip set data
+      ex.dropPercentages = ex.sets.map(s => s.dropPercentage);
+      ex.dropRepsPerSet = ex.sets.map(s => s.dropReps);
+      ex.stripPercentages = ex.sets.map(s => s.stripPercentage);
+      ex.stripRepsPerSet = ex.sets.map(s => s.stripReps);
       ex.isPercentageBased = true;
       // Keep sets count as number
       ex.setsCount = ex.sets.length;
@@ -265,6 +270,10 @@ export default function ExerciseCard({
   })();
   // Use normalizedEx for rendering
   const ex = normalizedEx;
+
+  // Check if exercise has drop/strip sets
+  const isDropSet = exercise.qualifier === 'drop set';
+  const isStripSet = exercise.qualifier === 'strip set';
 
   const getTrack = (setIdx, field) => {
     if (!trackingData) return '';
@@ -313,8 +322,9 @@ export default function ExerciseCard({
 
   // Percentage-based strength (use normalized ex)
   const isBodyweight = ex.baseMax === 'bodyweight';
-  const oneRM = isStrength && ex.isPercentageBased && !isBodyweight ? get1RM(ex.name, maxes, ex.baseMax) : 0;
-  const hasPercentages = ex.isPercentageBased && ex.percentages?.length > 0 && !isBodyweight;
+  const isManualWeight = ex.baseMax === 'manual';
+  const oneRM = isStrength && ex.isPercentageBased && !isBodyweight && !isManualWeight ? get1RM(ex.name, maxes, ex.baseMax) : 0;
+  const hasPercentages = ex.isPercentageBased && ex.percentages?.length > 0 && !isBodyweight && !isManualWeight;
 
   // Only show auto warm-up for flat barbell bench and back squat
   const showWarmup = (() => {
@@ -451,30 +461,107 @@ export default function ExerciseCard({
       );
     }
 
-    // Bodyweight exercises (pull-ups, dips, etc.) - sets x reps, no weight inputs
-    if (isBodyweight && ex.isPercentageBased && Array.isArray(ex.percentages)) {
-      const bwSets = ex.percentages.length;
+    // Manual weight exercises - user enters their own weight (not percentage-based)
+    if (isManualWeight && ex.isPercentageBased && Array.isArray(ex.percentages)) {
+      const mwSets = ex.percentages.length;
+      const dUnit = getUnitLabel(ex.durationUnit, 'sec');
+      const hasDuration = ex.duration;
+      const hasReps = ex.reps;
+
       return (
         <>
           <div style={{ ...s.targetText, fontWeight: '700' }}>
-            Bodyweight — {bwSets} Sets
+            Manual Weight — {mwSets} Sets{ex.qualifier ? ` (${ex.qualifier})` : ''}
           </div>
+          {hasDuration && (
+            <div style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>
+              Duration: {formatWithUnit(ex.duration, dUnit)}{ex.qualifier ? ` ${ex.qualifier}` : ''}
+            </div>
+          )}
           {ex.percentages.map((_, si) => {
-            const targetReps = ex.repsPerSet?.[si] || ex.reps || '?';
+            const targetReps = ex.repsPerSet?.[si] || ex.reps || '';
             return (
               <div key={si}>
                 <div style={s.setLabel}>
-                  Set {si + 1}: {targetReps} reps{ex.qualifier ? ` ${ex.qualifier}` : ''}
+                  Set {si + 1}{targetReps ? `: ${targetReps} reps` : ''}{hasDuration && !hasReps ? `: ${formatWithUnit(ex.duration, dUnit)}` : ''}{ex.qualifier && !hasDuration ? ` ${ex.qualifier}` : ''}
                 </div>
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
                   <input
                     type="number"
-                    placeholder={`${targetReps} reps`}
-                    value={getTrack(si, 'reps')}
-                    onChange={(e) => onUpdateTracking(blockIndex, exIndex, si, 'reps', e.target.value)}
+                    placeholder="Weight (lbs)"
+                    value={getTrack(si, 'weight')}
+                    onChange={(e) => onUpdateTracking(blockIndex, exIndex, si, 'weight', e.target.value)}
                     style={{ ...s.condInput, flex: 1, marginBottom: 0, ...lockStyle }}
                     readOnly={inputLocked}
                   />
+                  {hasReps && (
+                    <input
+                      type="number"
+                      placeholder={`${targetReps || '?'} reps`}
+                      value={getTrack(si, 'reps')}
+                      onChange={(e) => onUpdateTracking(blockIndex, exIndex, si, 'reps', e.target.value)}
+                      style={{ ...s.condInput, flex: 1, marginBottom: 0, ...lockStyle }}
+                      readOnly={inputLocked}
+                    />
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          {ex.rest && <div style={s.detailRow}>Rest: {ex.rest}</div>}
+          {ex.notes && <div style={s.notesCard}>{ex.notes}</div>}
+          {renderMarkButton()}
+          {renderRecSection()}
+        </>
+      );
+    }
+
+    // Bodyweight exercises (pull-ups, dips, planks, etc.) - handles both reps and duration
+    if (isBodyweight && ex.isPercentageBased && Array.isArray(ex.percentages)) {
+      const bwSets = ex.percentages.length;
+      const dUnit = getUnitLabel(ex.durationUnit, 'sec');
+      const hasDuration = ex.duration;
+      const hasReps = ex.reps;
+
+      return (
+        <>
+          <div style={{ ...s.targetText, fontWeight: '700' }}>
+            Bodyweight — {bwSets} Sets{ex.qualifier ? ` (${ex.qualifier})` : ''}
+          </div>
+          {ex.percentages.map((_, si) => {
+            const targetReps = ex.repsPerSet?.[si] || ex.reps || '';
+            // Duration-based (planks, holds) vs reps-based (pull-ups, push-ups)
+            const setDescription = hasDuration && !hasReps
+              ? `${formatWithUnit(ex.duration, dUnit)}${ex.qualifier ? ` ${ex.qualifier}` : ''}`
+              : `${targetReps || '?'} reps${ex.qualifier ? ` ${ex.qualifier}` : ''}`;
+
+            return (
+              <div key={si}>
+                <div style={s.setLabel}>
+                  Set {si + 1}: {setDescription}
+                </div>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
+                  {hasDuration && !hasReps ? (
+                    // Duration input for holds/planks
+                    <input
+                      type="text"
+                      placeholder={`${ex.duration} ${dUnit}`}
+                      value={getTrack(si, 'duration')}
+                      onChange={(e) => onUpdateTracking(blockIndex, exIndex, si, 'duration', e.target.value)}
+                      style={{ ...s.condInput, flex: 1, marginBottom: 0, ...lockStyle }}
+                      readOnly={inputLocked}
+                    />
+                  ) : (
+                    // Reps input for regular bodyweight exercises
+                    <input
+                      type="number"
+                      placeholder={`${targetReps || '?'} reps`}
+                      value={getTrack(si, 'reps')}
+                      onChange={(e) => onUpdateTracking(blockIndex, exIndex, si, 'reps', e.target.value)}
+                      style={{ ...s.condInput, flex: 1, marginBottom: 0, ...lockStyle }}
+                      readOnly={inputLocked}
+                    />
+                  )}
                 </div>
               </div>
             );
@@ -503,25 +590,42 @@ export default function ExerciseCard({
           <div style={{ ...s.targetText, fontWeight: '700' }}>
             {ex.schemeName || 'Working Sets'} - Auto-Calculated Weights
           </div>
-          {ex.percentages.map((pct, si) => (
-            <div key={si}>
-              <div style={s.setLabel}>
-                Set {si + 1}: {calculateWeight(oneRM, pct)} lbs x{' '}
-                {ex.repsPerSet?.[si] || ex.reps || '?'} reps
+          {ex.percentages.map((pct, si) => {
+            const mainWeight = calculateWeight(oneRM, pct);
+            const mainReps = ex.repsPerSet?.[si] || ex.reps || '?';
+            const dropPct = ex.dropPercentages?.[si];
+            const dropReps = ex.dropRepsPerSet?.[si];
+            const stripPct = ex.stripPercentages?.[si];
+            const stripReps = ex.stripRepsPerSet?.[si];
+            const dropWeight = dropPct ? calculateWeight(oneRM, dropPct) : 0;
+            const stripWeight = stripPct ? calculateWeight(oneRM, stripPct) : 0;
+
+            // Build set label with drop/strip info
+            let setLabel = `Set ${si + 1}: ${mainWeight} lbs × ${mainReps}`;
+            if ((isDropSet || isStripSet) && dropPct && dropReps) {
+              setLabel += ` → ${dropWeight} lbs × ${dropReps}`;
+            }
+            if (isStripSet && stripPct && stripReps) {
+              setLabel += ` → ${stripWeight} lbs × ${stripReps}`;
+            }
+
+            return (
+              <div key={si}>
+                <div style={s.setLabel}>{setLabel}</div>
+                <TrackingInputs
+                  blockIndex={blockIndex}
+                  exIndex={exIndex}
+                  setIndex={si}
+                  weightValue={getTrack(si, 'weight')}
+                  repsValue={getTrack(si, 'reps')}
+                  weightPlaceholder={`${mainWeight} lbs${ex.qualifier && !isDropSet && !isStripSet ? ' ' + ex.qualifier : ''}`}
+                  repsPlaceholder={`${mainReps} reps`}
+                  onUpdate={onUpdateTracking}
+                  disabled={inputLocked}
+                />
               </div>
-              <TrackingInputs
-                blockIndex={blockIndex}
-                exIndex={exIndex}
-                setIndex={si}
-                weightValue={getTrack(si, 'weight')}
-                repsValue={getTrack(si, 'reps')}
-                weightPlaceholder={`${calculateWeight(oneRM, pct)} lbs${ex.qualifier ? ' ' + ex.qualifier : ''}`}
-                repsPlaceholder={`${ex.repsPerSet?.[si] || ex.reps || ''} reps`}
-                onUpdate={onUpdateTracking}
-                disabled={inputLocked}
-              />
-            </div>
-          ))}
+            );
+          })}
           {renderMarkButton()}
           {renderRecSection()}
         </>
