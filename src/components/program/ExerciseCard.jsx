@@ -923,7 +923,7 @@ export default function ExerciseCard({
         <div style={s.headerLeft}>
           <span>
             {exIndex + 1}. {ex.name}
-            {ex.qualifier && <span style={{ fontSize: '12px', color: '#888', fontWeight: '400' }}> ({ex.qualifier})</span>}
+            {ex.qualifier && <span style={{ fontSize: '12px', color: '#dc2626', fontWeight: '600' }}> ({ex.qualifier})</span>}
           </span>
           {ex.youtube && (
             <button
