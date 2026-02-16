@@ -81,6 +81,11 @@ export default function ProgramView({
   onUpdateProfile,
   accessCode,
   getWeeklyStats,
+  travelMode,
+  travelEquipment,
+  travelDay,
+  travelTotalDays,
+  onExitTravelMode,
 }) {
   const blocks = program?.blocks || [];
   const [showProfileEdit, setShowProfileEdit] = useState(false);
@@ -136,6 +141,44 @@ export default function ProgramView({
   return (
     <div style={s.container}>
       <div style={s.content}>
+        {travelMode && (
+          <div style={{
+            background: 'linear-gradient(135deg, #f97316, #ea580c)',
+            borderRadius: '12px',
+            padding: '14px 16px',
+            marginBottom: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '10px',
+          }}>
+            <div>
+              <div style={{ color: '#fff', fontWeight: 700, fontSize: '15px' }}>
+                Travel Mode — {travelEquipment === 'hotel_gym' ? 'Hotel Gym' : 'Bodyweight'} Day {travelDay} of {travelTotalDays}
+              </div>
+              <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '12px', marginTop: '2px' }}>
+                This won't affect your normal program position
+              </div>
+            </div>
+            <button
+              onClick={onExitTravelMode}
+              style={{
+                background: 'rgba(255,255,255,0.2)',
+                border: '1px solid rgba(255,255,255,0.4)',
+                color: '#fff',
+                borderRadius: '8px',
+                padding: '8px 14px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Exit Travel Mode
+            </button>
+          </div>
+        )}
+
         <ProgramHeader
           program={program}
           userName={userName}
@@ -166,8 +209,8 @@ export default function ProgramView({
             blockIndex={blockIndex}
             maxes={maxes}
             userName={userName}
-            savedBlockData={savedWorkout?.blocks?.[blockIndex]}
-            previousWeekBlock={previousWeekWorkout?.blocks?.[blockIndex]}
+            savedBlockData={savedWorkout?.data?.blocks?.[blockIndex]}
+            previousWeekBlock={previousWeekWorkout?.data?.blocks?.[blockIndex]}
             trackingData={trackingData}
             onUpdateTracking={onUpdateTracking}
             onMarkComplete={() => {}}

@@ -53,7 +53,60 @@ const TREE = {
       { label: "Let's talk training", next: "coaching_menu" },
       { label: "How do I use this tracker?", next: "tracker_help" },
       { label: "I need motivation", next: "motivation" },
+      { label: "I'm traveling!", next: "travel_intro" },
       { label: "Just saying hi!", next: "checkin" }
+    ]
+  },
+  // Travel workout nodes
+  travel_intro: {
+    message: "No problem! I've got travel workouts ready for you. How many days will you need workouts for?",
+    options: [
+      { label: "1 day", next: "travel_equipment_1" },
+      { label: "2 days", next: "travel_equipment_2" },
+      { label: "3 days", next: "travel_equipment_3" },
+      { label: "\u2190 Back", next: "entry" }
+    ]
+  },
+  travel_equipment_1: {
+    message: "Got it \u2014 1 day! What equipment do you have access to?",
+    options: [
+      { label: "Bodyweight only", next: "travel_load_bw_1" },
+      { label: "Hotel gym", next: "travel_load_hg_1" },
+      { label: "\u2190 Back", next: "travel_intro" }
+    ]
+  },
+  travel_equipment_2: {
+    message: "Nice \u2014 2 days! What equipment do you have access to?",
+    options: [
+      { label: "Bodyweight only", next: "travel_load_bw_2" },
+      { label: "Hotel gym", next: "travel_load_hg_2" },
+      { label: "\u2190 Back", next: "travel_intro" }
+    ]
+  },
+  travel_equipment_3: {
+    message: "Awesome \u2014 3 days! What equipment do you have access to?",
+    options: [
+      { label: "Bodyweight only", next: "travel_load_bw_3" },
+      { label: "Hotel gym", next: "travel_load_hg_3" },
+      { label: "\u2190 Back", next: "travel_intro" }
+    ]
+  },
+  travel_load_bw_1: { message: "Loading your bodyweight travel workout...", options: [] },
+  travel_load_bw_2: { message: "Loading your bodyweight travel workouts...", options: [] },
+  travel_load_bw_3: { message: "Loading your bodyweight travel workouts...", options: [] },
+  travel_load_hg_1: { message: "Loading your hotel gym travel workout...", options: [] },
+  travel_load_hg_2: { message: "Loading your hotel gym travel workouts...", options: [] },
+  travel_load_hg_3: { message: "Loading your hotel gym travel workouts...", options: [] },
+  travel_loaded: {
+    message: "Your travel workout is loaded! Close this chat and start training. When you're done, hit 'Log Workout' as usual. Come back here if you need more days!",
+    options: [
+      { label: "Thanks!", next: "entry" }
+    ]
+  },
+  travel_error: {
+    message: "Sorry, I couldn't load travel workouts. Your trainer may not have created any yet. Ask them to build some in the Workout Builder!",
+    options: [
+      { label: "OK, thanks", next: "entry" }
     ]
   },
   // Pain tree nodes are merged from PAIN_TREE (painTreeData.js)
@@ -134,7 +187,7 @@ const TREE = {
   }
 };
 
-const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, screen: currentScreen }, ref) => {
+const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, screen: currentScreen, onLoadTravel }, ref) => {
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const isOpen = isControlled ? controlledOpen : internalOpen;
@@ -200,7 +253,7 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
 
     setActiveVideo(null);
     setMessages(prev => {
-      setScrollToIndex(prev.length); // index of the user's message about to be added
+      setScrollToIndex(prev.length);
       return [
         ...prev,
         { text: option.label, isBot: false, timestamp: now },
@@ -208,7 +261,31 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
       ];
     });
     setCurrentNode(option.next);
-  }, [formatMessage]);
+
+    // Intercept travel_load_* nodes to trigger actual loading
+    const travelMatch = option.next.match(/^travel_load_(bw|hg)_(\d)$/);
+    if (travelMatch && onLoadTravel) {
+      const equipmentType = travelMatch[1] === 'bw' ? 'bodyweight' : 'hotel_gym';
+      const totalDays = parseInt(travelMatch[2]);
+      onLoadTravel(equipmentType, totalDays)
+        .then(() => {
+          const successNode = TREE.travel_loaded;
+          setMessages(prev => [
+            ...prev,
+            { text: successNode.message, isBot: true, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+          ]);
+          setCurrentNode('travel_loaded');
+        })
+        .catch(() => {
+          const errorNode = TREE.travel_error;
+          setMessages(prev => [
+            ...prev,
+            { text: errorNode.message, isBot: true, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+          ]);
+          setCurrentNode('travel_error');
+        });
+    }
+  }, [formatMessage, onLoadTravel]);
 
   useImperativeHandle(ref, () => ({
     getConversationSummary: () => ({

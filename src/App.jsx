@@ -64,6 +64,14 @@ export default function App() {
 
   const chatbotRef = useRef(null);
 
+  // Travel mode state
+  const [travelMode, setTravelMode] = useState(false);
+  const [travelEquipment, setTravelEquipment] = useState(null); // 'bodyweight' | 'hotel_gym'
+  const [travelDay, setTravelDay] = useState(1);
+  const [travelTotalDays, setTravelTotalDays] = useState(1);
+  const [travelWorkouts, setTravelWorkouts] = useState([]); // array of travel workout objects
+  const [savedProgramBeforeTravel, setSavedProgramBeforeTravel] = useState(null);
+
   // --- Helpers ---
 
   const initializeTrackingFromSaved = useCallback((saved) => {
@@ -344,6 +352,105 @@ export default function App() {
     }
   }, [api, setProgram, setCurrentWeek, setCurrentDay, setDaysPerWeek, setTotalWeeks, setMaxes, setUser, setSavedWorkout, setPreviousWeekWorkout, setIsCustomWorkout, setCustomReason, setScreen, initializeTrackingFromSaved]);
 
+  // --- Travel Mode Handlers ---
+
+  const handleLoadTravelWorkout = useCallback(async (equipmentType, totalDays) => {
+    // Save current program state so we can restore it later
+    setSavedProgramBeforeTravel({
+      program,
+      currentWeek,
+      currentDay,
+      daysPerWeek,
+      totalWeeks,
+      savedWorkout,
+      trackingData,
+    });
+
+    try {
+      let travelData;
+      if (window.location.hostname === 'localhost') {
+        // Mock travel workouts for dev
+        travelData = [
+          { equipment_type: equipmentType, day_number: 1, workout_name: `${equipmentType} Day 1`, workout_data: { blocks: [{ type: 'straight-set', exercises: [{ name: 'Push-ups', sets: 3, reps: '15' }, { name: 'Air Squats', sets: 3, reps: '20' }] }] } },
+          { equipment_type: equipmentType, day_number: 2, workout_name: `${equipmentType} Day 2`, workout_data: { blocks: [{ type: 'circuit', circuitType: 'amrap', timeLimit: 10, exercises: [{ name: 'Burpees', sets: 1, reps: '10' }, { name: 'Mountain Climbers', sets: 1, reps: '20' }] }] } },
+          { equipment_type: equipmentType, day_number: 3, workout_name: `${equipmentType} Day 3`, workout_data: { blocks: [{ type: 'superset', exercises: [{ name: 'Lunges', sets: 3, reps: '12 each' }, { name: 'Plank', sets: 3, duration: '30 sec' }] }] } },
+        ];
+      } else {
+        const days = Array.from({ length: totalDays }, (_, i) => i + 1);
+        const result = await api.getTravelWorkouts({ equipmentType, days });
+        if (!result.success || !result.data || result.data.length === 0) {
+          throw new Error('No travel workouts found');
+        }
+        travelData = result.data;
+      }
+
+      // Filter to requested days
+      const filtered = travelData
+        .filter(w => w.equipment_type === equipmentType && w.day_number <= totalDays)
+        .sort((a, b) => a.day_number - b.day_number);
+
+      if (filtered.length === 0) throw new Error('No travel workouts found');
+
+      setTravelWorkouts(filtered);
+      setTravelEquipment(equipmentType);
+      setTravelTotalDays(totalDays);
+      setTravelDay(1);
+      setTravelMode(true);
+
+      // Load first day's blocks into the program
+      const firstDay = filtered[0];
+      const blocks = firstDay.workout_data?.blocks || (Array.isArray(firstDay.workout_data) ? firstDay.workout_data : []);
+      setProgram(prev => ({
+        ...prev,
+        name: firstDay.workout_name || `Travel: ${equipmentType === 'hotel_gym' ? 'Hotel Gym' : 'Bodyweight'} Day 1`,
+        blocks,
+      }));
+      setTrackingData({});
+      setRecommendations({});
+    } catch (err) {
+      console.error('Failed to load travel workouts:', err);
+      throw err; // Let chatbot handle the error
+    }
+  }, [program, currentWeek, currentDay, daysPerWeek, totalWeeks, savedWorkout, trackingData, api, setProgram, setRecommendations]);
+
+  const handleTravelNavigate = useCallback((direction) => {
+    const newDay = travelDay + direction;
+    if (newDay < 1 || newDay > travelTotalDays) return;
+
+    const workout = travelWorkouts.find(w => w.day_number === newDay);
+    if (!workout) return;
+
+    setTravelDay(newDay);
+    const blocks = workout.workout_data?.blocks || (Array.isArray(workout.workout_data) ? workout.workout_data : []);
+    setProgram(prev => ({
+      ...prev,
+      name: workout.workout_name || `Travel: ${travelEquipment === 'hotel_gym' ? 'Hotel Gym' : 'Bodyweight'} Day ${newDay}`,
+      blocks,
+    }));
+    setTrackingData({});
+    setRecommendations({});
+  }, [travelDay, travelTotalDays, travelWorkouts, travelEquipment, setProgram, setRecommendations]);
+
+  const handleExitTravelMode = useCallback(() => {
+    setTravelMode(false);
+    setTravelWorkouts([]);
+    setTravelEquipment(null);
+    setTravelDay(1);
+    setTravelTotalDays(1);
+
+    // Restore original program
+    if (savedProgramBeforeTravel) {
+      setProgram(savedProgramBeforeTravel.program);
+      setCurrentWeek(savedProgramBeforeTravel.currentWeek);
+      setCurrentDay(savedProgramBeforeTravel.currentDay);
+      setDaysPerWeek(savedProgramBeforeTravel.daysPerWeek);
+      setTotalWeeks(savedProgramBeforeTravel.totalWeeks);
+      setSavedWorkout(savedProgramBeforeTravel.savedWorkout);
+      setTrackingData(savedProgramBeforeTravel.trackingData);
+      setSavedProgramBeforeTravel(null);
+    }
+  }, [savedProgramBeforeTravel, setProgram, setCurrentWeek, setCurrentDay, setDaysPerWeek, setTotalWeeks, setSavedWorkout]);
+
   // --- Handlers ---
 
   const handleLoadProgram = useCallback((formData, isReturningUser) => {
@@ -430,6 +537,12 @@ export default function App() {
   const isMockMode = window.location.hostname === 'localhost';
 
   const handleNavigateDay = useCallback(async (direction) => {
+    // Travel mode navigation
+    if (travelMode) {
+      handleTravelNavigate(direction);
+      return;
+    }
+
     if (!daysPerWeek || !totalWeeks) return;
 
     let newWeek = currentWeek;
@@ -448,7 +561,7 @@ export default function App() {
     if (!isMockMode) {
       await handleLoadProgramFromAPI(newWeek, newDay);
     }
-  }, [currentWeek, currentDay, daysPerWeek, totalWeeks, isMockMode, setCurrentWeek, setCurrentDay, setRecommendations, handleLoadProgramFromAPI]);
+  }, [currentWeek, currentDay, daysPerWeek, totalWeeks, isMockMode, travelMode, handleTravelNavigate, setCurrentWeek, setCurrentDay, setRecommendations, handleLoadProgramFromAPI]);
 
   const handleNavigateToDay = useCallback(async (week, day) => {
     if (week === currentWeek && day === currentDay) return;
@@ -641,14 +754,14 @@ export default function App() {
         // In dev mode, simulate successful log
         result = { success: true, data: {} };
       } else {
-        result = await api.logWorkout({
+        const logPayload = {
           user_name: user.name,
           user_email: user.email,
           program_code: user.accessCode,
           program_name: program?.name || 'Workout',
           workout_data: workoutData,
-          current_week: currentWeek,
-          current_day: currentDay,
+          current_week: travelMode ? 0 : currentWeek,
+          current_day: travelMode ? travelDay : currentDay,
           days_per_week: daysPerWeek,
           total_weeks: totalWeeks,
           one_rm_bench: maxes.bench || null,
@@ -657,7 +770,17 @@ export default function App() {
           one_rm_clean: maxes.clean || null,
           chatbot_data: chatbotData,
           volume_stats: volumeStats,
-        });
+        };
+
+        // Add travel fields if in travel mode
+        if (travelMode) {
+          logPayload.is_travel_workout = true;
+          logPayload.travel_equipment = travelEquipment;
+          logPayload.travel_day = travelDay;
+          logPayload.travel_total_days = travelTotalDays;
+        }
+
+        result = await api.logWorkout(logPayload);
       }
 
       if (result.success) {
@@ -665,7 +788,8 @@ export default function App() {
         const historyKey = `gwt_history_${user.accessCode}_${user.email}`;
         try {
           const existing = JSON.parse(localStorage.getItem(historyKey) || '{}');
-          existing[`w${currentWeek}d${currentDay}`] = {
+          const dayLabel = travelMode ? `travel-${travelEquipment}-d${travelDay}` : `w${currentWeek}d${currentDay}`;
+          existing[dayLabel] = {
             logged_at: new Date().toISOString(),
             data: workoutData,
             volume_stats: volumeStats,
@@ -675,7 +799,16 @@ export default function App() {
 
         setLastVolumeStats(volumeStats);
 
-        if (result.data?.program_complete) {
+        if (travelMode) {
+          // Travel mode: auto-advance to next travel day or show congrats
+          setShowCongratsModal(true);
+          if (travelDay < travelTotalDays) {
+            setTimeout(() => {
+              handleTravelNavigate(1);
+            }, 2000);
+          }
+          // If last travel day, user stays in travel mode — they can exit manually
+        } else if (result.data?.program_complete) {
           setShowCompletionModal(true);
         } else {
           setShowCongratsModal(true);
@@ -714,7 +847,7 @@ export default function App() {
     } catch (err) {
       console.error('Failed to log workout:', err);
     }
-  }, [currentWeek, currentDay, program, trackingData, recommendations, api, user, daysPerWeek, totalWeeks, maxes, profile, cumulativeWeeks, setCurrentWeek, setCurrentDay, setRecommendations, handleLoadProgramFromAPI]);
+  }, [currentWeek, currentDay, program, trackingData, recommendations, api, user, daysPerWeek, totalWeeks, maxes, profile, cumulativeWeeks, travelMode, travelEquipment, travelDay, travelTotalDays, handleTravelNavigate, setCurrentWeek, setCurrentDay, setRecommendations, handleLoadProgramFromAPI]);
 
   const handleSubmitCompletion = useCallback(async (completionData) => {
     try {
@@ -779,12 +912,17 @@ export default function App() {
           onUpdateProfile={setProfile}
           accessCode={user.accessCode}
           getWeeklyStats={api.getWeeklyStats}
+          travelMode={travelMode}
+          travelEquipment={travelEquipment}
+          travelDay={travelDay}
+          travelTotalDays={travelTotalDays}
+          onExitTravelMode={handleExitTravelMode}
         />
       )}
 
       {/* Floating chatbot - on access and program screens */}
       {(screen === 'access' || screen === 'program') && (
-        <WorkoutChatbot ref={chatbotRef} userName={user?.name || 'there'} screen={screen} />
+        <WorkoutChatbot ref={chatbotRef} userName={user?.name || 'there'} screen={screen} onLoadTravel={handleLoadTravelWorkout} />
       )}
 
       {/* Modals */}
@@ -832,10 +970,10 @@ export default function App() {
             Week {gameWeek} &mdash; {getWeekConfig(gameWeek).fullName} 🥋
           </div>
           <div style={{ display: 'flex', gap: 16 }}>
-            <button onClick={() => { setShowGamePrompt(false); setShowGame(true); }} style={{ padding: '14px 28px', fontFamily: "'Press Start 2P', cursive", fontSize: 'clamp(11px, 3vw, 14px)', background: '#228B22', border: '3px solid #FFD700', color: '#FFD700', cursor: 'pointer' }}>
+            <button onClick={() => { setShowGamePrompt(false); setShowGame(true); }} style={{ padding: '14px 28px', fontFamily: "Arial, sans-serif", fontSize: 'clamp(14px, 3.5vw, 18px)', fontWeight: 'bold', background: '#228B22', border: '3px solid #FFD700', color: '#FFFFFF', cursor: 'pointer', letterSpacing: '1px' }}>
               LET'S GO!
             </button>
-            <button onClick={() => setShowGamePrompt(false)} style={{ padding: '14px 28px', fontFamily: "'Press Start 2P', cursive", fontSize: 'clamp(11px, 3vw, 14px)', background: '#8B0000', border: '3px solid #FFD700', color: '#FFD700', cursor: 'pointer' }}>
+            <button onClick={() => setShowGamePrompt(false)} style={{ padding: '14px 28px', fontFamily: "Arial, sans-serif", fontSize: 'clamp(14px, 3.5vw, 18px)', fontWeight: 'bold', background: '#8B0000', border: '3px solid #FFD700', color: '#FFFFFF', cursor: 'pointer', letterSpacing: '1px' }}>
               SKIP
             </button>
           </div>
