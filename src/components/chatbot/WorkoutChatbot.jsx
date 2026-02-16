@@ -64,7 +64,16 @@ const TREE = {
       { label: "1 day", next: "travel_equipment_1" },
       { label: "2 days", next: "travel_equipment_2" },
       { label: "3 days", next: "travel_equipment_3" },
+      { label: "4+ days", next: "travel_extended" },
       { label: "\u2190 Back", next: "entry" }
+    ]
+  },
+  travel_extended: {
+    message: "Here's the deal with vacation or work travel \u2014 something is always better than nothing! Grab the 3-day plan and just repeat it for however long you're gone. Cycle through Day 1, 2, 3, then back to Day 1. And if you want to skip a day to go explore? Do it. Enjoy your trip! You'll come back ready to crush it.",
+    options: [
+      { label: "Give me 3 days!", next: "travel_equipment_3" },
+      { label: "Thanks for the advice!", next: "entry" },
+      { label: "\u2190 Back", next: "travel_intro" }
     ]
   },
   travel_equipment_1: {
