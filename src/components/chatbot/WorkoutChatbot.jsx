@@ -81,6 +81,7 @@ const TREE = {
     options: [
       { label: "Bodyweight only", next: "travel_load_bw_1" },
       { label: "Hotel gym", next: "travel_load_hg_1" },
+      { label: "Bands & bodyweight", next: "travel_load_bb_1" },
       { label: "\u2190 Back", next: "travel_intro" }
     ]
   },
@@ -89,6 +90,7 @@ const TREE = {
     options: [
       { label: "Bodyweight only", next: "travel_load_bw_2" },
       { label: "Hotel gym", next: "travel_load_hg_2" },
+      { label: "Bands & bodyweight", next: "travel_load_bb_2" },
       { label: "\u2190 Back", next: "travel_intro" }
     ]
   },
@@ -97,6 +99,7 @@ const TREE = {
     options: [
       { label: "Bodyweight only", next: "travel_load_bw_3" },
       { label: "Hotel gym", next: "travel_load_hg_3" },
+      { label: "Bands & bodyweight", next: "travel_load_bb_3" },
       { label: "\u2190 Back", next: "travel_intro" }
     ]
   },
@@ -106,6 +109,9 @@ const TREE = {
   travel_load_hg_1: { message: "Loading your hotel gym travel workout...", options: [] },
   travel_load_hg_2: { message: "Loading your hotel gym travel workouts...", options: [] },
   travel_load_hg_3: { message: "Loading your hotel gym travel workouts...", options: [] },
+  travel_load_bb_1: { message: "Loading your bands & bodyweight travel workout...", options: [] },
+  travel_load_bb_2: { message: "Loading your bands & bodyweight travel workouts...", options: [] },
+  travel_load_bb_3: { message: "Loading your bands & bodyweight travel workouts...", options: [] },
   travel_loaded: {
     message: "Your travel workout is loaded! Close this chat and start training. When you're done, hit 'Log Workout' as usual. Come back here if you need more days!",
     options: [
@@ -272,9 +278,10 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
     setCurrentNode(option.next);
 
     // Intercept travel_load_* nodes to trigger actual loading
-    const travelMatch = option.next.match(/^travel_load_(bw|hg)_(\d)$/);
+    const travelMatch = option.next.match(/^travel_load_(bw|hg|bb)_(\d)$/);
     if (travelMatch && onLoadTravel) {
-      const equipmentType = travelMatch[1] === 'bw' ? 'bodyweight' : 'hotel_gym';
+      const equipMap = { bw: 'bodyweight', hg: 'hotel_gym', bb: 'bands_bodyweight' };
+      const equipmentType = equipMap[travelMatch[1]];
       const totalDays = parseInt(travelMatch[2]);
       onLoadTravel(equipmentType, totalDays)
         .then(() => {
