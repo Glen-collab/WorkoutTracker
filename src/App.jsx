@@ -378,10 +378,12 @@ export default function App() {
       } else {
         const days = Array.from({ length: totalDays }, (_, i) => i + 1);
         const result = await api.getTravelWorkouts({ equipmentType, days });
-        if (!result.success || !result.data || result.data.length === 0) {
+        // API returns array directly in result.data, or wrapped in result.data.workouts
+        const workoutList = Array.isArray(result?.data) ? result.data : (result?.data?.workouts || []);
+        if (!result.success || workoutList.length === 0) {
           throw new Error('No travel workouts found');
         }
-        travelData = result.data;
+        travelData = workoutList;
       }
 
       // Filter to requested days
