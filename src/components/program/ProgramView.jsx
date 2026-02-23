@@ -105,16 +105,17 @@ export default function ProgramView({
     const effectiveWeight = userWeight > 0 ? userWeight : getDefaultWeight(userGender);
     const weightKg = effectiveWeight * 0.453592;
 
-    let tonnage = 0, coreEquiv = 0, cardioMinutes = 0, cardioMiles = 0;
+    let tonnage = 0, coreEquiv = 0, cardioMinutes = 0, cardioMiles = 0, cardioCal = 0;
     let completedExercises = 0;
 
     (blocks || []).forEach((block, blockIndex) => {
       const bt = calcBlockTonnage(block, maxes || {}, trackingData, blockIndex, userWeight, userGender);
       tonnage += bt.tonnage;
       coreEquiv += bt.coreEquiv;
-      const c = calcCardio(block, trackingData, blockIndex);
+      const c = calcCardio(block, trackingData, blockIndex, weightKg);
       cardioMinutes += c.minutes;
       cardioMiles += c.miles;
+      cardioCal += c.calories;
       // Count completed exercises for calorie estimate
       (block.exercises || []).forEach((ex, exIndex) => {
         if (trackingData?.[`complete-${blockIndex}-${exIndex}`]) completedExercises++;
@@ -126,12 +127,6 @@ export default function ProgramView({
     const baseMET = 6;
     const strengthCal = baseMET * weightKg * (strengthMinutes / 60);
     const tonnageBonus = (tonnage / 1000) * 10; // ~10 cal per 1000 lbs lifted
-
-    // Cardio: pick the higher of time-based OR distance-based (not both)
-    const cardioMET = 7.5;
-    const cardioTimeCal = cardioMET * weightKg * (cardioMinutes / 60);
-    const cardioDistanceCal = cardioMiles * 100; // ~100 cal per mile
-    const cardioCal = Math.max(cardioTimeCal, cardioDistanceCal);
 
     const estCalories = Math.round(strengthCal + tonnageBonus + cardioCal);
 

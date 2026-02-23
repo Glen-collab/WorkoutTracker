@@ -256,6 +256,14 @@ export function calcBlockTonnage(block, maxes, trackingData, blockIndex, userWei
     const percentages = ex.percentages || (isPercentage && Array.isArray(ex.sets) ? ex.sets.map(s => s.percentage) : null);
     const repsPerSet = ex.repsPerSet || (isPercentage && Array.isArray(ex.sets) ? ex.sets.map(s => s.reps) : null);
 
+    // Drop/strip set data
+    const isDropSet = ex.qualifier === 'drop set';
+    const isStripSet = ex.qualifier === 'strip set';
+    const dropPercentages = ex.dropPercentages || (isPercentage && Array.isArray(ex.sets) ? ex.sets.map(s => s.dropPercentage) : null);
+    const dropRepsPerSet = ex.dropRepsPerSet || (isPercentage && Array.isArray(ex.sets) ? ex.sets.map(s => s.dropReps) : null);
+    const stripPercentages = ex.stripPercentages || (isPercentage && Array.isArray(ex.sets) ? ex.sets.map(s => s.stripPercentage) : null);
+    const stripRepsPerSet = ex.stripRepsPerSet || (isPercentage && Array.isArray(ex.sets) ? ex.sets.map(s => s.stripReps) : null);
+
     // Read actual tracked weights/reps from user input
     for (let si = 0; si < setsCount; si++) {
       const trackedWeight = parseFloat(trackingData?.[`${blockIndex}-${exIndex}-${si}-weight`]) || 0;
@@ -272,6 +280,18 @@ export function calcBlockTonnage(block, maxes, trackingData, blockIndex, userWei
         const calcReps = trackedReps || parseFloat(repsPerSet?.[si]) || parseFloat(ex.reps) || 0;
         if (calcWeight > 0 && calcReps > 0) {
           tonnage += calcWeight * calcReps * mult;
+
+          // Add drop set tonnage
+          if ((isDropSet || isStripSet) && dropPercentages?.[si] && dropRepsPerSet?.[si]) {
+            const dropWeight = Math.round(baseMax * dropPercentages[si] / 100 / 5) * 5;
+            tonnage += dropWeight * dropRepsPerSet[si] * mult;
+          }
+
+          // Add strip set tonnage (third drop)
+          if (isStripSet && stripPercentages?.[si] && stripRepsPerSet?.[si]) {
+            const stripWeight = Math.round(baseMax * stripPercentages[si] / 100 / 5) * 5;
+            tonnage += stripWeight * stripRepsPerSet[si] * mult;
+          }
         } else if (calcReps > 0) {
           // No max entered and no tracked weight - use tiered bodyweight calories
           bwCalories += calcBodyweightCalories(ex.name, calcReps * mult, effectiveWeight);
@@ -328,9 +348,66 @@ function toMiles(value, unit) {
   }
 }
 
-export function calcCardio(block, trackingData, blockIndex) {
-  let minutes = 0, miles = 0;
-  if (!block?.exercises) return { minutes, miles };
+// Machine-specific MET values and typical paces (meters per minute)
+// pace = null means distance input isn't typical for that machine
+const CARDIO_MACHINES = {
+  'rowing machine':   { met: 7.0,  pace: 250 },  // ~2:00/500m moderate
+  'rower':            { met: 7.0,  pace: 250 },
+  'skierg':           { met: 7.5,  pace: 220 },  // ~2:16/500m moderate
+  'ski erg':          { met: 7.5,  pace: 220 },
+  'assault bike':     { met: 10.5, pace: null },  // cal-based, no distance
+  'air bike':         { met: 8.5,  pace: null },
+  'echo bike':        { met: 8.5,  pace: null },
+  'treadmill':        { met: 8.3,  pace: 160 },  // ~6mph jog
+  'elliptical':       { met: 5.0,  pace: null },
+  'stationary bike':  { met: 6.8,  pace: 275 },
+  'recumbent bike':   { met: 5.5,  pace: null },
+  'spin bike':        { met: 8.5,  pace: null },
+  'concept2 bikeerg': { met: 7.0,  pace: 275 },
+  'bikeerg':          { met: 7.0,  pace: 275 },
+  'stair climber':    { met: 9.0,  pace: null },
+  'stairmaster':      { met: 9.0,  pace: null },
+  'versaclimber':     { met: 10.0, pace: null },
+  "jacob's ladder":   { met: 10.0, pace: null },
+  'jacobs ladder':    { met: 10.0, pace: null },
+};
+const CARDIO_DEFAULT = { met: 7.0, pace: 200 };
+
+// Match exercise name to a cardio machine's MET + pace
+function getCardioMachine(exerciseName) {
+  if (!exerciseName) return CARDIO_DEFAULT;
+  const name = exerciseName.toLowerCase();
+  for (const [key, val] of Object.entries(CARDIO_MACHINES)) {
+    if (name.includes(key)) return val;
+  }
+  return CARDIO_DEFAULT;
+}
+
+// Estimate calories for a single cardio exercise
+// Always converts to MET * weightKg * (minutes / 60) so distance and time converge
+function estimateCardioCalories(exerciseName, minutes, miles, weightKg) {
+  const machine = getCardioMachine(exerciseName);
+  let effectiveMinutes = 0;
+
+  if (minutes > 0) {
+    // Time given — use it directly (most accurate)
+    effectiveMinutes = minutes;
+  } else if (miles > 0 && machine.pace) {
+    // Only distance given — estimate time from machine pace
+    const meters = miles * 1609.34;
+    effectiveMinutes = meters / machine.pace;
+  } else if (miles > 0) {
+    // Distance given but machine has no pace — use default pace
+    const meters = miles * 1609.34;
+    effectiveMinutes = meters / CARDIO_DEFAULT.pace;
+  }
+
+  return machine.met * weightKg * (effectiveMinutes / 60);
+}
+
+export function calcCardio(block, trackingData, blockIndex, weightKg) {
+  let minutes = 0, miles = 0, calories = 0;
+  if (!block?.exercises) return { minutes, miles, calories };
 
   // For conditioning/movement blocks, default distance unit is meters
   // For cardio blocks, default distance unit is miles
@@ -354,16 +431,22 @@ export function calcCardio(block, trackingData, blockIndex) {
     const distNum = parseFloat(String(distanceVal).match(/([\d.]+)/)?.[1] || 0);
     const distanceUnit = ex.distanceUnit || (distNum >= 100 ? 'm' : defaultDistanceUnit);
 
+    let exMinutes = 0, exMiles = 0;
     if (durationVal) {
       const m = String(durationVal).match(/([\d.]+)/);
-      if (m) minutes += toMinutes(m[1], durationUnit);
+      if (m) exMinutes = toMinutes(m[1], durationUnit);
     }
     if (distanceVal) {
       const d = String(distanceVal).match(/([\d.]+)/);
-      if (d) miles += toMiles(d[1], distanceUnit);
+      if (d) exMiles = toMiles(d[1], distanceUnit);
+    }
+    minutes += exMinutes;
+    miles += exMiles;
+    if (weightKg > 0) {
+      calories += estimateCardioCalories(ex.name, exMinutes, exMiles, weightKg);
     }
   });
-  return { minutes, miles };
+  return { minutes, miles, calories };
 }
 
 const s = {
@@ -435,15 +518,16 @@ export default function DailyTonnage({ blocks, maxes, trackingData, userWeight, 
     const effectiveWeight = userWeight > 0 ? userWeight : getDefaultWeight(userGender);
     const weightKg = effectiveWeight * 0.453592;
     let ton = 0, core = 0;
-    let min = 0, mi = 0;
+    let min = 0, mi = 0, cardioCal = 0;
     let completedExercises = 0;
     (blocks || []).forEach((block, blockIndex) => {
       const bt = calcBlockTonnage(block, maxes || {}, trackingData, blockIndex, userWeight || 0, userGender);
       ton += bt.tonnage;
       core += bt.coreEquiv;
-      const c = calcCardio(block, trackingData, blockIndex);
+      const c = calcCardio(block, trackingData, blockIndex, weightKg);
       min += c.minutes;
       mi += c.miles;
+      cardioCal += c.calories;
       // Count completed exercises for calorie estimate
       (block.exercises || []).forEach((ex, exIndex) => {
         if (trackingData?.[`complete-${blockIndex}-${exIndex}`]) completedExercises++;
@@ -451,17 +535,11 @@ export default function DailyTonnage({ blocks, maxes, trackingData, userWeight, 
     });
     // Calorie estimate: MET formula + work bonuses
     // Strength: base MET + tonnage bonus (heavier = more calories)
-    // Cardio: use HIGHER of time-based OR distance-based (not both)
+    // Cardio: per-exercise MET-based (machine-specific, bodyweight-scaled)
     const strengthMinutes = completedExercises * 3;
     const baseMET = 6;
     const strengthCal = baseMET * weightKg * (strengthMinutes / 60);
     const tonnageBonus = (ton / 1000) * 10; // ~10 cal per 1000 lbs lifted
-
-    // Cardio: pick the higher calculation to avoid double-counting
-    const cardioMET = 7.5;
-    const cardioTimeCal = cardioMET * weightKg * (min / 60);
-    const cardioDistanceCal = mi * 100; // ~100 cal per mile
-    const cardioCal = Math.max(cardioTimeCal, cardioDistanceCal);
 
     const calories = Math.round(strengthCal + tonnageBonus + cardioCal);
     return { tonnage: ton, cardio: { minutes: min, miles: mi }, coreEquiv: core, estCalories: calories };

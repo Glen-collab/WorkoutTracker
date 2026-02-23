@@ -582,9 +582,11 @@ export default function TestYourMight({ isOpen, onClose, weekNumber, benchMax })
   };
 
   const btnStyle = {
-    marginTop: 16, padding: '12px 24px', fontFamily: "'Press Start 2P', cursive",
-    fontSize: 'clamp(10px, 2.5vw, 12px)', background: '#8B0000', border: '3px solid #FFD700',
-    color: '#FFD700', cursor: 'pointer', transition: 'all 0.3s',
+    marginTop: 16, padding: '12px 24px', fontFamily: "Arial, sans-serif",
+    fontSize: 'clamp(12px, 3vw, 16px)', fontWeight: 'bold', textTransform: 'uppercase',
+    background: '#8B0000', border: '3px solid #FFD700',
+    color: '#FFFFFF', cursor: 'pointer', transition: 'all 0.3s',
+    letterSpacing: '1px',
   };
 
   const closeBtnStyle = {

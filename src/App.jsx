@@ -692,7 +692,7 @@ export default function App() {
       const userGender = profile?.gender || '';
       const userWeight = profile?.weight || getDefaultWeight(userGender);
       const weightKg = userWeight * 0.453592;
-      let totalTonnage = 0, totalCore = 0, totalCardioMin = 0, totalCardioMiles = 0;
+      let totalTonnage = 0, totalCore = 0, totalCardioMin = 0, totalCardioMiles = 0, totalCardioCal = 0;
       let totalBwCalories = 0; // Tiered bodyweight/functional exercise calories
       let completedExercises = 0;
       let warmupExercises = 0, cooldownExercises = 0;
@@ -713,9 +713,10 @@ export default function App() {
         totalTonnage += bt.tonnage;
         totalCore += bt.coreEquiv;
         totalBwCalories += bt.bwCalories || 0; // Add tiered bodyweight calories
-        const c = calcCardio(block, trackingData, blockIndex);
+        const c = calcCardio(block, trackingData, blockIndex, weightKg);
         totalCardioMin += c.minutes;
         totalCardioMiles += c.miles;
+        totalCardioCal += c.calories;
         // Count completed exercises for calorie estimate (only weighted exercises)
         (block.exercises || []).forEach((ex, exIndex) => {
           if (trackingData?.[`complete-${blockIndex}-${exIndex}`]) completedExercises++;
@@ -734,14 +735,8 @@ export default function App() {
       const strengthCal = baseMET * weightKg * (strengthMinutes / 60);
       const tonnageBonus = (totalTonnage / 1000) * 10; // ~10 cal per 1000 lbs lifted
 
-      // Cardio: pick the higher of time-based OR distance-based (not both)
-      const cardioMET = 7.5;
-      const cardioTimeCal = cardioMET * weightKg * (totalCardioMin / 60);
-      const cardioDistanceCal = totalCardioMiles * 100; // ~100 cal per mile
-      const cardioCal = Math.max(cardioTimeCal, cardioDistanceCal);
-
-      // Total: warmup + cooldown + strength + tonnage bonus + bodyweight + cardio
-      const estCalories = Math.round(warmupCal + cooldownCal + strengthCal + tonnageBonus + totalBwCalories + cardioCal);
+      // Total: warmup + cooldown + strength + tonnage bonus + bodyweight + cardio (per-exercise MET-based)
+      const estCalories = Math.round(warmupCal + cooldownCal + strengthCal + tonnageBonus + totalBwCalories + totalCardioCal);
 
       const volumeStats = {
         tonnage: Math.round(totalTonnage),
