@@ -178,14 +178,14 @@ export default function ProgramView({
           program={program}
           userName={userName}
           userEmail={userEmail}
-          currentWeek={currentWeek}
-          currentDay={currentDay}
-          daysPerWeek={daysPerWeek}
-          totalWeeks={totalWeeks}
+          currentWeek={travelMode ? 1 : currentWeek}
+          currentDay={travelMode ? travelDay : currentDay}
+          daysPerWeek={travelMode ? travelTotalDays : daysPerWeek}
+          totalWeeks={travelMode ? 1 : totalWeeks}
           onNavigate={onNavigate}
           onNavigateToDay={onNavigateToDay}
-          isFirstDay={isFirstDay}
-          isLastDay={isLastDay}
+          isFirstDay={travelMode ? travelDay <= 1 : isFirstDay}
+          isLastDay={travelMode ? travelDay >= travelTotalDays : isLastDay}
           isCustomWorkout={isCustomWorkout}
           customReason={customReason}
         />

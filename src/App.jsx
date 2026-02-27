@@ -386,16 +386,20 @@ export default function App() {
         travelData = workoutList;
       }
 
-      // Filter to requested days
+      // Normalize day_number to integer (PHP fetch_assoc returns strings)
+      // then filter to requested days
       const filtered = travelData
+        .map(w => ({ ...w, day_number: Number(w.day_number) }))
         .filter(w => w.equipment_type === equipmentType && w.day_number <= totalDays)
         .sort((a, b) => a.day_number - b.day_number);
 
       if (filtered.length === 0) throw new Error('No travel workouts found');
 
+      console.log('[Travel Load] filtered:', filtered.length, 'days:', filtered.map(w => ({ day: w.day_number, type: typeof w.day_number, blocks: w.workout_data?.blocks?.length || (Array.isArray(w.workout_data) ? w.workout_data.length : 0) })));
+
       setTravelWorkouts(filtered);
       setTravelEquipment(equipmentType);
-      setTravelTotalDays(totalDays);
+      setTravelTotalDays(filtered.length);
       setTravelDay(1);
       setTravelMode(true);
 
@@ -419,7 +423,11 @@ export default function App() {
     const newDay = travelDay + direction;
     if (newDay < 1 || newDay > travelTotalDays) return;
 
-    const workout = travelWorkouts.find(w => w.day_number === newDay);
+    // Find by day_number, fallback to index-based lookup
+    let workout = travelWorkouts.find(w => w.day_number === newDay);
+    if (!workout && travelWorkouts[newDay - 1]) {
+      workout = travelWorkouts[newDay - 1];
+    }
     if (!workout) return;
 
     setTravelDay(newDay);
@@ -566,6 +574,33 @@ export default function App() {
   }, [currentWeek, currentDay, daysPerWeek, totalWeeks, isMockMode, travelMode, handleTravelNavigate, setCurrentWeek, setCurrentDay, setRecommendations, handleLoadProgramFromAPI]);
 
   const handleNavigateToDay = useCallback(async (week, day) => {
+    // Travel mode: navigate between travel days
+    if (travelMode) {
+      console.log('[Travel Nav] day:', day, 'travelDay:', travelDay, 'travelWorkouts:', travelWorkouts.length, 'day_numbers:', travelWorkouts.map(w => w.day_number));
+      if (day === travelDay) return;
+      // Find by day_number, fallback to index-based lookup
+      let workout = travelWorkouts.find(w => w.day_number === day);
+      if (!workout && travelWorkouts[day - 1]) {
+        console.log('[Travel Nav] find() missed, using index fallback');
+        workout = travelWorkouts[day - 1];
+      }
+      if (!workout) {
+        console.log('[Travel Nav] No workout found for day', day);
+        return;
+      }
+      setTravelDay(day);
+      const blocks = workout.workout_data?.blocks || (Array.isArray(workout.workout_data) ? workout.workout_data : []);
+      console.log('[Travel Nav] Loading day', day, 'blocks:', blocks.length);
+      setProgram(prev => ({
+        ...prev,
+        name: workout.workout_name || `Travel: ${travelEquipment === 'hotel_gym' ? 'Hotel Gym' : 'Bodyweight'} Day ${day}`,
+        blocks,
+      }));
+      setTrackingData({});
+      setRecommendations({});
+      return;
+    }
+
     if (week === currentWeek && day === currentDay) return;
     setCurrentWeek(week);
     setCurrentDay(day);
@@ -574,7 +609,7 @@ export default function App() {
     if (!isMockMode) {
       await handleLoadProgramFromAPI(week, day);
     }
-  }, [currentWeek, currentDay, isMockMode, setCurrentWeek, setCurrentDay, setRecommendations, handleLoadProgramFromAPI]);
+  }, [currentWeek, currentDay, isMockMode, travelMode, travelDay, travelWorkouts, travelEquipment, setCurrentWeek, setCurrentDay, setRecommendations, setProgram, handleLoadProgramFromAPI]);
 
   const handleLogWorkout = useCallback(async (clientNotes) => {
     try {
