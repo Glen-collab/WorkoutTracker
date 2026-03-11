@@ -1,13 +1,14 @@
 # React Workout Tracker
 
 ## What This Is
-A PWA for clients to log workouts assigned by their trainer. Users enter an access code, load their program, track weights/reps set-by-set, and log completed workouts. Includes an AI chatbot with pain management video library, travel workouts, and a gamified belt progression system (Test Your Might).
+A PWA for clients to log workouts assigned by their trainer. Users enter an access code, load their program, track weights/reps set-by-set, and log completed workouts. Includes an AI chatbot with pain management video library, travel workouts, a print-friendly workout view, and a gamified belt progression system (Test Your Might).
 
 **Repo:** `Glen-collab/WorkoutTracker`
 **Stack:** React 19, Vite 7, vite-plugin-pwa (Workbox)
 **Build:** `npm run build` -> `dist/tracker.js` + `dist/tracker.css` + service worker
 **Styling:** All inline styles (no Tailwind, no CSS modules)
 **WordPress:** Plugin loads dist files, passes `window.gwtConfig.apiBase`
+**Netlify:** Auto-deploys on push to `main` branch
 
 ---
 
@@ -33,9 +34,19 @@ src/
   hooks/
     useTrackerState.js             # Central state: user, maxes, profile, program, tracking data, travel mode
     useTrackerAPI.js               # API calls: load program, log workout, questionnaire, travel, stats
-    trackerHelpers.js              # roundToNearest5, calculateWeight, get1RM, formatAccessCode, etc.
+    trackerHelpers.js              # roundToNearest5, calculateWeight, get1RM, formatAccessCode, etc. (in utils/)
 
   components/
+    access/
+      AccessScreen.jsx             # Main access screen container
+      NewUserForm.jsx              # New user registration form
+      ReturningUserForm.jsx        # Quick login for returning users
+      UserTypeSelection.jsx        # New vs returning user selection
+
+    consent/
+      ConsentScreen.jsx            # Legal waiver acceptance
+      QuestionnaireScreen.jsx      # Pain/injury assessment form
+
     program/
       ProgramView.jsx              # Main workout display: blocks, exercises, daily tonnage, log button
       ProgramHeader.jsx            # Week/day navigation, custom workout badge
@@ -44,10 +55,10 @@ src/
       TrackingInputs.jsx           # Weight/reps input grid per set
       DailyTonnage.jsx             # Live volume stats card + ALL calculation logic
       WeeklyStatsCard.jsx          # Historical weekly progress chart (SVG-based)
+      PrintWorkout.jsx             # Print-friendly workout layout
 
     chatbot/
       WorkoutChatbot.jsx           # AI chatbot: pain tree, coaching, travel workouts, video library
-      painTreeData.js              # 53-node pain management decision tree
 
     game/
       TestYourMight.jsx            # Belt progression game: sprite animation, tap challenge
@@ -58,11 +69,13 @@ src/
       WeeklySummaryModal.jsx       # End-of-week stats summary
       PainModal.jsx                # Pain area selection from questionnaire
 
-    motivation/
-      exerciseMotivation.js        # 200+ exercise-specific motivational messages
-
   data/
-    (exercise data lives in the workout builder repo)
+    painTreeData.js                # 53-node pain management decision tree
+    exerciseMotivation.js          # 200+ exercise-specific motivational messages
+    motivationalMessages.js        # General motivational messages for UI
+
+  utils/
+    trackerHelpers.js              # roundToNearest5, calculateWeight, get1RM, formatAccessCode, etc.
 ```
 
 ---
@@ -103,7 +116,7 @@ All POST to `{gwtConfig.apiBase}/{endpoint}`:
 - Supports percentage-based (from baseMax), drop sets, strip sets
 - Qualifier multipliers: "each arm/leg/side" = 2x, "x2/x3/x4 combo" = 2/3/4x
 
-### Cardio Machine MET Table (RECENTLY FIXED)
+### Cardio Machine MET Table
 
 ```
 Rowing Machine:    MET 7.0,  pace 250 m/min
@@ -227,3 +240,11 @@ gwt_history_{code}_{email}         # { dayLabel: { logged_at, data, volume_stats
 - **Cumulative weeks:** API increments on log, used for game progression across programs
 - **Override detection:** Loads user override for each week/day, shows custom workout badge
 - **No weight fallback:** If no tracked/prescribed weight but reps > 0, uses bodyweight calorie tier
+
+---
+
+## Git / Deployment Notes
+
+- Netlify auto-deploys on push to `main` branch
+- PWA service worker auto-updates on new builds
+- Exercise data (exerciseLibrary.js) lives in the **workoutbuilder** repo, not here
