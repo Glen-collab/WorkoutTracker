@@ -132,10 +132,11 @@ export default function App() {
   useEffect(() => { maxesRef.current = maxes; }, [maxes]);
   useEffect(() => { profileRef.current = profile; }, [profile]);
 
-  const handleLoadProgramFromAPI = useCallback(async (requestedWeek, requestedDay) => {
-    const u = userRef.current;
-    const m = maxesRef.current;
-    const p = profileRef.current;
+  const handleLoadProgramFromAPI = useCallback(async (requestedWeek, requestedDay, directData) => {
+    // Use directly-passed data if available (avoids race condition with refs on first login)
+    const u = directData?.user || userRef.current;
+    const m = directData?.maxes || maxesRef.current;
+    const p = directData?.profile || profileRef.current;
     try {
       const params = {
         email: u.email,
@@ -500,8 +501,11 @@ export default function App() {
 
     if (isReturningUser) {
       // Skip consent, go straight to loading
-      // Use setTimeout so state updates propagate before API call
-      setTimeout(() => handleLoadProgramFromAPI(), 0);
+      // Pass data directly to avoid race condition with refs not yet synced
+      const profileData = (formData.height || formData.weight || formData.age || formData.gender)
+        ? { gender: formData.gender || '', height: formData.height || '', weight: formData.weight || '', age: formData.age || '' }
+        : profileRef.current;
+      handleLoadProgramFromAPI(undefined, undefined, { user: userData, maxes: newMaxes, profile: profileData });
     } else {
       setScreen('consent');
     }
