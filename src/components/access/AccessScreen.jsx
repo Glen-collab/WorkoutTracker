@@ -16,6 +16,11 @@ export default function AccessScreen({ onLoadProgram }) {
   const [view, setView] = useState(savedCreds ? 'returning' : 'selection'); // 'selection' | 'new' | 'returning'
   const [error, setError] = useState('');
 
+  // Wake up the backend while the user fills in the form (cold-start mitigation)
+  useEffect(() => {
+    fetch('/api/load-program.php', { method: 'POST', body: '{}' }).catch(() => {});
+  }, []);
+
   const handleNewSubmit = (formData) => {
     setError('');
     onLoadProgram(formData, false);
