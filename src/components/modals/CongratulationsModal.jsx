@@ -48,7 +48,7 @@ export default function CongratulationsModal({ isOpen, onClose, volumeStats }) {
           <div style={pillRow}>
             {volumeStats.tonnage > 0 && <span style={pill}>{volumeStats.tonnage.toLocaleString()} lbs</span>}
             {volumeStats.core_crunches > 0 && <span style={pill}>{volumeStats.core_crunches} crunches</span>}
-            {volumeStats.cardio_minutes > 0 && <span style={pill}>{volumeStats.cardio_minutes} min cardio</span>}
+            {volumeStats.cardio_minutes > 0 && <span style={pill}>{Math.round(volumeStats.cardio_minutes)} min cardio</span>}
             {volumeStats.est_calories > 0 && <span style={pill}>{Math.round(volumeStats.est_calories)} cal</span>}
           </div>
         )}

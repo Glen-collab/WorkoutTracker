@@ -780,8 +780,8 @@ export default function App() {
       const volumeStats = {
         tonnage: Math.round(totalTonnage),
         core_crunches: Math.round(totalCore),
-        cardio_minutes: totalCardioMin,
-        cardio_miles: parseFloat(totalCardioMiles.toFixed(1)),
+        cardio_minutes: Math.round(totalCardioMin * 10) / 10,
+        cardio_miles: Math.round(totalCardioMiles * 100) / 100,
         est_calories: estCalories,
       };
 

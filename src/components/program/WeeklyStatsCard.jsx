@@ -186,7 +186,7 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
             {currentStats.cardio_minutes > 0 && (
               <div style={s.stat}>
                 <div style={s.statLabel}>CARDIO</div>
-                <div style={s.statValue}>{currentStats.cardio_minutes} min</div>
+                <div style={s.statValue}>{Math.round(currentStats.cardio_minutes)} min</div>
               </div>
             )}
             {currentStats.cardio_miles > 0 && (

@@ -130,7 +130,7 @@ export default function ProgramView({
 
     const estCalories = Math.round(strengthCal + tonnageBonus + cardioCal);
 
-    return { tonnage: Math.round(tonnage), coreEquiv, cardioMinutes, cardioMiles, estCalories };
+    return { tonnage: Math.round(tonnage), coreEquiv: Math.round(coreEquiv), cardioMinutes: Math.round(cardioMinutes * 10) / 10, cardioMiles: Math.round(cardioMiles * 100) / 100, estCalories };
   }, [blocks, maxes, trackingData, profile]);
 
   return (

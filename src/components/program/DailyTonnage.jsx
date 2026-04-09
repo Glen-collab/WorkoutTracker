@@ -542,7 +542,7 @@ export default function DailyTonnage({ blocks, maxes, trackingData, userWeight, 
     const tonnageBonus = (ton / 1000) * 10; // ~10 cal per 1000 lbs lifted
 
     const calories = Math.round(strengthCal + tonnageBonus + cardioCal);
-    return { tonnage: ton, cardio: { minutes: min, miles: mi }, coreEquiv: core, estCalories: calories };
+    return { tonnage: Math.round(ton), cardio: { minutes: Math.round(min * 10) / 10, miles: Math.round(mi * 100) / 100 }, coreEquiv: Math.round(core), estCalories: calories };
   }, [blocks, maxes, trackingData, userWeight, userGender]);
 
   const hasAnything = tonnage > 0 || cardio.minutes > 0 || cardio.miles > 0 || coreEquiv > 0 || estCalories > 0;
@@ -569,7 +569,7 @@ export default function DailyTonnage({ blocks, maxes, trackingData, userWeight, 
         {cardio.minutes > 0 && (
           <div style={s.cardioStat}>
             <div style={s.statLabel}>CARDIO TIME</div>
-            <div style={s.statValue}>{cardio.minutes} min</div>
+            <div style={s.statValue}>{Math.round(cardio.minutes)} min</div>
           </div>
         )}
         {cardio.miles > 0 && (

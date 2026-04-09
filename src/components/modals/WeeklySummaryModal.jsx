@@ -82,7 +82,7 @@ export default function WeeklySummaryModal({ isOpen, onClose, weekNumber, access
               {stats.cardio_minutes > 0 && (
                 <div style={statBox}>
                   <div style={statLabel}>CARDIO</div>
-                  <div style={statValue}>{stats.cardio_minutes} min</div>
+                  <div style={statValue}>{Math.round(stats.cardio_minutes)} min</div>
                 </div>
               )}
               {stats.cardio_miles > 0 && (
