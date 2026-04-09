@@ -623,6 +623,44 @@ export default function ExerciseCard({
                   onUpdate={onUpdateTracking}
                   disabled={inputLocked}
                 />
+                {/* Drop set inputs */}
+                {(isDropSet || isStripSet) && dropPct > 0 && dropReps > 0 && (
+                  <div style={{ marginTop: '4px', paddingLeft: '12px', borderLeft: '3px solid #f59e0b' }}>
+                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#b45309', marginBottom: '2px' }}>
+                      Drop → {dropWeight} lbs × {dropReps}
+                    </div>
+                    <TrackingInputs
+                      blockIndex={blockIndex}
+                      exIndex={exIndex}
+                      setIndex={`${si}-drop`}
+                      weightValue={getTrack(`${si}-drop`, 'weight')}
+                      repsValue={getTrack(`${si}-drop`, 'reps')}
+                      weightPlaceholder={`${dropWeight} lbs`}
+                      repsPlaceholder={`${dropReps} reps`}
+                      onUpdate={onUpdateTracking}
+                      disabled={inputLocked}
+                    />
+                  </div>
+                )}
+                {/* Strip set inputs (3rd drop) */}
+                {isStripSet && stripPct > 0 && stripReps > 0 && (
+                  <div style={{ marginTop: '4px', paddingLeft: '12px', borderLeft: '3px solid #ef4444' }}>
+                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#dc2626', marginBottom: '2px' }}>
+                      Strip → {stripWeight} lbs × {stripReps}
+                    </div>
+                    <TrackingInputs
+                      blockIndex={blockIndex}
+                      exIndex={exIndex}
+                      setIndex={`${si}-strip`}
+                      weightValue={getTrack(`${si}-strip`, 'weight')}
+                      repsValue={getTrack(`${si}-strip`, 'reps')}
+                      weightPlaceholder={`${stripWeight} lbs`}
+                      repsPlaceholder={`${stripReps} reps`}
+                      onUpdate={onUpdateTracking}
+                      disabled={inputLocked}
+                    />
+                  </div>
+                )}
               </div>
             );
           })}

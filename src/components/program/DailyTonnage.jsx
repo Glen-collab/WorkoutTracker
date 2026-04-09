@@ -281,16 +281,22 @@ export function calcBlockTonnage(block, maxes, trackingData, blockIndex, userWei
         if (calcWeight > 0 && calcReps > 0) {
           tonnage += calcWeight * calcReps * mult;
 
-          // Add drop set tonnage
+          // Add drop set tonnage (use tracked values if entered, otherwise calculated)
           if ((isDropSet || isStripSet) && dropPercentages?.[si] && dropRepsPerSet?.[si]) {
-            const dropWeight = Math.round(baseMax * dropPercentages[si] / 100 / 5) * 5;
-            tonnage += dropWeight * dropRepsPerSet[si] * mult;
+            const trackedDropWeight = parseFloat(trackingData?.[`${blockIndex}-${exIndex}-${si}-drop-weight`]) || 0;
+            const trackedDropReps = parseFloat(trackingData?.[`${blockIndex}-${exIndex}-${si}-drop-reps`]) || 0;
+            const dropWeight = trackedDropWeight || Math.round(baseMax * dropPercentages[si] / 100 / 5) * 5;
+            const dropReps = trackedDropReps || dropRepsPerSet[si];
+            tonnage += dropWeight * dropReps * mult;
           }
 
-          // Add strip set tonnage (third drop)
+          // Add strip set tonnage (use tracked values if entered, otherwise calculated)
           if (isStripSet && stripPercentages?.[si] && stripRepsPerSet?.[si]) {
-            const stripWeight = Math.round(baseMax * stripPercentages[si] / 100 / 5) * 5;
-            tonnage += stripWeight * stripRepsPerSet[si] * mult;
+            const trackedStripWeight = parseFloat(trackingData?.[`${blockIndex}-${exIndex}-${si}-strip-weight`]) || 0;
+            const trackedStripReps = parseFloat(trackingData?.[`${blockIndex}-${exIndex}-${si}-strip-reps`]) || 0;
+            const stripWeight = trackedStripWeight || Math.round(baseMax * stripPercentages[si] / 100 / 5) * 5;
+            const sReps = trackedStripReps || stripRepsPerSet[si];
+            tonnage += stripWeight * sReps * mult;
           }
         } else if (calcReps > 0) {
           // No max entered and no tracked weight - use tiered bodyweight calories
