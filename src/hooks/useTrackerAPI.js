@@ -43,7 +43,7 @@ export default function useTrackerAPI() {
   const loadProgram = useCallback((params) => apiCall('load-program.php', params), [apiCall]);
   const loadUserOverride = useCallback((params) => apiCall('load-user-override.php', params), [apiCall]);
   const logWorkout = useCallback((params) => apiCall('log-workout.php', params), [apiCall]);
-  const submitQuestionnaire = useCallback((params) => apiCall('submit-questionnaire.php', params), [apiCall]);
+  const submitQuestionnaire = useCallback((params) => apiCall('submit-questionnaire.php', params, 0), [apiCall]);
   const submitCompletion = useCallback((params) => apiCall('submit-completion.php', params), [apiCall]);
   const getWeeklyStats = useCallback((params) => apiCall('get-weekly-stats.php', params), [apiCall]);
   const getTravelWorkouts = useCallback((params) => apiCall('get-travel-workouts.php', params), [apiCall]);

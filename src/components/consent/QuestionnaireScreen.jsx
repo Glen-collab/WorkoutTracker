@@ -226,6 +226,7 @@ export default function QuestionnaireScreen({ onSubmit, onOpenPainModal }) {
   const [responses, setResponses] = useState({});
   const [additionalInfo, setAdditionalInfo] = useState('');
   const [validationError, setValidationError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSingleSelect = (key, value) => {
     setResponses((prev) => ({
@@ -254,6 +255,8 @@ export default function QuestionnaireScreen({ onSubmit, onOpenPainModal }) {
   };
 
   const handleSubmit = () => {
+    if (submitting) return;
+
     const requiredKeys = ['goal', 'fitnessLevel', 'location', 'equipment', 'daysPerWeek', 'injuries', 'motivation', 'intensity', 'coachingStyle'];
     const missing = requiredKeys.filter((key) => {
       const val = responses[key];
@@ -267,6 +270,7 @@ export default function QuestionnaireScreen({ onSubmit, onOpenPainModal }) {
     }
 
     setValidationError('');
+    setSubmitting(true);
     onSubmit({ ...responses, additionalInfo });
   };
 
@@ -324,8 +328,8 @@ export default function QuestionnaireScreen({ onSubmit, onOpenPainModal }) {
           />
         </div>
 
-        <button type="button" style={styles.btnSubmit} onClick={handleSubmit}>
-          Submit Questionnaire
+        <button type="button" style={{ ...styles.btnSubmit, opacity: submitting ? 0.5 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }} onClick={handleSubmit} disabled={submitting}>
+          {submitting ? 'Submitting...' : 'Submit Questionnaire'}
         </button>
       </div>
     </div>
