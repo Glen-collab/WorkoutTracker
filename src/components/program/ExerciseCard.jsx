@@ -480,10 +480,12 @@ export default function ExerciseCard({
           )}
           {ex.percentages.map((_, si) => {
             const targetReps = ex.repsPerSet?.[si] || ex.reps || '';
+            const dropReps = ex.dropRepsPerSet?.[si];
+            const stripReps = ex.stripRepsPerSet?.[si];
             return (
               <div key={si}>
                 <div style={s.setLabel}>
-                  Set {si + 1}{targetReps ? `: ${targetReps} reps` : ''}{hasDuration && !hasReps ? `: ${formatWithUnit(ex.duration, dUnit)}` : ''}{ex.qualifier && !hasDuration ? ` ${ex.qualifier}` : ''}
+                  Set {si + 1}{targetReps ? `: ${targetReps} reps` : ''}{hasDuration && !hasReps ? `: ${formatWithUnit(ex.duration, dUnit)}` : ''}{ex.qualifier && !isDropSet && !isStripSet && !hasDuration ? ` ${ex.qualifier}` : ''}
                 </div>
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
                   <input
@@ -505,6 +507,58 @@ export default function ExerciseCard({
                     />
                   )}
                 </div>
+                {/* Drop set inputs for manual weight */}
+                {(isDropSet || isStripSet) && dropReps > 0 && (
+                  <div style={{ marginTop: '4px', paddingLeft: '12px', borderLeft: '3px solid #f59e0b' }}>
+                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#b45309', marginBottom: '2px' }}>
+                      Drop → {dropReps} reps
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
+                      <input
+                        type="number"
+                        placeholder="Drop weight (lbs)"
+                        value={getTrack(`${si}-drop`, 'weight')}
+                        onChange={(e) => onUpdateTracking(blockIndex, exIndex, `${si}-drop`, 'weight', e.target.value)}
+                        style={{ ...s.condInput, flex: 1, marginBottom: 0, ...lockStyle }}
+                        readOnly={inputLocked}
+                      />
+                      <input
+                        type="number"
+                        placeholder={`${dropReps} reps`}
+                        value={getTrack(`${si}-drop`, 'reps')}
+                        onChange={(e) => onUpdateTracking(blockIndex, exIndex, `${si}-drop`, 'reps', e.target.value)}
+                        style={{ ...s.condInput, flex: 1, marginBottom: 0, ...lockStyle }}
+                        readOnly={inputLocked}
+                      />
+                    </div>
+                  </div>
+                )}
+                {/* Strip set inputs for manual weight */}
+                {isStripSet && stripReps > 0 && (
+                  <div style={{ marginTop: '4px', paddingLeft: '12px', borderLeft: '3px solid #ef4444' }}>
+                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#dc2626', marginBottom: '2px' }}>
+                      Strip → {stripReps} reps
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
+                      <input
+                        type="number"
+                        placeholder="Strip weight (lbs)"
+                        value={getTrack(`${si}-strip`, 'weight')}
+                        onChange={(e) => onUpdateTracking(blockIndex, exIndex, `${si}-strip`, 'weight', e.target.value)}
+                        style={{ ...s.condInput, flex: 1, marginBottom: 0, ...lockStyle }}
+                        readOnly={inputLocked}
+                      />
+                      <input
+                        type="number"
+                        placeholder={`${stripReps} reps`}
+                        value={getTrack(`${si}-strip`, 'reps')}
+                        onChange={(e) => onUpdateTracking(blockIndex, exIndex, `${si}-strip`, 'reps', e.target.value)}
+                        style={{ ...s.condInput, flex: 1, marginBottom: 0, ...lockStyle }}
+                        readOnly={inputLocked}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
