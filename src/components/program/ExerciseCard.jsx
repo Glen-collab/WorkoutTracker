@@ -564,8 +564,7 @@ export default function ExerciseCard({
               </div>
             );
           })}
-          {ex.rest && <div style={s.detailRow}>Rest: {ex.rest}</div>}
-          {ex.notes && <div style={s.notesCard}>{ex.notes}</div>}
+          {renderExtraFields()}
           {renderMarkButton()}
           {renderRecSection()}
         </>
@@ -622,8 +621,7 @@ export default function ExerciseCard({
               </div>
             );
           })}
-          {ex.rest && <div style={s.detailRow}>Rest: {ex.rest}</div>}
-          {ex.notes && <div style={s.notesCard}>{ex.notes}</div>}
+          {renderExtraFields()}
           {renderMarkButton()}
           {renderRecSection()}
         </>
@@ -720,6 +718,7 @@ export default function ExerciseCard({
               </div>
             );
           })}
+          {renderExtraFields()}
           {renderMarkButton()}
           {renderRecSection()}
         </>
@@ -753,6 +752,7 @@ export default function ExerciseCard({
               />
             </div>
           ))}
+          {renderExtraFields()}
           {renderMarkButton()}
           {renderRecSection()}
         </>
@@ -767,8 +767,6 @@ export default function ExerciseCard({
           {sets} sets x {ex.reps || '?'} reps
         </div>
         {ex.weight && <div style={s.detailRow}>Weight: {ex.weight}{ex.qualifier ? ` ${ex.qualifier}` : ''}</div>}
-        {ex.rest && <div style={s.detailRow}>Rest: {ex.rest}</div>}
-        {ex.notes && <div style={s.notesCard}>{ex.notes}</div>}
         {Array.from({ length: sets }).map((_, si) => (
           <div key={si}>
             <div style={s.setLabel}>Set {si + 1}</div>
@@ -785,6 +783,7 @@ export default function ExerciseCard({
             />
           </div>
         ))}
+        {renderExtraFields()}
         {renderMarkButton()}
         {renderRecSection()}
       </>
@@ -810,6 +809,61 @@ export default function ExerciseCard({
     if (!val) return null;
     const clean = stripUnits(val);
     return clean ? `${clean} ${unitLabel}` : null;
+  };
+
+  // Extra fields: shows distance, duration, weight, rest, tempo, notes for ANY exercise
+  // that has them — regardless of block type. Used after sets in strength rendering.
+  const renderExtraFields = () => {
+    const dUnit = getUnitLabel(ex.durationUnit, 'sec');
+    const distUnit = getUnitLabel(ex.distanceUnit, 'yd');
+
+    const pills = [
+      ex.distance ? { label: 'Distance', val: `${ex.distance} ${distUnit}` } : null,
+      ex.duration ? { label: 'Duration', val: `${ex.duration} ${dUnit}` } : null,
+      ex.speed ? { label: 'Speed', val: `${ex.speed} ${getUnitLabel(ex.speedUnit, 'mph')}` } : null,
+      ex.incline ? { label: 'Incline', val: ex.incline } : null,
+      ex.rest ? { label: 'Rest', val: ex.rest } : null,
+      ex.tempo ? { label: 'Tempo', val: ex.tempo } : null,
+    ].filter(Boolean);
+
+    const hasTrackableFields = ex.distance || ex.duration;
+
+    return (
+      <>
+        {pills.length > 0 && (
+          <div style={{ ...s.pillGrid, marginTop: '8px' }}>
+            {pills.map((p, i) => (
+              <span key={i} style={s.pill}>{p.label}: {p.val}</span>
+            ))}
+          </div>
+        )}
+        {hasTrackableFields && (
+          <div style={{ display: 'flex', gap: '8px', marginTop: '6px', marginBottom: '6px', flexWrap: 'wrap' }}>
+            {ex.duration && (
+              <input
+                type="text"
+                placeholder={`${ex.duration} ${dUnit}`}
+                value={getTrack(null, 'duration')}
+                onChange={(e) => onUpdateTracking(blockIndex, exIndex, null, 'duration', e.target.value)}
+                style={{ ...s.condInput, flex: 1, minWidth: '80px', marginBottom: 0, ...lockStyle }}
+                readOnly={inputLocked}
+              />
+            )}
+            {ex.distance && (
+              <input
+                type="text"
+                placeholder={`${ex.distance} ${distUnit}`}
+                value={getTrack(null, 'distance')}
+                onChange={(e) => onUpdateTracking(blockIndex, exIndex, null, 'distance', e.target.value)}
+                style={{ ...s.condInput, flex: 1, minWidth: '80px', marginBottom: 0, ...lockStyle }}
+                readOnly={inputLocked}
+              />
+            )}
+          </div>
+        )}
+        {ex.notes && <div style={s.notesCard}>{ex.notes}</div>}
+      </>
+    );
   };
 
   // Cardio: treadmill, bike, rowing - just duration and optional distance
