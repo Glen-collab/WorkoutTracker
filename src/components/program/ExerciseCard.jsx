@@ -871,8 +871,11 @@ export default function ExerciseCard({
     const spdUnit = getUnitLabel(ex.speedUnit, 'mph');
 
     // Show preset values as info pills
+    const condSets = ex.setsCount || ex.sets || '';
     const details = [
+      { label: 'Sets', val: condSets && condSets !== '1' ? condSets : '' },
       { label: 'Reps', val: ex.reps },
+      { label: 'Weight', val: ex.weight ? `${ex.weight} lbs` : '' },
       { label: 'Speed', val: formatWithUnit(ex.speed, spdUnit) },
       { label: 'Incline', val: ex.incline },
       { label: 'Rest', val: ex.rest },
@@ -904,25 +907,39 @@ export default function ExerciseCard({
             {ex.description}
           </div>
         )}
-        {/* Editable duration/distance inputs for cardio-type conditioning (rowing, ski erg, bike, etc.) */}
-        {hasCardioFields && (
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
-            <input
-              type="text"
-              placeholder={`Duration (${dUnit})`}
-              value={getTrack(null, 'duration')}
-              onChange={(e) => onUpdateTracking(blockIndex, exIndex, null, 'duration', e.target.value)}
-              style={{ ...s.condInput, flex: 1, marginBottom: 0, ...lockStyle }}
-              readOnly={inputLocked}
-            />
-            <input
-              type="text"
-              placeholder={`Distance (${distUnit})`}
-              value={getTrack(null, 'distance')}
-              onChange={(e) => onUpdateTracking(blockIndex, exIndex, null, 'distance', e.target.value)}
-              style={{ ...s.condInput, flex: 1, marginBottom: 0, ...lockStyle }}
-              readOnly={inputLocked}
-            />
+        {/* Editable inputs for conditioning: duration, distance, weight */}
+        {(hasCardioFields || ex.weight) && (
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
+            {(ex.duration || hasCardioFields) && (
+              <input
+                type="text"
+                placeholder={`Duration (${dUnit})`}
+                value={getTrack(null, 'duration')}
+                onChange={(e) => onUpdateTracking(blockIndex, exIndex, null, 'duration', e.target.value)}
+                style={{ ...s.condInput, flex: 1, minWidth: '80px', marginBottom: 0, ...lockStyle }}
+                readOnly={inputLocked}
+              />
+            )}
+            {(ex.distance || hasCardioFields) && (
+              <input
+                type="text"
+                placeholder={`Distance (${distUnit})`}
+                value={getTrack(null, 'distance')}
+                onChange={(e) => onUpdateTracking(blockIndex, exIndex, null, 'distance', e.target.value)}
+                style={{ ...s.condInput, flex: 1, minWidth: '80px', marginBottom: 0, ...lockStyle }}
+                readOnly={inputLocked}
+              />
+            )}
+            {ex.weight && (
+              <input
+                type="text"
+                placeholder={`${ex.weight} lbs`}
+                value={getTrack(null, 'weight')}
+                onChange={(e) => onUpdateTracking(blockIndex, exIndex, null, 'weight', e.target.value)}
+                style={{ ...s.condInput, flex: 1, minWidth: '80px', marginBottom: 0, ...lockStyle }}
+                readOnly={inputLocked}
+              />
+            )}
           </div>
         )}
         {renderMarkButton()}
