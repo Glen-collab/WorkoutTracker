@@ -3,6 +3,7 @@ import { get1RM, calculateWeight } from '../../utils/trackerHelpers';
 import TrackingInputs from './TrackingInputs';
 import { getMotivationalMessage } from '../../data/exerciseMotivation';
 import { isFunctional } from './DailyTonnage';
+import { applyExerciseDefaults } from '../../data/exerciseDefaults';
 
 function showToast(message) {
   const toast = document.createElement('div');
@@ -250,8 +251,9 @@ export default function ExerciseCard({
 
   // Normalize builder format: sets may be objects [{id, reps, percentage, ...}]
   // Convert to flat percentages/repsPerSet arrays the tracker expects
+  // Also apply exercise defaults for any missing fields (safety net)
   const normalizedEx = (() => {
-    const ex = { ...exercise };
+    const ex = applyExerciseDefaults({ ...exercise });
     if (Array.isArray(ex.sets) && ex.sets.length > 0 && typeof ex.sets[0] === 'object' && ex.sets[0]?.percentage != null) {
       // Builder format: sets are objects with percentage/reps
       ex.percentages = ex.sets.map(s => s.percentage);
