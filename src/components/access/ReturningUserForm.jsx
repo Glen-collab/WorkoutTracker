@@ -140,7 +140,10 @@ export default function ReturningUserForm({ onSubmit, onBack, error }) {
     } catch { return null; }
   })();
 
-  const [email, setEmail] = useState(savedCreds?.email || '');
+  const [email, setEmail] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('email') || savedCreds?.email || '';
+  });
   const [code, setCode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get('code') || savedCreds?.code || '';

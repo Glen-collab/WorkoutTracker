@@ -112,10 +112,17 @@ export default function AccessScreen({ onLoadProgram }) {
   const [view, setView] = useState(savedCreds ? 'returning' : 'selection'); // 'selection' | 'new' | 'returning'
   const [error, setError] = useState('');
 
-  // Show welcome walkthrough for first-time visitors (no saved creds, never seen it)
+  // Show welcome walkthrough for first-time visitors or users arriving from website (?code= in URL)
   const [showWelcome, setShowWelcome] = useState(() => {
-    if (savedCreds) return false; // returning user, skip
-    try { return !localStorage.getItem(WELCOME_SEEN_KEY); } catch { return false; }
+    const params = new URLSearchParams(window.location.search);
+    const fromWebsite = params.has('code');
+    // Show if: never seen before, OR came from website and haven't seen it for this code
+    const seenKey = fromWebsite ? WELCOME_SEEN_KEY + '_' + params.get('code') : WELCOME_SEEN_KEY;
+    try {
+      if (fromWebsite && !localStorage.getItem(seenKey)) return true;
+      if (!savedCreds && !localStorage.getItem(WELCOME_SEEN_KEY)) return true;
+      return false;
+    } catch { return false; }
   });
   const dismissWelcome = () => {
     setShowWelcome(false);

@@ -133,7 +133,10 @@ const styles = {
 
 export default function NewUserForm({ onSubmit, onBack, error }) {
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('email') || '';
+  });
   const [code, setCode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get('code') || '';
