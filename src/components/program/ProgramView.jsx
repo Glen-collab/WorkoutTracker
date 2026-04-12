@@ -1,8 +1,103 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import ProgramHeader from './ProgramHeader';
 import BlockCard from './BlockCard';
 import DailyTonnage, { calcBlockTonnage, calcCardio, getDefaultWeight } from './DailyTonnage';
 import WeeklyStatsCard from './WeeklyStatsCard';
+
+// ── First-Time Walkthrough ──
+function WelcomeWalkthrough({ userName, onDismiss }) {
+  const [step, setStep] = useState(0);
+
+  const steps = [
+    {
+      icon: '\uD83D\uDC4B',
+      title: `Welcome${userName ? ', ' + userName : ''}!`,
+      text: "This is your personal workout tracker. Your trainer has built a program specifically for you — let's walk through how it works.",
+    },
+    {
+      icon: '\uD83D\uDCCB',
+      title: 'Your Workout Is Ready',
+      text: "Each day has blocks of exercises laid out for you. Tap any block to expand it and see the exercises, sets, reps, and coaching videos inside.",
+    },
+    {
+      icon: '\u2705',
+      title: 'Track As You Go',
+      text: "Enter your actual weights and reps as you work out. When you finish an exercise, hit the checkmark to mark it complete. Your volume and calories update in real time.",
+    },
+    {
+      icon: '\uD83D\uDCC8',
+      title: 'Arrows = Next Week\'s Plan',
+      text: "After each exercise you'll see \u2B06\uFE0F \u27A1\uFE0F \u2B07\uFE0F arrows. These tell your trainer how the weight felt — tap up if it was easy, down if it was tough, or sideways if it was just right.",
+    },
+    {
+      icon: '\uD83C\uDFAC',
+      title: 'Exercise Videos',
+      text: "Not sure how to do an exercise? Tap the video icon next to any exercise name to watch a coaching demo. There are 950+ videos in the library.",
+    },
+    {
+      icon: '\uD83D\uDCAA',
+      title: "You're All Set!",
+      text: "Take your time, focus on form, and don't worry about being perfect. Your trainer is tracking your progress and will adjust your program as you go. Let's get to work.",
+    },
+  ];
+
+  const current = steps[step];
+  const isLast = step === steps.length - 1;
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
+    }}>
+      <div style={{
+        background: '#fff', borderRadius: '16px', maxWidth: '380px', width: '100%',
+        padding: '32px 24px', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+      }}>
+        <div style={{ fontSize: '48px', marginBottom: '12px' }}>{current.icon}</div>
+        <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#1a1a2e', margin: '0 0 10px' }}>{current.title}</h2>
+        <p style={{ fontSize: '14px', color: '#555', lineHeight: '1.6', margin: '0 0 24px' }}>{current.text}</p>
+
+        {/* Progress dots */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginBottom: '20px' }}>
+          {steps.map((_, i) => (
+            <div key={i} style={{
+              width: '8px', height: '8px', borderRadius: '50%',
+              background: i === step ? '#667eea' : '#ddd',
+              transition: 'background 0.2s',
+            }} />
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+          {step > 0 && (
+            <button
+              onClick={() => setStep(step - 1)}
+              style={{
+                padding: '12px 24px', border: '2px solid #e0e0e0', borderRadius: '10px',
+                background: '#fff', color: '#666', fontSize: '15px', fontWeight: '600', cursor: 'pointer',
+              }}
+            >Back</button>
+          )}
+          <button
+            onClick={() => isLast ? onDismiss() : setStep(step + 1)}
+            style={{
+              padding: '12px 32px', border: 'none', borderRadius: '10px',
+              background: isLast ? 'linear-gradient(135deg, #4caf50, #2e7d32)' : 'linear-gradient(135deg, #667eea, #764ba2)',
+              color: '#fff', fontSize: '15px', fontWeight: '600', cursor: 'pointer',
+            }}
+          >{isLast ? "Let's Go!" : 'Next'}</button>
+        </div>
+
+        {!isLast && (
+          <button
+            onClick={onDismiss}
+            style={{ background: 'none', border: 'none', color: '#999', fontSize: '12px', cursor: 'pointer', marginTop: '12px' }}
+          >Skip walkthrough</button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 const s = {
   container: {
@@ -89,6 +184,16 @@ export default function ProgramView({
 }) {
   const blocks = program?.blocks || [];
   const [showProfileEdit, setShowProfileEdit] = useState(false);
+
+  // First-time walkthrough
+  const walkthroughKey = `gwt_walkthrough_${accessCode}_${userEmail}`;
+  const [showWalkthrough, setShowWalkthrough] = useState(() => {
+    try { return !localStorage.getItem(walkthroughKey); } catch { return false; }
+  });
+  const dismissWalkthrough = () => {
+    setShowWalkthrough(false);
+    try { localStorage.setItem(walkthroughKey, 'true'); } catch {}
+  };
   const [tempFeet, setTempFeet] = useState('');
   const [tempInches, setTempInches] = useState('');
   const [tempWeight, setTempWeight] = useState('');
@@ -135,6 +240,9 @@ export default function ProgramView({
 
   return (
     <div style={s.container}>
+      {showWalkthrough && (
+        <WelcomeWalkthrough userName={userName} onDismiss={dismissWalkthrough} />
+      )}
       <div style={s.content}>
         {travelMode && (
           <div style={{

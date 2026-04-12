@@ -181,8 +181,8 @@ export default function NewUserForm({ onSubmit, onBack, error }) {
       <div style={styles.card}>
         <div style={styles.header}>
           <div style={styles.icon}>&#x2728;</div>
-          <h1 style={styles.title}>New User Setup</h1>
-          <p style={styles.subtitle}>Enter your details to get started</p>
+          <h1 style={styles.title}>Welcome! Let's Get You Set Up</h1>
+          <p style={styles.subtitle}>This only takes a minute — and your trainer will use this info to personalize your program.</p>
         </div>
 
         {error && <div style={styles.error}>{error}</div>}
@@ -199,6 +199,7 @@ export default function NewUserForm({ onSubmit, onBack, error }) {
           />
 
           <label style={styles.label}>Email *</label>
+          <p style={{ fontSize: '12px', color: '#888', margin: '-4px 0 6px', lineHeight: '1.4' }}>Your trainer uses this to send you program updates and track your progress.</p>
           <input
             style={styles.input}
             type="email"
@@ -209,6 +210,7 @@ export default function NewUserForm({ onSubmit, onBack, error }) {
           />
 
           <label style={styles.label}>Access Code *</label>
+          <p style={{ fontSize: '12px', color: '#888', margin: '-4px 0 6px', lineHeight: '1.4' }}>This is the 4-digit code your trainer gave you. It loads your personalized program.</p>
           <input
             style={{ ...styles.input, textAlign: 'center', letterSpacing: '4px', fontSize: '18px' }}
             type="text"
@@ -222,9 +224,10 @@ export default function NewUserForm({ onSubmit, onBack, error }) {
             required
           />
 
-          {/* Body Stats - Always visible, not optional */}
-          <label style={styles.label}>Body Stats</label>
-          {/* Gender selector */}
+          {/* Body Stats */}
+          <div style={{ background: '#f0f7ff', border: '1px solid #d0e3f7', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
+            <label style={{ ...styles.label, color: '#1565c0', marginBottom: '4px' }}>About You</label>
+            <p style={{ fontSize: '12px', color: '#666', margin: '0 0 12px', lineHeight: '1.4' }}>This helps us estimate calories, scale your workouts, and track your progress accurately. Fill in what you can — everything here is optional.</p>
           <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
             <button
               type="button"
@@ -303,21 +306,24 @@ export default function NewUserForm({ onSubmit, onBack, error }) {
               />
             </div>
           </div>
+          </div>
 
           {/* 1RM Values - Collapsible, Optional */}
           <div
             style={styles.collapseHeader}
             onClick={() => setShowMaxes(!showMaxes)}
           >
-            <span>&#x1F4AA; Enter 1RM Values (Optional)</span>
+            <span>&#x1F4AA; Max Lifts (Optional)</span>
             <span>{showMaxes ? '▲' : '▼'}</span>
           </div>
 
           {showMaxes && (
             <>
-              <p style={{ fontSize: '13px', color: '#666', margin: '0 0 12px 0', textAlign: 'center', fontStyle: 'italic' }}>
-                Don't worry if you don't know your 1 rep max — most people don't! Just leave these blank and we'll work with you.
-              </p>
+              <div style={{ background: '#faf5ff', border: '1px solid #e8d5f5', borderRadius: '10px', padding: '12px 14px', marginBottom: '12px' }}>
+                <p style={{ fontSize: '13px', color: '#5a3e8e', margin: 0, lineHeight: '1.5' }}>
+                  <strong>Don't know your max? That's totally fine.</strong> Most people don't — and these starter programs are designed to work for everyone regardless. Your trainer will help you figure these out over time. Leave them blank for now if you're not sure.
+                </p>
+              </div>
               <div style={styles.grid}>
                 <div style={styles.gridItem}>
                   <label style={styles.gridLabel}>Bench (lbs)</label>
@@ -363,8 +369,11 @@ export default function NewUserForm({ onSubmit, onBack, error }) {
             </>
           )}
 
+          <p style={{ fontSize: '12px', color: '#999', textAlign: 'center', margin: '0 0 12px', lineHeight: '1.4' }}>
+            Next you'll review a quick liability waiver and fitness questionnaire — then you're in.
+          </p>
           <button type="submit" style={styles.btnSubmit}>
-            Load My Program
+            Continue
           </button>
           <button type="button" style={styles.btnBack} onClick={onBack}>
             &#8592; Back
