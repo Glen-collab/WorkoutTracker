@@ -1,9 +1,6 @@
 import { useState, useCallback } from 'react';
 
-const isWordPress = !!(window.gwtConfig && window.gwtConfig.apiBase);
-const API_BASE = isWordPress
-  ? window.gwtConfig.apiBase
-  : '/api/';
+const API_BASE = 'https://app.bestrongagain.com/api/workout/';
 
 export default function useTrackerAPI() {
   const [loading, setLoading] = useState(false);
