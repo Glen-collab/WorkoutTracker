@@ -141,7 +141,10 @@ export default function ReturningUserForm({ onSubmit, onBack, error }) {
   })();
 
   const [email, setEmail] = useState(savedCreds?.email || '');
-  const [code, setCode] = useState(savedCreds?.code || '');
+  const [code, setCode] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('code') || savedCreds?.code || '';
+  });
   const [benchMax, setBenchMax] = useState('');
   const [squatMax, setSquatMax] = useState('');
   const [deadliftMax, setDeadliftMax] = useState('');
