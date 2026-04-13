@@ -307,14 +307,43 @@ export default function ExerciseCard({
   };
 
   // Helper: show completed badge or mark button
+  const clientNoteKey = `${blockIndex}-${exIndex}-null-note`;
+  const clientNote = trackingData?.[clientNoteKey] || '';
+  const [noteOpen, setNoteOpen] = useState(false);
+
   const renderMarkButton = (extraStyle) => {
-    if (isMarkedComplete) {
-      return <div style={{ ...s.completedBadge, ...extraStyle }}>{'\u2705'} Completed</div>;
-    }
     return (
-      <button style={{ ...s.markBtn, ...extraStyle }} onClick={handleMark}>
-        {'\u2713'} Mark Complete
-      </button>
+      <>
+        {/* Client notes per exercise */}
+        <div style={{ marginTop: '8px', marginBottom: '6px' }}>
+          {!noteOpen && !clientNote ? (
+            <button
+              onClick={() => setNoteOpen(true)}
+              style={{ background: 'none', border: 'none', color: '#999', fontSize: '12px', cursor: 'pointer', padding: '4px 0' }}
+            >+ Add note</button>
+          ) : (
+            <textarea
+              placeholder="Your notes on this exercise..."
+              value={clientNote}
+              onChange={(e) => onUpdateTracking(blockIndex, exIndex, null, 'note', e.target.value)}
+              onFocus={() => setNoteOpen(true)}
+              style={{
+                width: '100%', padding: '8px 10px', border: '1px solid #e0e0e0', borderRadius: '8px',
+                fontSize: '13px', minHeight: '50px', resize: 'vertical', boxSizing: 'border-box',
+                fontFamily: 'inherit', outline: 'none', color: '#444', background: isMarkedComplete ? '#f5f5f5' : '#fff',
+              }}
+              readOnly={isMarkedComplete}
+            />
+          )}
+        </div>
+        {isMarkedComplete ? (
+          <div style={{ ...s.completedBadge, ...extraStyle }}>{'\u2705'} Completed</div>
+        ) : (
+          <button style={{ ...s.markBtn, ...extraStyle }} onClick={handleMark}>
+            {'\u2713'} Mark Complete
+          </button>
+        )}
+      </>
     );
   };
 
