@@ -968,16 +968,18 @@ export default function ExerciseCard({
     const distUnit = getUnitLabel(ex.distanceUnit, 'm');
     const spdUnit = getUnitLabel(ex.speedUnit, 'mph');
 
-    // Show preset values as info pills
+    // Show preset values as info pills — include targets for duration/distance
     const condSets = ex.setsCount || ex.sets || '';
     const details = [
-      { label: 'Sets', val: condSets && condSets !== '1' ? condSets : '' },
-      { label: 'Reps', val: ex.reps },
-      { label: 'Weight', val: ex.weight ? `${ex.weight} lbs` : '' },
-      { label: 'Speed', val: formatWithUnit(ex.speed, spdUnit) },
-      { label: 'Incline', val: ex.incline },
-      { label: 'Rest', val: ex.rest },
-    ].filter((d) => d.val);
+      condSets && condSets !== '1' && condSets !== '0' ? { label: 'Sets', val: condSets } : null,
+      ex.reps ? { label: 'Reps', val: ex.reps } : null,
+      ex.weight ? { label: 'Weight', val: `${ex.weight} lbs` } : null,
+      ex.distance ? { label: 'Target', val: `${ex.distance} ${distUnit}`, highlight: true } : null,
+      ex.duration ? { label: 'Target', val: `${ex.duration} ${dUnit}`, highlight: true } : null,
+      formatWithUnit(ex.speed, spdUnit) ? { label: 'Speed', val: formatWithUnit(ex.speed, spdUnit) } : null,
+      ex.incline ? { label: 'Incline', val: ex.incline } : null,
+      ex.rest ? { label: 'Rest', val: ex.rest } : null,
+    ].filter(Boolean);
 
     // Check if this is a cardio-type conditioning exercise (has duration or distance)
     const hasCardioFields = ex.duration || ex.distance;
@@ -987,16 +989,10 @@ export default function ExerciseCard({
         {details.length > 0 && (
           <div style={s.pillGrid}>
             {details.map((d, i) => (
-              <span key={i} style={s.pill}>
+              <span key={i} style={d.highlight ? { ...s.pill, background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', color: '#fff', fontWeight: 700 } : s.pill}>
                 {d.label}: {d.val}
               </span>
             ))}
-          </div>
-        )}
-        {/* Show preset duration/distance as reference */}
-        {(ex.duration || ex.distance) && (
-          <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
-            Target: {formatWithUnit(ex.duration, dUnit) || ''} {ex.distance ? `/ ${formatWithUnit(ex.distance, distUnit)}` : ''}
           </div>
         )}
         {ex.notes && <div style={s.notesCard}>{ex.notes}</div>}
