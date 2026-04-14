@@ -22,7 +22,7 @@ const EXERCISE_DEFAULTS = {
   'Concept2 BikeErg': { duration: '10', durationUnit: 'min' },
 
   // === CARRIES ===
-  'Farmers Carry': { setsCount: '4', weight: '70', distance: '40', distanceUnit: 'yd', duration: '60', durationUnit: 'sec' },
+  'Farmers Carry': { setsCount: '4', weight: '70', distance: '40', distanceUnit: 'yd' },
   'Suitcase Carry': { setsCount: '3', weight: '35', distance: '40', distanceUnit: 'yd', duration: '30', durationUnit: 'sec', qualifier: 'each' },
   'Barbell Front Rack Carry': { setsCount: '3', weight: '95', distance: '40', distanceUnit: 'yd' },
   'Barbell Overhead Carry': { setsCount: '3', weight: '65', distance: '30', distanceUnit: 'yd' },
