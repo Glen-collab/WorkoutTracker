@@ -498,6 +498,9 @@ export default function ExerciseCard({
       const dUnit = getUnitLabel(ex.durationUnit, 'sec');
       const hasDuration = ex.duration;
       const hasReps = ex.reps;
+      // Detect machine exercises for pin weight field
+      const isMachineExercise = (ex.equipment || []).some(e => e === 'Machine' || e === 'Cable') ||
+        /machine|cable|lat pull|pec dec|leg press|leg ext|leg curl|hip abduct|hip adduct|calf raise|pulldown/i.test(ex.name || '');
 
       return (
         <>
@@ -521,12 +524,22 @@ export default function ExerciseCard({
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
                   <input
                     type="number"
-                    placeholder="Weight (lbs)"
+                    placeholder={isMachineExercise ? "Weight / lbs" : "Weight (lbs)"}
                     value={getTrack(si, 'weight')}
                     onChange={(e) => onUpdateTracking(blockIndex, exIndex, si, 'weight', e.target.value)}
                     style={{ ...s.condInput, flex: 1, marginBottom: 0, ...lockStyle }}
                     readOnly={inputLocked}
                   />
+                  {isMachineExercise && (
+                    <input
+                      type="text"
+                      placeholder="Pin #"
+                      value={getTrack(si, 'pin')}
+                      onChange={(e) => onUpdateTracking(blockIndex, exIndex, si, 'pin', e.target.value)}
+                      style={{ ...s.condInput, flex: '0 0 60px', marginBottom: 0, textAlign: 'center', ...lockStyle }}
+                      readOnly={inputLocked}
+                    />
+                  )}
                   {hasReps && (
                     <input
                       type="number"
