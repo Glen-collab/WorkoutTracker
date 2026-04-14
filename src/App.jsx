@@ -112,14 +112,24 @@ export default function App() {
     setTrackingData(newTracking);
   }, []);
 
+  // Autosave tracking data to localStorage
+  const getTrackingStorageKey = useCallback(() => {
+    if (!user?.accessCode) return null;
+    return `gwt_tracking_${user.accessCode}_${currentWeek}_${currentDay}`;
+  }, [user?.accessCode, currentWeek, currentDay]);
+
   const handleUpdateTracking = useCallback((blockIndex, exIndex, setIndex, field, value) => {
-    // If field already looks like a full key (contains 'rec-' or 'complete-' or 'block-notes-'), store it directly
     const isDirectKey = field.startsWith('rec-') || field.startsWith('complete-') || field.startsWith('block-notes-');
     const key = isDirectKey ? field : `${blockIndex}-${exIndex}-${setIndex}-${field}`;
-    setTrackingData(prev => ({
-      ...prev,
-      [key]: value,
-    }));
+    setTrackingData(prev => {
+      const updated = { ...prev, [key]: value };
+      // Autosave to localStorage
+      try {
+        const storageKey = `gwt_tracking_${userRef.current?.accessCode}_${currentWeekRef.current}_${currentDayRef.current}`;
+        if (storageKey) localStorage.setItem(storageKey, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
   }, []);
 
   // --- Load program from API ---
@@ -199,7 +209,20 @@ export default function App() {
           initializeTrackingFromSaved(result.data.savedWorkout);
         } else {
           setSavedWorkout(null);
-          setTrackingData({});
+          // Try to restore autosaved tracking data from localStorage
+          const week = requestedWeek || result.data.userPosition?.currentWeek || 1;
+          const day = requestedDay || result.data.userPosition?.currentDay || 1;
+          const autoKey = `gwt_tracking_${u.accessCode}_${week}_${day}`;
+          try {
+            const autosaved = localStorage.getItem(autoKey);
+            if (autosaved) {
+              setTrackingData(JSON.parse(autosaved));
+            } else {
+              setTrackingData({});
+            }
+          } catch {
+            setTrackingData({});
+          }
         }
 
         // Check for custom override
@@ -832,6 +855,12 @@ export default function App() {
           };
           localStorage.setItem(historyKey, JSON.stringify(existing));
         } catch { /* ignore */ }
+
+        // Clear autosaved tracking data since workout is now logged
+        try {
+          const autoKey = `gwt_tracking_${user.accessCode}_${currentWeek}_${currentDay}`;
+          localStorage.removeItem(autoKey);
+        } catch {}
 
         setLastVolumeStats(volumeStats);
 
