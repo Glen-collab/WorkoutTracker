@@ -206,13 +206,17 @@ export default function App() {
 
   // --- Load program from API ---
 
-  // Use a ref to always have latest user/maxes without stale closures
+  // Use a ref to always have latest user/maxes/position without stale closures
   const userRef = useRef(user);
   const maxesRef = useRef(maxes);
   const profileRef = useRef(profile);
+  const currentWeekRef = useRef(currentWeek);
+  const currentDayRef = useRef(currentDay);
   useEffect(() => { userRef.current = user; }, [user]);
   useEffect(() => { maxesRef.current = maxes; }, [maxes]);
   useEffect(() => { profileRef.current = profile; }, [profile]);
+  useEffect(() => { currentWeekRef.current = currentWeek; }, [currentWeek]);
+  useEffect(() => { currentDayRef.current = currentDay; }, [currentDay]);
 
   const handleLoadProgramFromAPI = useCallback(async (requestedWeek, requestedDay, directData) => {
     // Use directly-passed data if available (avoids race condition with refs on first login)
