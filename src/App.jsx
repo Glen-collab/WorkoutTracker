@@ -618,11 +618,21 @@ export default function App() {
     const alreadyDone = localStorage.getItem(questionnaireKey);
 
     if (!alreadyDone) {
-      setScreen('questionnaire');
+      // Check DB before showing questionnaire — it might already be done on another device
+      api.loadProgram({ email: user.email, code: user.accessCode }).then(result => {
+        if (result?.data?.userPosition?.questionnaireCompleted) {
+          localStorage.setItem(questionnaireKey, 'true');
+          handleLoadProgramFromAPI();
+        } else {
+          setScreen('questionnaire');
+        }
+      }).catch(() => {
+        setScreen('questionnaire');
+      });
     } else {
       handleLoadProgramFromAPI();
     }
-  }, [setConsentAccepted, setConsentTimestamp, user, setScreen, handleLoadProgramFromAPI]);
+  }, [setConsentAccepted, setConsentTimestamp, user, setScreen, handleLoadProgramFromAPI, api]);
 
   const handleDeclineConsent = useCallback(() => {
     setScreen('access');
