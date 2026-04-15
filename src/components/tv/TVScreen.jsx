@@ -4,6 +4,9 @@ import { applyExerciseDefaults } from '../../data/exerciseDefaults';
 
 const API_BASE = 'https://app.bestrongagain.com/api/workout/';
 
+// Block types that get collapsed into a single inline string
+const INLINE_TYPES = ['warmup', 'cooldown', 'mobility', 'movement'];
+
 // ── TV Landing: enter access code ──
 function TVCodeEntry({ onConnect }) {
   const [code, setCode] = useState('');
@@ -76,8 +79,29 @@ function TVCodeEntry({ onConnect }) {
   );
 }
 
-// ── Exercise row for TV ──
-function TVExercise({ exercise, blockIndex, exIndex, maxes, savedData, blockType }) {
+// ── Build a display string for an exercise ──
+function getExerciseString(exercise) {
+  const ex = applyExerciseDefaults(exercise);
+  const setsCount = typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 1);
+  const reps = ex.repsPerSet?.[0] || ex.reps || ex.duration || '';
+  const qualifier = ex.qualifier ? ` ${ex.qualifier}` : '';
+  return `${ex.name} ${setsCount}x${reps}${qualifier}`;
+}
+
+// ── Inline banner for warmup/cooldown/mobility (comma-separated string) ──
+function InlineBanner({ block, label, icon }) {
+  const exercises = block.exercises || [];
+  if (exercises.length === 0) return null;
+  const text = exercises.map(ex => getExerciseString(ex)).join(',  ');
+  return (
+    <div style={styles.inlineBanner}>
+      <span style={styles.inlineLabel}>{icon} {label}:</span> {text}
+    </div>
+  );
+}
+
+// ── Exercise row for workout blocks (bigger fonts) ──
+function TVExercise({ exercise, maxes, savedData, blockType }) {
   const ex = applyExerciseDefaults(exercise);
   const setsCount = typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 1);
   const repsDisplay = ex.repsPerSet?.[0] || ex.reps || (ex.duration ? ex.duration : '?');
@@ -105,12 +129,12 @@ function TVExercise({ exercise, blockIndex, exIndex, maxes, savedData, blockType
   return (
     <div style={{
       ...styles.exerciseRow,
-      background: isComplete ? 'rgba(76, 175, 80, 0.12)' : 'rgba(255,255,255,0.06)',
-      borderLeft: isComplete ? '4px solid #4caf50' : '4px solid transparent',
+      background: isComplete ? 'rgba(76, 175, 80, 0.1)' : 'transparent',
+      borderLeft: isComplete ? '4px solid #4caf50' : '4px solid rgba(255,255,255,0.1)',
     }}>
       <div style={styles.exerciseHeader}>
         <span style={styles.exerciseName}>
-          {isComplete && <span style={{ color: '#4caf50', marginRight: '8px' }}>✓</span>}
+          {isComplete && <span style={{ color: '#4caf50', marginRight: '10px' }}>✓</span>}
           {ex.name}
         </span>
         {ex.qualifier && <span style={styles.qualifier}>{ex.qualifier}</span>}
@@ -126,18 +150,15 @@ function TVExercise({ exercise, blockIndex, exIndex, maxes, savedData, blockType
         </div>
       ) : (
         <div style={styles.setsRow}>
-          {/* Prescribed */}
-          <div style={styles.prescribedSection}>
-            <span style={styles.setsLabel}>
-              {setsCount}x{repsDisplay}
-              {prescribedWeight && ` @ ${prescribedWeight}`}
+          <span style={styles.setsLabel}>
+            {setsCount}x{repsDisplay}
+            {prescribedWeight && ` @ ${prescribedWeight}`}
+          </span>
+          {ex.isPercentageBased && ex.percentages && (
+            <span style={styles.percentages}>
+              ({ex.percentages.map(p => `${p}%`).join(' / ')})
             </span>
-            {ex.isPercentageBased && ex.percentages && (
-              <span style={styles.percentages}>
-                ({ex.percentages.map(p => `${p}%`).join(' / ')})
-              </span>
-            )}
-          </div>
+          )}
 
           {/* Tracked sets */}
           {weights.length > 0 && (
@@ -148,7 +169,7 @@ function TVExercise({ exercise, blockIndex, exIndex, maxes, savedData, blockType
                 if (!w && !r) return null;
                 return (
                   <span key={si} style={styles.setChip}>
-                    Set {si + 1}: {w || '—'} lbs × {r || '—'}
+                    S{si + 1}: {w || '—'} × {r || '—'}
                   </span>
                 );
               })}
@@ -162,19 +183,8 @@ function TVExercise({ exercise, blockIndex, exIndex, maxes, savedData, blockType
   );
 }
 
-// ── Block card for TV ──
-function TVBlock({ block, blockIndex, maxes, savedBlockData, isActive, userName }) {
-  const isTheme = block.type === 'theme';
-
-  if (isTheme && block.themeText) {
-    const themeText = block.themeText.replace(/\[name\]/gi, (userName || 'Athlete').split(' ')[0]);
-    return (
-      <div style={styles.themeCard}>
-        {themeText}
-      </div>
-    );
-  }
-
+// ── Workout block (superset, straight-set, circuit, etc.) ──
+function TVWorkoutBlock({ block, blockIndex, maxes, savedBlockData }) {
   const completedCount = (block.exercises || []).filter((_, exIndex) => {
     const sd = savedBlockData?.exercises?.[exIndex];
     return sd?.completed || sd?.weights?.some(w => w) || sd?.actualReps?.some(r => r);
@@ -182,18 +192,13 @@ function TVBlock({ block, blockIndex, maxes, savedBlockData, isActive, userName 
   const totalCount = block.exercises?.length || 0;
 
   return (
-    <div style={{
-      ...styles.blockCard,
-      ...(isActive ? { border: '2px solid #667eea', boxShadow: '0 0 20px rgba(102,126,234,0.3)' } : {}),
-    }}>
+    <div style={styles.workoutBlock}>
       <div style={styles.blockHeader}>
         <div style={styles.blockHeaderLeft}>
-          <span style={{ fontSize: '24px' }}>{getBlockIcon(block.type)}</span>
+          <span style={{ fontSize: '28px' }}>{getBlockIcon(block.type)}</span>
           <span style={styles.blockTitle}>{getBlockTypeName(block.type)}</span>
           {totalCount > 0 && (
-            <span style={styles.blockBadge}>
-              {completedCount}/{totalCount}
-            </span>
+            <span style={styles.blockBadge}>{completedCount}/{totalCount}</span>
           )}
         </div>
         {block.circuitType && (
@@ -207,8 +212,6 @@ function TVBlock({ block, blockIndex, maxes, savedBlockData, isActive, userName 
         <TVExercise
           key={exIndex}
           exercise={exercise}
-          blockIndex={blockIndex}
-          exIndex={exIndex}
           maxes={maxes}
           savedData={savedBlockData?.exercises?.[exIndex]}
           blockType={block.type}
@@ -246,9 +249,7 @@ export default function TVScreen() {
       deadlift: parseFloat(data.userPosition?.oneRmDeadlift) || 0,
       clean: parseFloat(data.userPosition?.oneRmClean) || 0,
     });
-    if (data.savedWorkout) {
-      setSavedWorkout(data.savedWorkout);
-    }
+    if (data.savedWorkout) setSavedWorkout(data.savedWorkout);
     setLastUpdate(new Date());
     setConnected(true);
   }, []);
@@ -256,7 +257,6 @@ export default function TVScreen() {
   // Poll for updates every 8 seconds
   useEffect(() => {
     if (!connected || !code) return;
-
     const poll = async () => {
       try {
         const res = await fetch(API_BASE + 'load-program.php', {
@@ -268,24 +268,16 @@ export default function TVScreen() {
         if (data.success && data.data) {
           const newWeek = data.data.userPosition?.currentWeek || currentWeek;
           const newDay = data.data.userPosition?.currentDay || currentDay;
-
-          // Update program if week/day changed
           if (newWeek !== currentWeek || newDay !== currentDay || data.data.program) {
             setProgram(data.data.program);
             setCurrentWeek(newWeek);
             setCurrentDay(newDay);
           }
-
-          if (data.data.savedWorkout) {
-            setSavedWorkout(data.data.savedWorkout);
-          }
+          if (data.data.savedWorkout) setSavedWorkout(data.data.savedWorkout);
           setLastUpdate(new Date());
         }
-      } catch {
-        // Silently retry on next interval
-      }
+      } catch { /* retry next interval */ }
     };
-
     pollRef.current = setInterval(poll, 8000);
     return () => clearInterval(pollRef.current);
   }, [connected, code, email, currentWeek, currentDay]);
@@ -307,24 +299,27 @@ export default function TVScreen() {
         setProgram(data.data.program);
         setCurrentWeek(week);
         setCurrentDay(day);
-        if (data.data.savedWorkout) {
-          setSavedWorkout(data.data.savedWorkout);
-        } else {
-          setSavedWorkout(null);
-        }
+        setSavedWorkout(data.data.savedWorkout || null);
         setLastUpdate(new Date());
       }
-    } catch { /* retry on next poll */ }
+    } catch { /* retry next poll */ }
   }, [code, email, currentWeek, currentDay]);
 
-  if (!connected) {
-    return <TVCodeEntry onConnect={handleConnect} />;
-  }
+  if (!connected) return <TVCodeEntry onConnect={handleConnect} />;
 
   const blocks = program?.blocks || [];
   const daysPerWeek = program?.daysPerWeek || 1;
   const totalWeeks = program?.totalWeeks || 1;
   const days = Array.from({ length: daysPerWeek }, (_, i) => i + 1);
+
+  // Separate blocks by type
+  const themeBlock = blocks.find(b => b.type === 'theme' && b.themeText);
+  const inlineBlocks = blocks.filter(b => INLINE_TYPES.includes(b.type));
+  const workoutBlocks = blocks.filter(b => !INLINE_TYPES.includes(b.type) && b.type !== 'theme');
+
+  const themeText = themeBlock
+    ? themeBlock.themeText.replace(/\[name\]/gi, (userName || 'Athlete').split(' ')[0])
+    : null;
 
   return (
     <div style={styles.tvContainer}>
@@ -335,7 +330,6 @@ export default function TVScreen() {
           <span style={styles.userBadge}>{userName || 'Athlete'}</span>
         </div>
         <div style={styles.topBarRight}>
-          {/* Week selector */}
           {totalWeeks > 1 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <button
@@ -351,7 +345,6 @@ export default function TVScreen() {
               >{'\u25B6'}</button>
             </div>
           )}
-          {/* Day pills — clickable */}
           <div style={styles.dayPills}>
             {days.map(d => (
               <button
@@ -366,23 +359,28 @@ export default function TVScreen() {
         </div>
       </div>
 
-      {/* Theme banner — full width above grid */}
-      {blocks.filter(b => b.type === 'theme' && b.themeText).map((block, i) => (
-        <TVBlock key={`theme-${i}`} block={block} blockIndex={i} maxes={maxes} userName={userName} />
-      ))}
+      {/* Scrollable content — single column, top to bottom */}
+      <div style={styles.content}>
+        {/* Theme banner */}
+        {themeText && <div style={styles.themeBanner}>{themeText}</div>}
 
-      {/* Blocks grid — two-column layout for landscape */}
-      <div style={styles.blocksGrid}>
-        {blocks.map((block, i) => {
-          if (block.type === 'theme') return null;
+        {/* Warmup / cooldown / mobility — inline comma strings */}
+        {inlineBlocks.map((block, i) => {
+          const label = getBlockTypeName(block.type);
+          const icon = getBlockIcon(block.type);
+          return <InlineBanner key={`inline-${i}`} block={block} label={label} icon={icon} />;
+        })}
+
+        {/* Workout blocks — stacked vertically, full width */}
+        {workoutBlocks.map((block, i) => {
+          const origIndex = blocks.indexOf(block);
           return (
-            <TVBlock
-              key={i}
+            <TVWorkoutBlock
+              key={`work-${i}`}
               block={block}
-              blockIndex={i}
+              blockIndex={origIndex}
               maxes={maxes}
-              savedBlockData={savedWorkout?.data?.blocks?.[i]}
-              userName={userName}
+              savedBlockData={savedWorkout?.data?.blocks?.[origIndex]}
             />
           );
         })}
@@ -426,56 +424,21 @@ const styles = {
     width: '100%',
   },
   landingIcon: { fontSize: '64px', marginBottom: '16px' },
-  landingTitle: {
-    fontSize: '42px',
-    fontWeight: '800',
-    color: '#fff',
-    margin: '0 0 8px',
-  },
-  landingSubtitle: {
-    fontSize: '18px',
-    color: 'rgba(255,255,255,0.6)',
-    margin: '0 0 40px',
-  },
+  landingTitle: { fontSize: '42px', fontWeight: '800', color: '#fff', margin: '0 0 8px' },
+  landingSubtitle: { fontSize: '18px', color: 'rgba(255,255,255,0.6)', margin: '0 0 40px' },
   codeInput: {
-    display: 'block',
-    width: '100%',
-    boxSizing: 'border-box',
-    padding: '20px',
-    fontSize: '36px',
-    fontWeight: '700',
-    textAlign: 'center',
-    letterSpacing: '12px',
-    border: '2px solid rgba(255,255,255,0.2)',
-    borderRadius: '16px',
-    background: 'rgba(255,255,255,0.08)',
-    color: '#fff',
-    outline: 'none',
-    marginBottom: '16px',
+    display: 'block', width: '100%', boxSizing: 'border-box', padding: '20px',
+    fontSize: '36px', fontWeight: '700', textAlign: 'center', letterSpacing: '12px',
+    border: '2px solid rgba(255,255,255,0.2)', borderRadius: '16px',
+    background: 'rgba(255,255,255,0.08)', color: '#fff', outline: 'none', marginBottom: '16px',
   },
-  error: {
-    color: '#ef5350',
-    fontSize: '16px',
-    marginBottom: '16px',
-    fontWeight: '600',
-  },
+  error: { color: '#ef5350', fontSize: '16px', marginBottom: '16px', fontWeight: '600' },
   connectBtn: {
-    width: '100%',
-    padding: '18px',
-    fontSize: '20px',
-    fontWeight: '700',
-    background: 'linear-gradient(135deg, #667eea, #764ba2)',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '14px',
-    cursor: 'pointer',
-    marginBottom: '20px',
+    width: '100%', padding: '18px', fontSize: '20px', fontWeight: '700',
+    background: 'linear-gradient(135deg, #667eea, #764ba2)', color: '#fff',
+    border: 'none', borderRadius: '14px', cursor: 'pointer', marginBottom: '20px',
   },
-  hint: {
-    fontSize: '14px',
-    color: 'rgba(255,255,255,0.4)',
-    lineHeight: '1.6',
-  },
+  hint: { fontSize: '14px', color: 'rgba(255,255,255,0.4)', lineHeight: '1.6' },
 
   // TV Display
   tvContainer: {
@@ -485,266 +448,153 @@ const styles = {
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     display: 'flex',
     flexDirection: 'column',
-    padding: '20px 30px',
+    padding: '20px 40px',
     boxSizing: 'border-box',
   },
 
   // Top bar
   topBar: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '20px',
-    flexShrink: 0,
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    marginBottom: '16px', flexShrink: 0,
   },
-  topBarLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '16px',
-  },
-  programTitle: {
-    fontSize: 'clamp(22px, 3vw, 36px)',
-    fontWeight: '800',
-    margin: 0,
-    color: '#fff',
-  },
+  topBarLeft: { display: 'flex', alignItems: 'center', gap: '16px' },
+  programTitle: { fontSize: 'clamp(24px, 3vw, 40px)', fontWeight: '800', margin: 0, color: '#fff' },
   userBadge: {
-    background: 'rgba(102,126,234,0.3)',
-    border: '1px solid rgba(102,126,234,0.5)',
-    borderRadius: '20px',
-    padding: '6px 16px',
-    fontSize: '16px',
-    fontWeight: '600',
-    color: '#b8c6ff',
+    background: 'rgba(102,126,234,0.3)', border: '1px solid rgba(102,126,234,0.5)',
+    borderRadius: '20px', padding: '6px 16px', fontSize: '18px', fontWeight: '600', color: '#b8c6ff',
   },
-  topBarRight: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '16px',
-  },
-  weekDay: {
-    fontSize: '18px',
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.7)',
-  },
-  dayPills: {
-    display: 'flex',
-    gap: '6px',
-  },
+  topBarRight: { display: 'flex', alignItems: 'center', gap: '16px' },
+  weekDay: { fontSize: '20px', fontWeight: '600', color: 'rgba(255,255,255,0.7)' },
   weekBtn: {
-    background: 'none',
-    border: 'none',
-    fontSize: '20px',
-    cursor: 'pointer',
-    padding: '4px 8px',
-    color: '#667eea',
-    fontWeight: '700',
+    background: 'none', border: 'none', fontSize: '22px', cursor: 'pointer',
+    padding: '4px 8px', color: '#667eea', fontWeight: '700',
   },
+  dayPills: { display: 'flex', gap: '6px' },
   dayPill: {
-    padding: '6px 12px',
-    borderRadius: '14px',
-    fontSize: '14px',
-    fontWeight: '600',
-    background: 'rgba(255,255,255,0.1)',
-    color: 'rgba(255,255,255,0.5)',
-    border: 'none',
-    cursor: 'pointer',
+    padding: '8px 14px', borderRadius: '14px', fontSize: '16px', fontWeight: '600',
+    background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)',
+    border: 'none', cursor: 'pointer',
   },
   dayPillActive: {
-    padding: '6px 12px',
-    borderRadius: '14px',
-    fontSize: '14px',
-    fontWeight: '700',
-    background: 'linear-gradient(135deg, #667eea, #764ba2)',
-    color: '#fff',
-    boxShadow: '0 2px 10px rgba(102,126,234,0.5)',
-    border: 'none',
-    cursor: 'pointer',
+    padding: '8px 14px', borderRadius: '14px', fontSize: '16px', fontWeight: '700',
+    background: 'linear-gradient(135deg, #667eea, #764ba2)', color: '#fff',
+    boxShadow: '0 2px 10px rgba(102,126,234,0.5)', border: 'none', cursor: 'pointer',
   },
 
-  // Blocks grid — responsive columns
-  blocksGrid: {
+  // Scrollable content area
+  content: {
     flex: 1,
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-    gap: '16px',
     overflow: 'auto',
-    alignContent: 'start',
   },
 
-  // Block card
-  blockCard: {
-    background: 'rgba(255,255,255,0.06)',
-    borderRadius: '16px',
-    border: '1px solid rgba(255,255,255,0.1)',
-    overflow: 'hidden',
-  },
-  blockHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '14px 18px',
-    background: 'rgba(102,126,234,0.15)',
-    borderBottom: '1px solid rgba(255,255,255,0.08)',
-  },
-  blockHeaderLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-  },
-  blockTitle: {
-    fontSize: '18px',
-    fontWeight: '700',
-    color: '#fff',
-  },
-  blockBadge: {
-    background: 'rgba(255,255,255,0.15)',
-    borderRadius: '10px',
-    padding: '2px 10px',
-    fontSize: '13px',
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.7)',
-  },
-  circuitTag: {
-    background: 'rgba(255,193,7,0.2)',
-    color: '#ffd54f',
-    borderRadius: '8px',
-    padding: '4px 10px',
-    fontSize: '12px',
-    fontWeight: '700',
-    letterSpacing: '1px',
-  },
-  blockNotes: {
-    padding: '10px 18px',
-    fontSize: '14px',
-    color: 'rgba(255,255,255,0.5)',
-    borderBottom: '1px solid rgba(255,255,255,0.05)',
-    fontStyle: 'italic',
-  },
-
-  // Theme card — compact banner
-  themeCard: {
+  // Theme banner — compact, full width
+  themeBanner: {
     background: 'linear-gradient(135deg, rgba(102,126,234,0.2), rgba(118,75,162,0.2))',
     borderRadius: '12px',
     border: '1px solid rgba(102,126,234,0.3)',
     padding: '12px 24px',
-    fontSize: '16px',
+    fontSize: '18px',
     lineHeight: '1.4',
     color: 'rgba(255,255,255,0.85)',
-    whiteSpace: 'pre-wrap',
     fontStyle: 'italic',
-    marginBottom: '16px',
+    marginBottom: '12px',
   },
 
-  // Exercise row
+  // Inline banner for warmup/cooldown (comma-separated)
+  inlineBanner: {
+    background: 'rgba(255,255,255,0.05)',
+    borderRadius: '10px',
+    border: '1px solid rgba(255,255,255,0.08)',
+    padding: '10px 24px',
+    fontSize: '17px',
+    lineHeight: '1.5',
+    color: 'rgba(255,255,255,0.7)',
+    marginBottom: '12px',
+  },
+  inlineLabel: {
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.9)',
+    marginRight: '6px',
+  },
+
+  // Workout block — full width, stacked
+  workoutBlock: {
+    background: 'rgba(255,255,255,0.05)',
+    borderRadius: '14px',
+    border: '1px solid rgba(255,255,255,0.1)',
+    overflow: 'hidden',
+    marginBottom: '14px',
+  },
+  blockHeader: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    padding: '14px 24px',
+    background: 'rgba(102,126,234,0.15)',
+    borderBottom: '1px solid rgba(255,255,255,0.08)',
+  },
+  blockHeaderLeft: { display: 'flex', alignItems: 'center', gap: '12px' },
+  blockTitle: { fontSize: '22px', fontWeight: '700', color: '#fff' },
+  blockBadge: {
+    background: 'rgba(255,255,255,0.15)', borderRadius: '10px',
+    padding: '2px 12px', fontSize: '15px', fontWeight: '600', color: 'rgba(255,255,255,0.7)',
+  },
+  circuitTag: {
+    background: 'rgba(255,193,7,0.2)', color: '#ffd54f', borderRadius: '8px',
+    padding: '4px 12px', fontSize: '14px', fontWeight: '700', letterSpacing: '1px',
+  },
+  blockNotes: {
+    padding: '10px 24px', fontSize: '16px', color: 'rgba(255,255,255,0.5)',
+    borderBottom: '1px solid rgba(255,255,255,0.05)', fontStyle: 'italic',
+  },
+
+  // Exercise row — bigger fonts
   exerciseRow: {
-    padding: '12px 18px',
+    padding: '14px 24px',
     borderBottom: '1px solid rgba(255,255,255,0.05)',
-    transition: 'background 0.3s',
   },
   exerciseHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    marginBottom: '4px',
+    display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px',
   },
-  exerciseName: {
-    fontSize: '16px',
-    fontWeight: '600',
-    color: '#fff',
-  },
+  exerciseName: { fontSize: '20px', fontWeight: '600', color: '#fff' },
   qualifier: {
-    fontSize: '12px',
-    color: '#b8c6ff',
-    background: 'rgba(102,126,234,0.2)',
-    borderRadius: '6px',
-    padding: '2px 8px',
-    fontWeight: '600',
+    fontSize: '14px', color: '#b8c6ff', background: 'rgba(102,126,234,0.2)',
+    borderRadius: '6px', padding: '2px 10px', fontWeight: '600',
   },
   setsRow: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: '12px',
+    display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '14px',
   },
-  prescribedSection: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  setsLabel: {
-    fontSize: '15px',
-    color: 'rgba(255,255,255,0.6)',
-    fontWeight: '500',
-  },
-  percentages: {
-    fontSize: '13px',
-    color: 'rgba(255,255,255,0.4)',
-  },
-  trackedSets: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '6px',
-  },
+  setsLabel: { fontSize: '18px', color: 'rgba(255,255,255,0.6)', fontWeight: '500' },
+  percentages: { fontSize: '15px', color: 'rgba(255,255,255,0.4)' },
+  trackedSets: { display: 'flex', flexWrap: 'wrap', gap: '8px' },
   setChip: {
-    background: 'rgba(76,175,80,0.2)',
-    border: '1px solid rgba(76,175,80,0.4)',
-    color: '#81c784',
-    borderRadius: '8px',
-    padding: '3px 10px',
-    fontSize: '13px',
-    fontWeight: '600',
+    background: 'rgba(76,175,80,0.2)', border: '1px solid rgba(76,175,80,0.4)',
+    color: '#81c784', borderRadius: '8px', padding: '4px 12px',
+    fontSize: '16px', fontWeight: '600',
   },
-  cardioInfo: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '8px',
-  },
+  cardioInfo: { display: 'flex', flexWrap: 'wrap', gap: '10px' },
   cardioTag: {
-    background: 'rgba(33,150,243,0.15)',
-    border: '1px solid rgba(33,150,243,0.3)',
-    color: '#64b5f6',
-    borderRadius: '8px',
-    padding: '4px 10px',
-    fontSize: '14px',
-    fontWeight: '600',
+    background: 'rgba(33,150,243,0.15)', border: '1px solid rgba(33,150,243,0.3)',
+    color: '#64b5f6', borderRadius: '8px', padding: '5px 12px',
+    fontSize: '17px', fontWeight: '600',
   },
   trackedTag: {
-    background: 'rgba(76,175,80,0.2)',
-    border: '1px solid rgba(76,175,80,0.4)',
-    color: '#81c784',
-    borderRadius: '8px',
-    padding: '4px 10px',
-    fontSize: '14px',
-    fontWeight: '600',
+    background: 'rgba(76,175,80,0.2)', border: '1px solid rgba(76,175,80,0.4)',
+    color: '#81c784', borderRadius: '8px', padding: '5px 12px',
+    fontSize: '17px', fontWeight: '600',
   },
   exerciseNotes: {
-    marginTop: '4px',
-    fontSize: '13px',
-    color: 'rgba(255,255,255,0.4)',
-    fontStyle: 'italic',
+    marginTop: '4px', fontSize: '15px', color: 'rgba(255,255,255,0.4)', fontStyle: 'italic',
   },
 
   // Status bar
   statusBar: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '12px 0',
-    marginTop: '10px',
-    fontSize: '14px',
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    padding: '10px 0', marginTop: '8px', fontSize: '14px',
     color: 'rgba(255,255,255,0.4)',
-    borderTop: '1px solid rgba(255,255,255,0.08)',
-    flexShrink: 0,
+    borderTop: '1px solid rgba(255,255,255,0.08)', flexShrink: 0,
   },
   disconnectBtn: {
-    background: 'rgba(239,83,80,0.2)',
-    border: '1px solid rgba(239,83,80,0.4)',
-    color: '#ef5350',
-    borderRadius: '8px',
-    padding: '6px 16px',
-    fontSize: '13px',
-    fontWeight: '600',
-    cursor: 'pointer',
+    background: 'rgba(239,83,80,0.2)', border: '1px solid rgba(239,83,80,0.4)',
+    color: '#ef5350', borderRadius: '8px', padding: '6px 16px',
+    fontSize: '13px', fontWeight: '600', cursor: 'pointer',
   },
 };
