@@ -1062,6 +1062,41 @@ export default function App() {
         <WorkoutChatbot ref={chatbotRef} userName={user?.name || 'there'} screen={screen} onLoadTravel={handleLoadTravelWorkout} />
       )}
 
+      {/* TV scroll remote — floating arrows when connected to a TV */}
+      {tvRoomId && screen === 'program' && (
+        <div style={{
+          position: 'fixed', right: '16px', top: '50%', transform: 'translateY(-50%)',
+          display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 9990,
+        }}>
+          <button
+            onClick={() => broadcastToTV('scroll_tv', { direction: 'up' })}
+            style={{
+              width: '48px', height: '48px', borderRadius: '50%',
+              background: 'linear-gradient(135deg, #667eea, #764ba2)',
+              border: '2px solid rgba(255,255,255,0.3)', color: '#fff',
+              fontSize: '22px', fontWeight: '700', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
+            }}
+          >{'\u25B2'}</button>
+          <div style={{
+            width: '48px', textAlign: 'center', fontSize: '10px',
+            color: '#667eea', fontWeight: '600',
+          }}>TV</div>
+          <button
+            onClick={() => broadcastToTV('scroll_tv', { direction: 'down' })}
+            style={{
+              width: '48px', height: '48px', borderRadius: '50%',
+              background: 'linear-gradient(135deg, #667eea, #764ba2)',
+              border: '2px solid rgba(255,255,255,0.3)', color: '#fff',
+              fontSize: '22px', fontWeight: '700', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
+            }}
+          >{'\u25BC'}</button>
+        </div>
+      )}
+
       {/* Modals */}
       <PainModal
         isOpen={showPainModal}

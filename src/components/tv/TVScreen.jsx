@@ -212,6 +212,7 @@ export default function TVScreen() {
   const [liveTracking, setLiveTracking] = useState({});
   const [deviceCount, setDeviceCount] = useState(0);
   const wsRef = useRef(null);
+  const contentRef = useRef(null);
 
   // WebSocket connection — starts immediately on mount
   useEffect(() => {
@@ -263,6 +264,15 @@ export default function TVScreen() {
             setLiveTracking({});
             if (msg.program) setProgram(msg.program);
             setLastUpdate(new Date());
+          }
+
+          // Phone controls TV scroll
+          if (msg.type === 'scroll_tv') {
+            if (contentRef.current) {
+              const amount = msg.direction === 'up' ? -300 : 300;
+              contentRef.current.scrollBy({ top: amount, behavior: 'smooth' });
+            }
+            return;
           }
 
           // Full sync — phone sends entire program + tracking state
@@ -335,7 +345,7 @@ export default function TVScreen() {
       </div>
 
       {/* Scrollable content — single column, top to bottom */}
-      <div style={styles.content}>
+      <div ref={contentRef} style={styles.content}>
         {/* Theme banner */}
         {themeText && <div style={styles.themeBanner}>{themeText}</div>}
 
@@ -449,14 +459,14 @@ const styles = {
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     display: 'flex',
     flexDirection: 'column',
-    padding: '20px 40px',
+    padding: '12px 30px',
     boxSizing: 'border-box',
   },
 
   // Top bar
   topBar: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    marginBottom: '16px', flexShrink: 0,
+    marginBottom: '8px', flexShrink: 0,
   },
   topBarLeft: { display: 'flex', alignItems: 'center', gap: '16px' },
   programTitle: { fontSize: 'clamp(24px, 3vw, 40px)', fontWeight: '800', margin: 0, color: '#fff' },
@@ -491,26 +501,26 @@ const styles = {
   // Theme banner — compact, full width
   themeBanner: {
     background: 'linear-gradient(135deg, rgba(102,126,234,0.2), rgba(118,75,162,0.2))',
-    borderRadius: '12px',
+    borderRadius: '8px',
     border: '1px solid rgba(102,126,234,0.3)',
-    padding: '12px 24px',
-    fontSize: '18px',
-    lineHeight: '1.4',
+    padding: '8px 20px',
+    fontSize: '16px',
+    lineHeight: '1.3',
     color: 'rgba(255,255,255,0.85)',
     fontStyle: 'italic',
-    marginBottom: '12px',
+    marginBottom: '8px',
   },
 
   // Inline banner for warmup/cooldown (comma-separated)
   inlineBanner: {
     background: 'rgba(255,255,255,0.05)',
-    borderRadius: '10px',
+    borderRadius: '8px',
     border: '1px solid rgba(255,255,255,0.08)',
-    padding: '10px 24px',
-    fontSize: '17px',
-    lineHeight: '1.5',
+    padding: '6px 20px',
+    fontSize: '15px',
+    lineHeight: '1.4',
     color: 'rgba(255,255,255,0.7)',
-    marginBottom: '12px',
+    marginBottom: '8px',
   },
   inlineLabel: {
     fontWeight: '700',
@@ -521,19 +531,19 @@ const styles = {
   // Workout block — full width, stacked
   workoutBlock: {
     background: 'rgba(255,255,255,0.05)',
-    borderRadius: '14px',
+    borderRadius: '10px',
     border: '1px solid rgba(255,255,255,0.1)',
     overflow: 'hidden',
-    marginBottom: '14px',
+    marginBottom: '8px',
   },
   blockHeader: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '14px 24px',
+    padding: '8px 20px',
     background: 'rgba(102,126,234,0.15)',
     borderBottom: '1px solid rgba(255,255,255,0.08)',
   },
-  blockHeaderLeft: { display: 'flex', alignItems: 'center', gap: '12px' },
-  blockTitle: { fontSize: '22px', fontWeight: '700', color: '#fff' },
+  blockHeaderLeft: { display: 'flex', alignItems: 'center', gap: '10px' },
+  blockTitle: { fontSize: '20px', fontWeight: '700', color: '#fff' },
   blockBadge: {
     background: 'rgba(255,255,255,0.15)', borderRadius: '10px',
     padding: '2px 12px', fontSize: '15px', fontWeight: '600', color: 'rgba(255,255,255,0.7)',
@@ -543,19 +553,19 @@ const styles = {
     padding: '4px 12px', fontSize: '14px', fontWeight: '700', letterSpacing: '1px',
   },
   blockNotes: {
-    padding: '10px 24px', fontSize: '16px', color: 'rgba(255,255,255,0.5)',
+    padding: '4px 20px', fontSize: '14px', color: 'rgba(255,255,255,0.5)',
     borderBottom: '1px solid rgba(255,255,255,0.05)', fontStyle: 'italic',
   },
 
-  // Exercise row — bigger fonts
+  // Exercise row — tight spacing
   exerciseRow: {
-    padding: '14px 24px',
+    padding: '6px 20px',
     borderBottom: '1px solid rgba(255,255,255,0.05)',
   },
   exerciseHeader: {
-    display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px',
+    display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '2px',
   },
-  exerciseName: { fontSize: '20px', fontWeight: '600', color: '#fff' },
+  exerciseName: { fontSize: '19px', fontWeight: '600', color: '#fff' },
   qualifier: {
     fontSize: '14px', color: '#b8c6ff', background: 'rgba(102,126,234,0.2)',
     borderRadius: '6px', padding: '2px 10px', fontWeight: '600',
@@ -563,7 +573,7 @@ const styles = {
   setsRow: {
     display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '14px',
   },
-  setsLabel: { fontSize: '18px', color: 'rgba(255,255,255,0.6)', fontWeight: '500' },
+  setsLabel: { fontSize: '17px', color: 'rgba(255,255,255,0.6)', fontWeight: '500' },
   percentages: { fontSize: '15px', color: 'rgba(255,255,255,0.4)' },
   trackedSets: { display: 'flex', flexWrap: 'wrap', gap: '8px' },
   setChip: {
