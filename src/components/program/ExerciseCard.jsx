@@ -909,6 +909,57 @@ export default function ExerciseCard({
   };
 
   // Cardio: treadmill, bike, rowing - just duration and optional distance
+  // Swap alternatives for conditioning exercises
+  const CARDIO_ALTERNATIVES = [
+    { name: 'Treadmill', icon: '\uD83C\uDFC3' },
+    { name: 'Rowing Machine', icon: '\uD83D\uDEA3' },
+    { name: 'Assault Bike', icon: '\uD83D\uDEB4' },
+    { name: 'Stationary Bike', icon: '\uD83D\uDEB2' },
+    { name: 'Elliptical', icon: '\u26AA' },
+    { name: 'Ski Erg', icon: '\u26F7\uFE0F' },
+    { name: 'Stair Climber', icon: '\uD83E\uDDF1' },
+    { name: 'Jog', icon: '\uD83C\uDFC3' },
+    { name: 'Jump Rope', icon: '\u2B55' },
+  ];
+  const [showSwap, setShowSwap] = useState(false);
+  const [swappedName, setSwappedName] = useState(null);
+  const displayName = swappedName || ex.name;
+
+  const handleSwap = (newName) => {
+    setSwappedName(newName);
+    onUpdateTracking(blockIndex, exIndex, null, 'swapped_exercise', newName);
+    setShowSwap(false);
+  };
+
+  const isConditioningExercise = blockType === 'conditioning' || blockType === 'cardio' || blockType === 'movement';
+
+  const renderSwapButton = () => {
+    if (!isConditioningExercise || inputLocked) return null;
+    return (
+      <div style={{ position: 'relative', marginBottom: '8px' }}>
+        <button
+          onClick={() => setShowSwap(!showSwap)}
+          style={{ background: 'none', border: '1px solid #d1d5db', borderRadius: '8px', padding: '6px 12px', fontSize: '12px', color: '#667eea', fontWeight: 600, cursor: 'pointer' }}
+        >
+          {swappedName ? `Swapped to: ${swappedName}` : 'Swap Equipment'}
+        </button>
+        {showSwap && (
+          <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 100, background: '#fff', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.15)', border: '1px solid #e5e7eb', minWidth: '200px', marginTop: '4px', maxHeight: '250px', overflowY: 'auto' }}>
+            {CARDIO_ALTERNATIVES.filter(a => a.name !== ex.name).map(alt => (
+              <button
+                key={alt.name}
+                onClick={() => handleSwap(alt.name)}
+                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', border: 'none', background: swappedName === alt.name ? '#f0f0ff' : '#fff', cursor: 'pointer', fontSize: '14px', borderBottom: '1px solid #f5f5f5' }}
+              >
+                {alt.icon} {alt.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderCardio = () => {
     const dUnit = getUnitLabel(ex.durationUnit, 'min');
     const distUnit = getUnitLabel(ex.distanceUnit, 'mi');
@@ -924,6 +975,7 @@ export default function ExerciseCard({
 
     return (
       <>
+        {renderSwapButton()}
         {details.length > 0 && (
           <div style={s.pillGrid}>
             {details.map((d, i) => (
@@ -986,6 +1038,7 @@ export default function ExerciseCard({
 
     return (
       <>
+        {renderSwapButton()}
         {details.length > 0 && (
           <div style={s.pillGrid}>
             {details.map((d, i) => (
