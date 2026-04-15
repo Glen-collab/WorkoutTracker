@@ -47,29 +47,57 @@ function TVLanding({ roomId, deviceCount }) {
   );
 }
 
-// ── Pull reps from wherever the builder stored them ──
+// ── Pull reps/duration from wherever the builder stored them ──
 function getReps(ex) {
   if (ex.repsPerSet?.length > 0) return ex.repsPerSet[0];
   if (ex.reps) return ex.reps;
   if (Array.isArray(ex.sets) && ex.sets.length > 0 && typeof ex.sets[0] === 'object') {
     return ex.sets[0].reps || ex.sets[0].targetReps || '';
   }
-  if (ex.duration) return ex.duration;
+  return '';
+}
+
+function getDuration(ex) {
+  if (ex.duration) {
+    const unit = ex.durationUnit || 'min';
+    return `${ex.duration} ${unit}`;
+  }
   return '';
 }
 
 function getSetsCount(ex) {
   const count = typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 0);
-  return count || 1; // default to 1 if 0 or NaN
+  return count;
+}
+
+// Format sets x reps — hide sets if 0, show duration if timed
+function formatSetsReps(ex) {
+  const sets = getSetsCount(ex);
+  const reps = getReps(ex);
+  const duration = getDuration(ex);
+
+  // Timed/duration exercise
+  if (!reps && duration) {
+    return sets > 0 ? `${sets}x ${duration}` : duration;
+  }
+  // Has reps
+  if (reps) {
+    return sets > 0 ? `${sets}x${reps}` : `x${reps}`;
+  }
+  // Has distance
+  if (ex.distance) {
+    const unit = ex.distanceUnit || 'mi';
+    return sets > 0 ? `${sets}x ${ex.distance} ${unit}` : `${ex.distance} ${unit}`;
+  }
+  return '';
 }
 
 // ── Build a display string for an exercise ──
 function getExerciseString(exercise) {
   const ex = applyExerciseDefaults(exercise);
-  const setsCount = getSetsCount(ex);
-  const reps = getReps(ex);
+  const display = formatSetsReps(ex);
   const qualifier = ex.qualifier ? ` ${ex.qualifier}` : '';
-  return `${ex.name} ${setsCount}x${reps}${qualifier}`;
+  return `${ex.name} ${display}${qualifier}`;
 }
 
 // ── Inline banner for warmup/cooldown/mobility (comma-separated string) ──
@@ -87,8 +115,8 @@ function InlineBanner({ block, label, icon }) {
 // ── Exercise row for workout blocks (bigger fonts) ──
 function TVExercise({ exercise, blockIndex, exIndex, maxes, savedData, liveTracking, blockType }) {
   const ex = applyExerciseDefaults(exercise);
-  const setsCount = getSetsCount(ex);
-  const repsDisplay = getReps(ex) || '?';
+  const setsCount = getSetsCount(ex) || 1;
+  const setsRepsDisplay = formatSetsReps(ex);
 
   // Get prescribed weight
   let prescribedWeight = '';
@@ -141,7 +169,7 @@ function TVExercise({ exercise, blockIndex, exIndex, maxes, savedData, liveTrack
       ) : (
         <div style={styles.setsRow}>
           <span style={styles.setsLabel}>
-            {setsCount}x{repsDisplay}
+            {setsRepsDisplay}
             {prescribedWeight && ` @ ${prescribedWeight}`}
           </span>
           {ex.isPercentageBased && ex.percentages && (
