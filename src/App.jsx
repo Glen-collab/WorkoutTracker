@@ -18,6 +18,7 @@ import TVScreen from './components/tv/TVScreen';
 const isTVMode = window.location.pathname === '/tv' || new URLSearchParams(window.location.search).get('tv') === '1';
 
 const WS_BASE = 'wss://app.bestrongagain.com/ws/';
+const tvRoomId = new URLSearchParams(window.location.search).get('tv');
 
 const containerStyle = {
   minHeight: '100vh',
@@ -75,15 +76,18 @@ export default function App() {
   const wsRef = useRef(null);
 
   // WebSocket connection to broadcast tracking updates to TV
+  // Connects using the TV room ID from QR code (?tv=ROOM_ID) if present
   useEffect(() => {
-    if (isTVMode || screen !== 'program' || !user?.accessCode) return;
+    if (isTVMode || screen !== 'program' || !tvRoomId) return;
 
     let ws;
     let reconnectTimer;
     const connect = () => {
-      ws = new WebSocket(WS_BASE + user.accessCode);
+      ws = new WebSocket(WS_BASE + tvRoomId);
       wsRef.current = ws;
-      ws.onopen = () => console.log('[Phone WS] Connected to TV relay');
+      ws.onopen = () => {
+        console.log('[Phone WS] Connected to TV room', tvRoomId);
+      };
       ws.onclose = () => {
         wsRef.current = null;
         reconnectTimer = setTimeout(connect, 5000);
@@ -96,7 +100,7 @@ export default function App() {
       clearTimeout(reconnectTimer);
       if (ws) { ws.close(); wsRef.current = null; }
     };
-  }, [screen, user?.accessCode]);
+  }, [screen, tvRoomId]);
 
   // Broadcast tracking data to TV via WebSocket
   const broadcastToTV = useCallback((type, payload) => {
@@ -104,6 +108,23 @@ export default function App() {
       wsRef.current.send(JSON.stringify({ type, ...payload }));
     }
   }, []);
+
+  // Send full program sync to TV when program loads (so TV gets the workout)
+  useEffect(() => {
+    if (!tvRoomId || !program || screen !== 'program') return;
+    // Small delay to ensure WS is connected
+    const timer = setTimeout(() => {
+      broadcastToTV('full_sync', {
+        program,
+        week: currentWeek,
+        day: currentDay,
+        userName: user?.name || '',
+        maxes,
+        tracking: trackingData,
+      });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [tvRoomId, program, screen]);
 
   // Travel mode state
   const [travelMode, setTravelMode] = useState(false);

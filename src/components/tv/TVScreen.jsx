@@ -8,73 +8,44 @@ const WS_BASE = 'wss://app.bestrongagain.com/ws/';
 // Block types that get collapsed into a single inline string
 const INLINE_TYPES = ['warmup', 'cooldown', 'mobility', 'movement'];
 
-// ── TV Landing: enter access code ──
-function TVCodeEntry({ onConnect }) {
-  const [code, setCode] = useState('');
-  const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+// Generate a random 6-char room ID
+function generateRoomId() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous chars
+  let id = '';
+  for (let i = 0; i < 6; i++) id += chars[Math.floor(Math.random() * chars.length)];
+  return id;
+}
 
-  const handleSubmit = async () => {
-    if (!code || code.length !== 4) { setError('Enter a 4-digit access code'); return; }
-    setLoading(true);
-    setError('');
-    try {
-      const res = await fetch(API_BASE + 'load-program.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, email: email || 'tv-display@bestrongagain.com' }),
-      });
-      const data = await res.json();
-      if (data.success && data.data?.program) {
-        onConnect({ code, email: email || data.data.userPosition?.email || '', data: data.data });
-      } else {
-        setError('Invalid code. Try again.');
-      }
-    } catch {
-      setError('Network error. Check connection.');
-    }
-    setLoading(false);
-  };
+// ── TV Landing: QR code scan ──
+function TVLanding({ roomId, deviceCount }) {
+  const trackerUrl = `https://bestrongagain.netlify.app?tv=${roomId}`;
+  // Use QR code API — no dependencies
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(trackerUrl)}&bgcolor=0f0c29&color=fff`;
 
   return (
     <div style={styles.landing}>
       <div style={styles.landingCard}>
-        <div style={styles.landingIcon}>📺</div>
-        <h1 style={styles.landingTitle}>Gym TV Mode</h1>
-        <p style={styles.landingSubtitle}>Enter your access code to display your workout</p>
+        <h1 style={styles.landingTitle}>Scan to Start</h1>
+        <p style={styles.landingSubtitle}>Point your phone camera at the QR code</p>
 
-        <input
-          type="text"
-          inputMode="numeric"
-          maxLength={4}
-          placeholder="Access Code"
-          value={code}
-          onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
-          onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-          style={styles.codeInput}
-          autoFocus
-        />
+        <div style={styles.qrContainer}>
+          <img src={qrUrl} alt="Scan to connect" style={styles.qrImage} />
+        </div>
 
-        <input
-          type="email"
-          placeholder="Email (optional)"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-          style={{ ...styles.codeInput, fontSize: '24px', letterSpacing: 'normal' }}
-        />
+        <div style={styles.roomCode}>
+          Room: <span style={styles.roomCodeValue}>{roomId}</span>
+        </div>
 
-        {error && <div style={styles.error}>{error}</div>}
-
-        <button onClick={handleSubmit} disabled={loading} style={styles.connectBtn}>
-          {loading ? 'Connecting...' : 'Display Workout'}
-        </button>
-
-        <p style={styles.hint}>
-          Open the Workout Tracker on your phone to track weights & reps.<br />
-          This screen updates automatically.
-        </p>
+        {deviceCount > 1 ? (
+          <div style={styles.connectedBanner}>
+            {'\u{1F7E2}'} Phone connected — loading workout...
+          </div>
+        ) : (
+          <p style={styles.hint}>
+            Scan the code, then log in with your access code.<br />
+            Your workout will appear on this screen.
+          </p>
+        )}
       </div>
     </div>
   );
@@ -235,52 +206,28 @@ function TVWorkoutBlock({ block, blockIndex, maxes, savedBlockData, liveTracking
 
 // ── Main TV Display ──
 export default function TVScreen() {
-  const [connected, setConnected] = useState(false);
-  const [code, setCode] = useState('');
-  const [email, setEmail] = useState('');
+  const [roomId] = useState(() => generateRoomId());
   const [program, setProgram] = useState(null);
   const [userName, setUserName] = useState('');
   const [currentWeek, setCurrentWeek] = useState(1);
   const [currentDay, setCurrentDay] = useState(1);
   const [maxes, setMaxes] = useState({});
-  const [savedWorkout, setSavedWorkout] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [liveTracking, setLiveTracking] = useState({});
   const [deviceCount, setDeviceCount] = useState(0);
   const wsRef = useRef(null);
 
-  const handleConnect = useCallback((info) => {
-    const { data } = info;
-    setCode(info.code);
-    setEmail(info.email);
-    setProgram(data.program);
-    setUserName(data.program?.userName || '');
-    setCurrentWeek(data.userPosition?.currentWeek || 1);
-    setCurrentDay(data.userPosition?.currentDay || 1);
-    setMaxes({
-      bench: parseFloat(data.userPosition?.oneRmBench) || 0,
-      squat: parseFloat(data.userPosition?.oneRmSquat) || 0,
-      deadlift: parseFloat(data.userPosition?.oneRmDeadlift) || 0,
-      clean: parseFloat(data.userPosition?.oneRmClean) || 0,
-    });
-    if (data.savedWorkout) setSavedWorkout(data.savedWorkout);
-    setLastUpdate(new Date());
-    setConnected(true);
-  }, []);
-
-  // WebSocket connection — replaces polling
+  // WebSocket connection — starts immediately on mount
   useEffect(() => {
-    if (!connected || !code) return;
-
     let ws;
     let reconnectTimer;
 
     const connect = () => {
-      ws = new WebSocket(WS_BASE + code);
+      ws = new WebSocket(WS_BASE + roomId);
       wsRef.current = ws;
 
       ws.onopen = () => {
-        console.log('[TV WS] Connected to room', code);
+        console.log('[TV WS] Connected to room', roomId);
       };
 
       ws.onmessage = (event) => {
@@ -322,12 +269,14 @@ export default function TVScreen() {
             setLastUpdate(new Date());
           }
 
-          // Full sync — phone sends entire tracking state
+          // Full sync — phone sends entire program + tracking state
           if (msg.type === 'full_sync') {
             if (msg.tracking) setLiveTracking(msg.tracking);
             if (msg.week) setCurrentWeek(msg.week);
             if (msg.day) setCurrentDay(msg.day);
             if (msg.program) setProgram(msg.program);
+            if (msg.userName) setUserName(msg.userName);
+            if (msg.maxes) setMaxes(msg.maxes);
             setLastUpdate(new Date());
           }
 
@@ -340,43 +289,20 @@ export default function TVScreen() {
         reconnectTimer = setTimeout(connect, 3000);
       };
 
-      ws.onerror = () => {
-        ws.close();
-      };
+      ws.onerror = () => ws.close();
     };
 
     connect();
-
     return () => {
       clearTimeout(reconnectTimer);
       if (ws) ws.close();
     };
-  }, [connected, code]);
+  }, [roomId]);
 
-  // Navigate to a specific week/day
-  const loadDay = useCallback(async (week, day) => {
-    if (week === currentWeek && day === currentDay) return;
-    try {
-      const res = await fetch(API_BASE + 'load-program.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          code, email: email || 'tv-display@bestrongagain.com',
-          requested_week: week, requested_day: day,
-        }),
-      });
-      const data = await res.json();
-      if (data.success && data.data?.program) {
-        setProgram(data.data.program);
-        setCurrentWeek(week);
-        setCurrentDay(day);
-        setSavedWorkout(data.data.savedWorkout || null);
-        setLastUpdate(new Date());
-      }
-    } catch { /* retry next poll */ }
-  }, [code, email, currentWeek, currentDay]);
-
-  if (!connected) return <TVCodeEntry onConnect={handleConnect} />;
+  // Show QR landing until phone sends program data
+  if (!program) {
+    return <TVLanding roomId={roomId} deviceCount={deviceCount} />;
+  }
 
   const blocks = program?.blocks || [];
   const daysPerWeek = program?.daysPerWeek || 1;
@@ -401,30 +327,12 @@ export default function TVScreen() {
           <span style={styles.userBadge}>{userName || 'Athlete'}</span>
         </div>
         <div style={styles.topBarRight}>
-          {totalWeeks > 1 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <button
-                onClick={() => currentWeek > 1 && loadDay(currentWeek - 1, 1)}
-                style={{ ...styles.weekBtn, opacity: currentWeek <= 1 ? 0.3 : 1 }}
-                disabled={currentWeek <= 1}
-              >{'\u25C0'}</button>
-              <span style={styles.weekDay}>Week {currentWeek}/{totalWeeks}</span>
-              <button
-                onClick={() => currentWeek < totalWeeks && loadDay(currentWeek + 1, 1)}
-                style={{ ...styles.weekBtn, opacity: currentWeek >= totalWeeks ? 0.3 : 1 }}
-                disabled={currentWeek >= totalWeeks}
-              >{'\u25B6'}</button>
-            </div>
-          )}
+          <span style={styles.weekDay}>Week {currentWeek}/{totalWeeks} &bull; Day {currentDay}/{daysPerWeek}</span>
           <div style={styles.dayPills}>
             {days.map(d => (
-              <button
-                key={d}
-                onClick={() => loadDay(currentWeek, d)}
-                style={d === currentDay ? styles.dayPillActive : styles.dayPill}
-              >
+              <span key={d} style={d === currentDay ? styles.dayPillActive : styles.dayPill}>
                 D{d}
-              </button>
+              </span>
             ))}
           </div>
         </div>
@@ -451,7 +359,7 @@ export default function TVScreen() {
               block={block}
               blockIndex={origIndex}
               maxes={maxes}
-              savedBlockData={savedWorkout?.data?.blocks?.[origIndex]}
+              savedBlockData={null}
               liveTracking={liveTracking}
             />
           );
@@ -465,15 +373,15 @@ export default function TVScreen() {
             {deviceCount > 1 ? '\u{1F7E2}' : '\u{1F7E1}'}
           </span>
           {deviceCount > 1 ? `Phone connected` : 'Waiting for phone...'}
-          {' — '}Code: {code}
+          {' — '}Room: {roomId}
         </span>
         <span>
           {lastUpdate
             ? `Last update: ${lastUpdate.toLocaleTimeString()}`
             : ''}
         </span>
-        <button onClick={() => { setConnected(false); if (wsRef.current) wsRef.current.close(); }} style={styles.disconnectBtn}>
-          Exit
+        <button onClick={() => { setProgram(null); setLiveTracking({}); setUserName(''); }} style={styles.disconnectBtn}>
+          New Session
         </button>
       </div>
     </div>
@@ -501,20 +409,39 @@ const styles = {
     maxWidth: '600px',
     width: '100%',
   },
-  landingIcon: { fontSize: '64px', marginBottom: '16px' },
   landingTitle: { fontSize: '42px', fontWeight: '800', color: '#fff', margin: '0 0 8px' },
-  landingSubtitle: { fontSize: '18px', color: 'rgba(255,255,255,0.6)', margin: '0 0 40px' },
-  codeInput: {
-    display: 'block', width: '100%', boxSizing: 'border-box', padding: '20px',
-    fontSize: '36px', fontWeight: '700', textAlign: 'center', letterSpacing: '12px',
-    border: '2px solid rgba(255,255,255,0.2)', borderRadius: '16px',
-    background: 'rgba(255,255,255,0.08)', color: '#fff', outline: 'none', marginBottom: '16px',
+  landingSubtitle: { fontSize: '18px', color: 'rgba(255,255,255,0.6)', margin: '0 0 30px' },
+  qrContainer: {
+    background: '#fff',
+    borderRadius: '20px',
+    padding: '20px',
+    display: 'inline-block',
+    marginBottom: '24px',
   },
-  error: { color: '#ef5350', fontSize: '16px', marginBottom: '16px', fontWeight: '600' },
-  connectBtn: {
-    width: '100%', padding: '18px', fontSize: '20px', fontWeight: '700',
-    background: 'linear-gradient(135deg, #667eea, #764ba2)', color: '#fff',
-    border: 'none', borderRadius: '14px', cursor: 'pointer', marginBottom: '20px',
+  qrImage: {
+    width: '260px',
+    height: '260px',
+    display: 'block',
+  },
+  roomCode: {
+    fontSize: '16px',
+    color: 'rgba(255,255,255,0.5)',
+    marginBottom: '20px',
+  },
+  roomCodeValue: {
+    fontSize: '20px',
+    fontWeight: '700',
+    color: '#b8c6ff',
+    letterSpacing: '3px',
+  },
+  connectedBanner: {
+    background: 'rgba(76,175,80,0.15)',
+    border: '1px solid rgba(76,175,80,0.4)',
+    borderRadius: '12px',
+    padding: '16px 24px',
+    fontSize: '18px',
+    fontWeight: '600',
+    color: '#81c784',
   },
   hint: { fontSize: '14px', color: 'rgba(255,255,255,0.4)', lineHeight: '1.6' },
 
