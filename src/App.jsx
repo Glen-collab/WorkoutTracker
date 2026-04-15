@@ -17,6 +17,8 @@ import TVScreen from './components/tv/TVScreen';
 // Check if TV mode requested via /tv path or ?tv=1 param
 const isTVMode = window.location.pathname === '/tv' || new URLSearchParams(window.location.search).get('tv') === '1';
 
+const WS_BASE = 'wss://app.bestrongagain.com/ws/';
+
 const containerStyle = {
   minHeight: '100vh',
   background: '#f0f2f5',
@@ -70,6 +72,38 @@ export default function App() {
   const [cumulativeWeeks, setCumulativeWeeks] = useState(0);
 
   const chatbotRef = useRef(null);
+  const wsRef = useRef(null);
+
+  // WebSocket connection to broadcast tracking updates to TV
+  useEffect(() => {
+    if (isTVMode || screen !== 'program' || !user?.accessCode) return;
+
+    let ws;
+    let reconnectTimer;
+    const connect = () => {
+      ws = new WebSocket(WS_BASE + user.accessCode);
+      wsRef.current = ws;
+      ws.onopen = () => console.log('[Phone WS] Connected to TV relay');
+      ws.onclose = () => {
+        wsRef.current = null;
+        reconnectTimer = setTimeout(connect, 5000);
+      };
+      ws.onerror = () => ws.close();
+    };
+    connect();
+
+    return () => {
+      clearTimeout(reconnectTimer);
+      if (ws) { ws.close(); wsRef.current = null; }
+    };
+  }, [screen, user?.accessCode]);
+
+  // Broadcast tracking data to TV via WebSocket
+  const broadcastToTV = useCallback((type, payload) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type, ...payload }));
+    }
+  }, []);
 
   // Travel mode state
   const [travelMode, setTravelMode] = useState(false);
@@ -125,6 +159,9 @@ export default function App() {
     return `gwt_tracking_${user.accessCode}_${currentWeek}_${currentDay}`;
   }, [user?.accessCode, currentWeek, currentDay]);
 
+  // Debounce timer for broadcasting full tracking state to TV
+  const broadcastTimerRef = useRef(null);
+
   const handleUpdateTracking = useCallback((blockIndex, exIndex, setIndex, field, value) => {
     const isDirectKey = field.startsWith('rec-') || field.startsWith('complete-') || field.startsWith('block-notes-');
     const key = isDirectKey ? field : `${blockIndex}-${exIndex}-${setIndex}-${field}`;
@@ -135,9 +172,16 @@ export default function App() {
         const storageKey = `gwt_tracking_${userRef.current?.accessCode}_${currentWeekRef.current}_${currentDayRef.current}`;
         if (storageKey) localStorage.setItem(storageKey, JSON.stringify(updated));
       } catch {}
+
+      // Broadcast to TV via WebSocket (debounced — sends full state every 500ms max)
+      clearTimeout(broadcastTimerRef.current);
+      broadcastTimerRef.current = setTimeout(() => {
+        broadcastToTV('tracking', { data: updated });
+      }, 500);
+
       return updated;
     });
-  }, []);
+  }, [broadcastToTV]);
 
   // --- Load program from API ---
 

@@ -3,6 +3,7 @@ import { getBlockTypeName, getBlockIcon, get1RM, calculateWeight } from '../../u
 import { applyExerciseDefaults } from '../../data/exerciseDefaults';
 
 const API_BASE = 'https://app.bestrongagain.com/api/workout/';
+const WS_BASE = 'wss://app.bestrongagain.com/ws/';
 
 // Block types that get collapsed into a single inline string
 const INLINE_TYPES = ['warmup', 'cooldown', 'mobility', 'movement'];
@@ -101,7 +102,7 @@ function InlineBanner({ block, label, icon }) {
 }
 
 // ── Exercise row for workout blocks (bigger fonts) ──
-function TVExercise({ exercise, maxes, savedData, blockType }) {
+function TVExercise({ exercise, blockIndex, exIndex, maxes, savedData, liveTracking, blockType }) {
   const ex = applyExerciseDefaults(exercise);
   const setsCount = typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 1);
   const repsDisplay = ex.repsPerSet?.[0] || ex.reps || (ex.duration ? ex.duration : '?');
@@ -118,10 +119,16 @@ function TVExercise({ exercise, maxes, savedData, blockType }) {
     prescribedWeight = `${ex.weight} lbs`;
   }
 
-  // Get tracked data from saved workout
-  const weights = savedData?.weights || [];
-  const actualReps = savedData?.actualReps || [];
-  const isComplete = savedData?.completed || (weights.some(w => w) || actualReps.some(r => r));
+  // Get tracked data — prefer live WebSocket data, fall back to saved workout from API
+  const lt = liveTracking || {};
+  const liveComplete = lt[`complete-${blockIndex}-${exIndex}`];
+  const liveWeights = Array.from({ length: setsCount }, (_, si) => lt[`${blockIndex}-${exIndex}-${si}-weight`] || '');
+  const liveReps = Array.from({ length: setsCount }, (_, si) => lt[`${blockIndex}-${exIndex}-${si}-reps`] || '');
+  const hasLiveData = liveComplete || liveWeights.some(w => w) || liveReps.some(r => r);
+
+  const weights = hasLiveData ? liveWeights : (savedData?.weights || []);
+  const actualReps = hasLiveData ? liveReps : (savedData?.actualReps || []);
+  const isComplete = liveComplete || savedData?.completed || (weights.some(w => w) || actualReps.some(r => r));
 
   // Is conditioning/cardio?
   const isCardio = blockType === 'conditioning' || blockType === 'cardio';
@@ -184,10 +191,12 @@ function TVExercise({ exercise, maxes, savedData, blockType }) {
 }
 
 // ── Workout block (superset, straight-set, circuit, etc.) ──
-function TVWorkoutBlock({ block, blockIndex, maxes, savedBlockData }) {
+function TVWorkoutBlock({ block, blockIndex, maxes, savedBlockData, liveTracking }) {
+  const lt = liveTracking || {};
   const completedCount = (block.exercises || []).filter((_, exIndex) => {
+    const liveComplete = lt[`complete-${blockIndex}-${exIndex}`];
     const sd = savedBlockData?.exercises?.[exIndex];
-    return sd?.completed || sd?.weights?.some(w => w) || sd?.actualReps?.some(r => r);
+    return liveComplete || sd?.completed || sd?.weights?.some(w => w) || sd?.actualReps?.some(r => r);
   }).length;
   const totalCount = block.exercises?.length || 0;
 
@@ -212,8 +221,11 @@ function TVWorkoutBlock({ block, blockIndex, maxes, savedBlockData }) {
         <TVExercise
           key={exIndex}
           exercise={exercise}
+          blockIndex={blockIndex}
+          exIndex={exIndex}
           maxes={maxes}
           savedData={savedBlockData?.exercises?.[exIndex]}
+          liveTracking={liveTracking}
           blockType={block.type}
         />
       ))}
@@ -233,7 +245,9 @@ export default function TVScreen() {
   const [maxes, setMaxes] = useState({});
   const [savedWorkout, setSavedWorkout] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
-  const pollRef = useRef(null);
+  const [liveTracking, setLiveTracking] = useState({});
+  const [deviceCount, setDeviceCount] = useState(0);
+  const wsRef = useRef(null);
 
   const handleConnect = useCallback((info) => {
     const { data } = info;
@@ -254,33 +268,90 @@ export default function TVScreen() {
     setConnected(true);
   }, []);
 
-  // Poll for updates every 8 seconds
+  // WebSocket connection — replaces polling
   useEffect(() => {
     if (!connected || !code) return;
-    const poll = async () => {
-      try {
-        const res = await fetch(API_BASE + 'load-program.php', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, email: email || 'tv-display@bestrongagain.com' }),
-        });
-        const data = await res.json();
-        if (data.success && data.data) {
-          const newWeek = data.data.userPosition?.currentWeek || currentWeek;
-          const newDay = data.data.userPosition?.currentDay || currentDay;
-          if (newWeek !== currentWeek || newDay !== currentDay || data.data.program) {
-            setProgram(data.data.program);
-            setCurrentWeek(newWeek);
-            setCurrentDay(newDay);
+
+    let ws;
+    let reconnectTimer;
+
+    const connect = () => {
+      ws = new WebSocket(WS_BASE + code);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log('[TV WS] Connected to room', code);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+
+          if (msg.type === 'status') {
+            setDeviceCount(msg.devices);
+            return;
           }
-          if (data.data.savedWorkout) setSavedWorkout(data.data.savedWorkout);
-          setLastUpdate(new Date());
-        }
-      } catch { /* retry next interval */ }
+
+          // Phone sent a tracking update
+          if (msg.type === 'tracking') {
+            setLiveTracking(msg.data || {});
+            setLastUpdate(new Date());
+          }
+
+          // Phone completed an exercise
+          if (msg.type === 'exercise_complete') {
+            setLiveTracking(prev => ({
+              ...prev,
+              [`complete-${msg.blockIndex}-${msg.exIndex}`]: true,
+              ...Object.fromEntries(
+                (msg.weights || []).map((w, si) => [`${msg.blockIndex}-${msg.exIndex}-${si}-weight`, w])
+              ),
+              ...Object.fromEntries(
+                (msg.reps || []).map((r, si) => [`${msg.blockIndex}-${msg.exIndex}-${si}-reps`, r])
+              ),
+            }));
+            setLastUpdate(new Date());
+          }
+
+          // Phone navigated to a different day
+          if (msg.type === 'day_change') {
+            setCurrentWeek(msg.week);
+            setCurrentDay(msg.day);
+            setLiveTracking({});
+            if (msg.program) setProgram(msg.program);
+            setLastUpdate(new Date());
+          }
+
+          // Full sync — phone sends entire tracking state
+          if (msg.type === 'full_sync') {
+            if (msg.tracking) setLiveTracking(msg.tracking);
+            if (msg.week) setCurrentWeek(msg.week);
+            if (msg.day) setCurrentDay(msg.day);
+            if (msg.program) setProgram(msg.program);
+            setLastUpdate(new Date());
+          }
+
+        } catch { /* ignore bad messages */ }
+      };
+
+      ws.onclose = () => {
+        console.log('[TV WS] Disconnected, reconnecting in 3s...');
+        setDeviceCount(0);
+        reconnectTimer = setTimeout(connect, 3000);
+      };
+
+      ws.onerror = () => {
+        ws.close();
+      };
     };
-    pollRef.current = setInterval(poll, 8000);
-    return () => clearInterval(pollRef.current);
-  }, [connected, code, email, currentWeek, currentDay]);
+
+    connect();
+
+    return () => {
+      clearTimeout(reconnectTimer);
+      if (ws) ws.close();
+    };
+  }, [connected, code]);
 
   // Navigate to a specific week/day
   const loadDay = useCallback(async (week, day) => {
@@ -381,6 +452,7 @@ export default function TVScreen() {
               blockIndex={origIndex}
               maxes={maxes}
               savedBlockData={savedWorkout?.data?.blocks?.[origIndex]}
+              liveTracking={liveTracking}
             />
           );
         })}
@@ -388,13 +460,19 @@ export default function TVScreen() {
 
       {/* Status bar */}
       <div style={styles.statusBar}>
-        <span>📺 TV Mode — Code: {code}</span>
+        <span>
+          <span style={{ color: deviceCount > 1 ? '#4caf50' : '#ff9800', marginRight: '6px' }}>
+            {deviceCount > 1 ? '\u{1F7E2}' : '\u{1F7E1}'}
+          </span>
+          {deviceCount > 1 ? `Phone connected` : 'Waiting for phone...'}
+          {' — '}Code: {code}
+        </span>
         <span>
           {lastUpdate
-            ? `Last sync: ${lastUpdate.toLocaleTimeString()}`
-            : 'Waiting for data...'}
+            ? `Last update: ${lastUpdate.toLocaleTimeString()}`
+            : ''}
         </span>
-        <button onClick={() => { setConnected(false); clearInterval(pollRef.current); }} style={styles.disconnectBtn}>
+        <button onClick={() => { setConnected(false); if (wsRef.current) wsRef.current.close(); }} style={styles.disconnectBtn}>
           Exit
         </button>
       </div>
