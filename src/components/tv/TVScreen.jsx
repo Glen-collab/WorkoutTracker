@@ -79,12 +79,14 @@ function TVCodeEntry({ onConnect }) {
 // ── Exercise row for TV ──
 function TVExercise({ exercise, blockIndex, exIndex, maxes, savedData, blockType }) {
   const ex = applyExerciseDefaults(exercise);
-  const setsCount = typeof ex.sets === 'number' ? ex.sets : parseInt(ex.sets) || 1;
+  const setsCount = typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 1);
+  const repsDisplay = ex.repsPerSet?.[0] || ex.reps || (ex.duration ? ex.duration : '?');
 
   // Get prescribed weight
   let prescribedWeight = '';
   if (ex.isPercentageBased && ex.percentages?.length > 0) {
-    const oneRM = get1RM(ex.name, maxes, ex.baseMax);
+    const manualMax = ex.manualMax || 0;
+    const oneRM = manualMax > 0 ? manualMax : get1RM(ex.name, maxes, ex.baseMax);
     if (oneRM > 0) {
       prescribedWeight = ex.percentages.map(p => `${calculateWeight(oneRM, p)} lbs`).join(' / ');
     }
@@ -127,7 +129,7 @@ function TVExercise({ exercise, blockIndex, exIndex, maxes, savedData, blockType
           {/* Prescribed */}
           <div style={styles.prescribedSection}>
             <span style={styles.setsLabel}>
-              {setsCount}x{ex.reps || '?'}
+              {setsCount}x{repsDisplay}
               {prescribedWeight && ` @ ${prescribedWeight}`}
             </span>
             {ex.isPercentageBased && ex.percentages && (
@@ -161,13 +163,14 @@ function TVExercise({ exercise, blockIndex, exIndex, maxes, savedData, blockType
 }
 
 // ── Block card for TV ──
-function TVBlock({ block, blockIndex, maxes, savedBlockData, isActive }) {
+function TVBlock({ block, blockIndex, maxes, savedBlockData, isActive, userName }) {
   const isTheme = block.type === 'theme';
 
   if (isTheme && block.themeText) {
+    const themeText = block.themeText.replace(/\[name\]/gi, (userName || 'Athlete').split(' ')[0]);
     return (
       <div style={styles.themeCard}>
-        {block.themeText}
+        {themeText}
       </div>
     );
   }
@@ -287,6 +290,33 @@ export default function TVScreen() {
     return () => clearInterval(pollRef.current);
   }, [connected, code, email, currentWeek, currentDay]);
 
+  // Navigate to a specific week/day
+  const loadDay = useCallback(async (week, day) => {
+    if (week === currentWeek && day === currentDay) return;
+    try {
+      const res = await fetch(API_BASE + 'load-program.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code, email: email || 'tv-display@bestrongagain.com',
+          requested_week: week, requested_day: day,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.data?.program) {
+        setProgram(data.data.program);
+        setCurrentWeek(week);
+        setCurrentDay(day);
+        if (data.data.savedWorkout) {
+          setSavedWorkout(data.data.savedWorkout);
+        } else {
+          setSavedWorkout(null);
+        }
+        setLastUpdate(new Date());
+      }
+    } catch { /* retry on next poll */ }
+  }, [code, email, currentWeek, currentDay]);
+
   if (!connected) {
     return <TVCodeEntry onConnect={handleConnect} />;
   }
@@ -305,31 +335,57 @@ export default function TVScreen() {
           <span style={styles.userBadge}>{userName || 'Athlete'}</span>
         </div>
         <div style={styles.topBarRight}>
-          <div style={styles.weekDay}>
-            Week {currentWeek}/{totalWeeks} &bull; Day {currentDay}/{daysPerWeek}
-          </div>
-          {/* Day pills */}
+          {/* Week selector */}
+          {totalWeeks > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                onClick={() => currentWeek > 1 && loadDay(currentWeek - 1, 1)}
+                style={{ ...styles.weekBtn, opacity: currentWeek <= 1 ? 0.3 : 1 }}
+                disabled={currentWeek <= 1}
+              >{'\u25C0'}</button>
+              <span style={styles.weekDay}>Week {currentWeek}/{totalWeeks}</span>
+              <button
+                onClick={() => currentWeek < totalWeeks && loadDay(currentWeek + 1, 1)}
+                style={{ ...styles.weekBtn, opacity: currentWeek >= totalWeeks ? 0.3 : 1 }}
+                disabled={currentWeek >= totalWeeks}
+              >{'\u25B6'}</button>
+            </div>
+          )}
+          {/* Day pills — clickable */}
           <div style={styles.dayPills}>
             {days.map(d => (
-              <span key={d} style={d === currentDay ? styles.dayPillActive : styles.dayPill}>
+              <button
+                key={d}
+                onClick={() => loadDay(currentWeek, d)}
+                style={d === currentDay ? styles.dayPillActive : styles.dayPill}
+              >
                 D{d}
-              </span>
+              </button>
             ))}
           </div>
         </div>
       </div>
 
+      {/* Theme banner — full width above grid */}
+      {blocks.filter(b => b.type === 'theme' && b.themeText).map((block, i) => (
+        <TVBlock key={`theme-${i}`} block={block} blockIndex={i} maxes={maxes} userName={userName} />
+      ))}
+
       {/* Blocks grid — two-column layout for landscape */}
       <div style={styles.blocksGrid}>
-        {blocks.map((block, i) => (
-          <TVBlock
-            key={i}
-            block={block}
-            blockIndex={i}
-            maxes={maxes}
-            savedBlockData={savedWorkout?.data?.blocks?.[i]}
-          />
-        ))}
+        {blocks.map((block, i) => {
+          if (block.type === 'theme') return null;
+          return (
+            <TVBlock
+              key={i}
+              block={block}
+              blockIndex={i}
+              maxes={maxes}
+              savedBlockData={savedWorkout?.data?.blocks?.[i]}
+              userName={userName}
+            />
+          );
+        })}
       </div>
 
       {/* Status bar */}
@@ -475,6 +531,15 @@ const styles = {
     display: 'flex',
     gap: '6px',
   },
+  weekBtn: {
+    background: 'none',
+    border: 'none',
+    fontSize: '20px',
+    cursor: 'pointer',
+    padding: '4px 8px',
+    color: '#667eea',
+    fontWeight: '700',
+  },
   dayPill: {
     padding: '6px 12px',
     borderRadius: '14px',
@@ -482,6 +547,8 @@ const styles = {
     fontWeight: '600',
     background: 'rgba(255,255,255,0.1)',
     color: 'rgba(255,255,255,0.5)',
+    border: 'none',
+    cursor: 'pointer',
   },
   dayPillActive: {
     padding: '6px 12px',
@@ -491,6 +558,8 @@ const styles = {
     background: 'linear-gradient(135deg, #667eea, #764ba2)',
     color: '#fff',
     boxShadow: '0 2px 10px rgba(102,126,234,0.5)',
+    border: 'none',
+    cursor: 'pointer',
   },
 
   // Blocks grid — responsive columns
@@ -553,17 +622,18 @@ const styles = {
     fontStyle: 'italic',
   },
 
-  // Theme card
+  // Theme card — compact banner
   themeCard: {
     background: 'linear-gradient(135deg, rgba(102,126,234,0.2), rgba(118,75,162,0.2))',
-    borderRadius: '16px',
+    borderRadius: '12px',
     border: '1px solid rgba(102,126,234,0.3)',
-    padding: '20px 24px',
-    fontSize: '18px',
-    lineHeight: '1.6',
+    padding: '12px 24px',
+    fontSize: '16px',
+    lineHeight: '1.4',
     color: 'rgba(255,255,255,0.85)',
     whiteSpace: 'pre-wrap',
     fontStyle: 'italic',
+    marginBottom: '16px',
   },
 
   // Exercise row
