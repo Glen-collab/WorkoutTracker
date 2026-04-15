@@ -47,11 +47,27 @@ function TVLanding({ roomId, deviceCount }) {
   );
 }
 
+// ── Pull reps from wherever the builder stored them ──
+function getReps(ex) {
+  if (ex.repsPerSet?.length > 0) return ex.repsPerSet[0];
+  if (ex.reps) return ex.reps;
+  if (Array.isArray(ex.sets) && ex.sets.length > 0 && typeof ex.sets[0] === 'object') {
+    return ex.sets[0].reps || ex.sets[0].targetReps || '';
+  }
+  if (ex.duration) return ex.duration;
+  return '';
+}
+
+function getSetsCount(ex) {
+  const count = typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 0);
+  return count || 1; // default to 1 if 0 or NaN
+}
+
 // ── Build a display string for an exercise ──
 function getExerciseString(exercise) {
   const ex = applyExerciseDefaults(exercise);
-  const setsCount = typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 1);
-  const reps = ex.repsPerSet?.[0] || ex.reps || ex.duration || '';
+  const setsCount = getSetsCount(ex);
+  const reps = getReps(ex);
   const qualifier = ex.qualifier ? ` ${ex.qualifier}` : '';
   return `${ex.name} ${setsCount}x${reps}${qualifier}`;
 }
@@ -71,8 +87,8 @@ function InlineBanner({ block, label, icon }) {
 // ── Exercise row for workout blocks (bigger fonts) ──
 function TVExercise({ exercise, blockIndex, exIndex, maxes, savedData, liveTracking, blockType }) {
   const ex = applyExerciseDefaults(exercise);
-  const setsCount = typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 1);
-  const repsDisplay = ex.repsPerSet?.[0] || ex.reps || (ex.duration ? ex.duration : '?');
+  const setsCount = getSetsCount(ex);
+  const repsDisplay = getReps(ex) || '?';
 
   // Get prescribed weight
   let prescribedWeight = '';
@@ -453,7 +469,7 @@ const styles = {
 
   // TV Display
   tvContainer: {
-    minHeight: '100vh',
+    height: '100vh',
     background: 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)',
     color: '#fff',
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -461,6 +477,7 @@ const styles = {
     flexDirection: 'column',
     padding: '12px 30px',
     boxSizing: 'border-box',
+    overflow: 'hidden',
   },
 
   // Top bar
