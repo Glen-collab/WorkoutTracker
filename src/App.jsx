@@ -12,6 +12,10 @@ import WeeklySummaryModal from './components/modals/WeeklySummaryModal';
 import TestYourMight, { getWeekConfig } from './components/game/TestYourMight';
 import WorkoutChatbot from './components/chatbot/WorkoutChatbot';
 import { calcBlockTonnage, calcCardio, getDefaultWeight } from './components/program/DailyTonnage';
+import TVScreen from './components/tv/TVScreen';
+
+// Check if TV mode requested via /tv path or ?tv=1 param
+const isTVMode = window.location.pathname === '/tv' || new URLSearchParams(window.location.search).get('tv') === '1';
 
 const containerStyle = {
   minHeight: '100vh',
@@ -20,6 +24,9 @@ const containerStyle = {
 };
 
 export default function App() {
+  // TV mode — completely separate view, no phone UI loaded
+  if (isTVMode) return <TVScreen />;
+
   const state = useTrackerState();
   const api = useTrackerAPI();
 
