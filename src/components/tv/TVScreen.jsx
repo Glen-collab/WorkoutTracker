@@ -32,18 +32,14 @@ function TVLanding({ roomId, deviceCount }) {
           <img src={qrUrl} alt="Scan to connect" style={styles.qrImage} />
         </div>
 
-        <div style={styles.roomCode}>
-          Room: <span style={styles.roomCodeValue}>{roomId}</span>
-        </div>
-
         {deviceCount > 1 ? (
           <div style={styles.connectedBanner}>
             {'\u{1F7E2}'} Phone connected — loading workout...
           </div>
         ) : (
           <p style={styles.hint}>
-            Scan the code, then log in with your access code.<br />
-            Your workout will appear on this screen.
+            Scan with your phone camera, then log in with your access code.<br />
+            Your workout will appear on this TV.
           </p>
         )}
       </div>
