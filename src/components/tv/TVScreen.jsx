@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { getBlockTypeName, getBlockIcon, get1RM, calculateWeight } from '../../utils/trackerHelpers';
 import { applyExerciseDefaults } from '../../data/exerciseDefaults';
+import TVStatic from './TVStatic';
 
 const API_BASE = 'https://app.bestrongagain.com/api/workout/';
 const WS_BASE = 'wss://app.bestrongagain.com/ws/';
@@ -16,32 +17,67 @@ function generateRoomId() {
   return id;
 }
 
-// ── TV Landing: QR code scan ──
-function TVLanding({ roomId, deviceCount }) {
+// ── TV Landing: choose mode ──
+function TVLanding({ roomId, deviceCount, onSwitchToStatic }) {
+  const [mode, setMode] = useState('choose'); // 'choose' | 'qr'
+
   const trackerUrl = `https://bestrongagain.netlify.app?tv=${roomId}`;
-  // Use QR code API — no dependencies
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(trackerUrl)}&bgcolor=0f0c29&color=fff`;
 
+  if (mode === 'qr') {
+    return (
+      <div style={styles.landing}>
+        <div style={styles.landingCard}>
+          <h1 style={styles.landingTitle}>Scan to Start</h1>
+          <p style={styles.landingSubtitle}>Point your phone camera at the QR code</p>
+
+          <div style={styles.qrContainer}>
+            <img src={qrUrl} alt="Scan to connect" style={styles.qrImage} />
+          </div>
+
+          {deviceCount > 1 ? (
+            <div style={styles.connectedBanner}>
+              {'\u{1F7E2}'} Phone connected — loading workout...
+            </div>
+          ) : (
+            <p style={styles.hint}>
+              Scan with your phone camera, then log in with your access code.<br />
+              Your workout will appear on this TV.
+            </p>
+          )}
+
+          <button onClick={() => setMode('choose')} style={styles.backLink}>
+            {'\u2190'} Back to options
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Choose mode
   return (
     <div style={styles.landing}>
-      <div style={styles.landingCard}>
-        <h1 style={styles.landingTitle}>Scan to Start</h1>
-        <p style={styles.landingSubtitle}>Point your phone camera at the QR code</p>
+      <div style={{ ...styles.landingCard, maxWidth: '700px' }}>
+        <h1 style={styles.landingTitle}>Gym TV</h1>
+        <p style={styles.landingSubtitle}>Choose how to display your workout</p>
 
-        <div style={styles.qrContainer}>
-          <img src={qrUrl} alt="Scan to connect" style={styles.qrImage} />
+        <div style={styles.modeGrid}>
+          <button onClick={() => setMode('qr')} style={styles.modeCard}>
+            <span style={{ fontSize: '48px', marginBottom: '12px' }}>📱</span>
+            <span style={styles.modeTitle}>Phone Control</span>
+            <span style={styles.modeDesc}>
+              Scan QR with your phone. Track on phone, TV updates live.
+            </span>
+          </button>
+
+          <button onClick={onSwitchToStatic} style={styles.modeCard}>
+            <span style={{ fontSize: '48px', marginBottom: '12px' }}>📋</span>
+            <span style={styles.modeTitle}>Show Workout</span>
+            <span style={styles.modeDesc}>
+              Enter your code. See 2 days side-by-side like a whiteboard.
+            </span>
+          </button>
         </div>
-
-        {deviceCount > 1 ? (
-          <div style={styles.connectedBanner}>
-            {'\u{1F7E2}'} Phone connected — loading workout...
-          </div>
-        ) : (
-          <p style={styles.hint}>
-            Scan with your phone camera, then log in with your access code.<br />
-            Your workout will appear on this TV.
-          </p>
-        )}
       </div>
     </div>
   );
@@ -246,6 +282,7 @@ function TVWorkoutBlock({ block, blockIndex, maxes, savedBlockData, liveTracking
 
 // ── Main TV Display ──
 export default function TVScreen() {
+  const [staticMode, setStaticMode] = useState(false);
   const [roomId] = useState(() => generateRoomId());
   const [program, setProgram] = useState(null);
   const [userName, setUserName] = useState('');
@@ -349,9 +386,12 @@ export default function TVScreen() {
     };
   }, [roomId]);
 
-  // Show QR landing until phone sends program data
+  // Static whiteboard mode
+  if (staticMode) return <TVStatic />;
+
+  // Show landing until phone sends program data
   if (!program) {
-    return <TVLanding roomId={roomId} deviceCount={deviceCount} />;
+    return <TVLanding roomId={roomId} deviceCount={deviceCount} onSwitchToStatic={() => setStaticMode(true)} />;
   }
 
   const blocks = program?.blocks || [];
@@ -494,6 +534,25 @@ const styles = {
     color: '#81c784',
   },
   hint: { fontSize: '14px', color: 'rgba(255,255,255,0.4)', lineHeight: '1.6' },
+  backLink: {
+    background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)',
+    fontSize: '14px', cursor: 'pointer', marginTop: '16px', padding: '8px',
+  },
+  modeGrid: {
+    display: 'flex', gap: '20px', marginTop: '10px',
+  },
+  modeCard: {
+    flex: 1, background: 'rgba(255,255,255,0.06)', border: '2px solid rgba(255,255,255,0.12)',
+    borderRadius: '16px', padding: '30px 20px', cursor: 'pointer',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
+    transition: 'all 0.2s',
+  },
+  modeTitle: {
+    fontSize: '20px', fontWeight: '700', color: '#fff', marginBottom: '8px',
+  },
+  modeDesc: {
+    fontSize: '14px', color: 'rgba(255,255,255,0.5)', lineHeight: '1.5',
+  },
 
   // TV Display
   tvContainer: {
