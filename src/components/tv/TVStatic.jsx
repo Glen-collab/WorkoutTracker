@@ -8,7 +8,10 @@ const API_BASE = 'https://app.bestrongagain.com/api/workout/';
 function formatExercise(exercise) {
   const ex = applyExerciseDefaults(exercise);
   const sets = typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 0);
-  const reps = ex.repsPerSet?.[0] || ex.reps || '';
+  // Check all places reps could be stored
+  const reps = ex.repsPerSet?.[0] || ex.reps
+    || (Array.isArray(ex.sets) && ex.sets.length > 0 && typeof ex.sets[0] === 'object' ? (ex.sets[0].reps || ex.sets[0].targetReps || '') : '')
+    || '';
   const duration = ex.duration ? `${ex.duration} ${ex.durationUnit || 'min'}` : '';
   const distance = ex.distance ? `${ex.distance} ${ex.distanceUnit || 'mi'}` : '';
   const qualifier = ex.qualifier || '';
