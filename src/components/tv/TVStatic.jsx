@@ -137,16 +137,9 @@ function DayColumn({ blocks, dayLabel, userName, maxes }) {
     }
   });
 
-  // Get theme text if exists
-  const themeBlock = blocks.find(b => b.type === 'theme' && b.themeText);
-  const themeText = themeBlock
-    ? themeBlock.themeText.replace(/\[name\]/gi, (userName || 'Athlete').split(' ')[0])
-    : null;
-
   return (
     <div style={s.dayColumn}>
       <div style={s.dayHeader}>{dayLabel}</div>
-      {themeText && <div style={s.themeRow}>{themeText}</div>}
       {rows}
     </div>
   );
