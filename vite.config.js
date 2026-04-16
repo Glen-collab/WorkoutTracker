@@ -40,8 +40,23 @@ export default defineConfig({
         ]
       },
       workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+        navigateFallbackDenylist: [/^\/tv/],
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff,woff2}'],
         runtimeCaching: [
+          {
+            urlPattern: /\/tracker\.js$/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'tracker-js-cache',
+              expiration: {
+                maxEntries: 5,
+                maxAgeSeconds: 60 * 60 * 24 // 1 day
+              },
+              networkTimeoutSeconds: 3
+            }
+          },
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: 'CacheFirst',

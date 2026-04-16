@@ -20,10 +20,52 @@
     <title>Workout Tracker</title>
     <script>
       // Force service worker update on every page load
+      // On /tv paths: unregister old SWs and clear caches to guarantee fresh code
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-          registrations.forEach(function(reg) { reg.update(); });
-        });
+        var isTvPath = window.location.pathname.startsWith('/tv');
+
+        if (isTvPath) {
+          // Nuclear option for /tv: unregister all SWs and clear caches
+          // This guarantees /tv always loads fresh from the network
+          navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            registrations.forEach(function(reg) { reg.unregister(); });
+          });
+          if ('caches' in window) {
+            caches.keys().then(function(names) {
+              names.forEach(function(name) { caches.delete(name); });
+            });
+          }
+        } else {
+          // Normal paths: trigger SW update check and activate waiting SW immediately
+          navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            registrations.forEach(function(reg) {
+              reg.update();
+              // If there's a waiting worker, tell it to activate now
+              if (reg.waiting) {
+                reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+              }
+              // Listen for new workers that finish installing
+              reg.addEventListener('updatefound', function() {
+                var newWorker = reg.installing;
+                if (newWorker) {
+                  newWorker.addEventListener('statechange', function() {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                      newWorker.postMessage({ type: 'SKIP_WAITING' });
+                    }
+                  });
+                }
+              });
+            });
+          });
+          // Reload when the new SW takes control
+          var refreshing = false;
+          navigator.serviceWorker.addEventListener('controllerchange', function() {
+            if (!refreshing) {
+              refreshing = true;
+              window.location.reload();
+            }
+          });
+        }
       }
     </script>
   </head>
