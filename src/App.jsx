@@ -13,9 +13,11 @@ import TestYourMight, { getWeekConfig } from './components/game/TestYourMight';
 import WorkoutChatbot from './components/chatbot/WorkoutChatbot';
 import { calcBlockTonnage, calcCardio, getDefaultWeight } from './components/program/DailyTonnage';
 import TVScreen from './components/tv/TVScreen';
+import TVStatic from './components/tv/TVStatic';
 
 // Check if TV mode requested via /tv path or ?tv=1 param
 const isTVMode = window.location.pathname === '/tv' || new URLSearchParams(window.location.search).get('tv') === '1';
+const isStaticTV = window.location.pathname === '/tv/static';
 
 const WS_BASE = 'wss://app.bestrongagain.com/ws/';
 const tvRoomId = new URLSearchParams(window.location.search).get('tv');
@@ -27,7 +29,8 @@ const containerStyle = {
 };
 
 export default function App() {
-  // TV mode — completely separate view, no phone UI loaded
+  // TV modes — completely separate views, no phone UI loaded
+  if (isStaticTV) return <TVStatic />;
   if (isTVMode) return <TVScreen />;
 
   const state = useTrackerState();
