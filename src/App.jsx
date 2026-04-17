@@ -800,6 +800,7 @@ export default function App() {
               completed: isCompleted,
               qualifier: ex.qualifier || '',
               notes: ex.notes || '',
+              clientNote: trackingData[`${blockIndex}-${exIndex}-null-note`] || '',
             };
 
             return result;
