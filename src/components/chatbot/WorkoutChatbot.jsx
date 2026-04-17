@@ -59,14 +59,22 @@ const TREE = {
   },
   // Travel workout nodes
   travel_intro: {
-    message: "No problem! I've got travel workouts ready for you. How many days will you need workouts for?",
+    message: "No problem! I've got travel workouts ready for you. Pick your style:",
     options: [
+      { label: "\u{1F3CB}\uFE0F Road Warrior (4-Day Mix)", next: "travel_road_warrior_info" },
       { label: "1 day", next: "travel_equipment_1" },
       { label: "2 days", next: "travel_equipment_2" },
       { label: "3 days", next: "travel_equipment_3" },
       { label: "4 days", next: "travel_equipment_4" },
       { label: "5+ days", next: "travel_extended" },
       { label: "\u2190 Back", next: "entry" }
+    ]
+  },
+  travel_road_warrior_info: {
+    message: "Road Warrior \u2014 Executive Training! 4 days, 4 completely different sessions:\n\n\u{1F9D8} Day 1: Yoga + Mindset\n\u{1F4AA} Day 2: Hotel Strength (dumbbells)\n\u{1F94B} Day 3: Hybrid Combat (bodyweight + kicks)\n\u{1F3C3} Day 4: Cardio + Conditioning\n\nNo equipment needed except Day 2 (hotel gym dumbbells). Cycle it for however long you're traveling.",
+    options: [
+      { label: "Load Road Warrior!", next: "travel_load_rw_4" },
+      { label: "\u2190 Back", next: "travel_intro" }
     ]
   },
   travel_extended: {
@@ -125,6 +133,7 @@ const TREE = {
   travel_load_bw_4: { message: "Loading your 4-day bodyweight travel plan...", options: [] },
   travel_load_hg_4: { message: "Loading your 4-day hotel gym travel plan...", options: [] },
   travel_load_bb_4: { message: "Loading your 4-day bands & bodyweight travel plan...", options: [] },
+  travel_load_rw_4: { message: "Loading Road Warrior \u2014 Executive Training...", options: [] },
   travel_loaded: {
     message: "Your travel workout is loaded! Close this chat and start training. When you're done, hit 'Log Workout' as usual. Come back here if you need more days!",
     options: [
@@ -291,9 +300,9 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
     setCurrentNode(option.next);
 
     // Intercept travel_load_* nodes to trigger actual loading
-    const travelMatch = option.next.match(/^travel_load_(bw|hg|bb)_(\d)$/);
+    const travelMatch = option.next.match(/^travel_load_(bw|hg|bb|rw)_(\d)$/);
     if (travelMatch && onLoadTravel) {
-      const equipMap = { bw: 'bodyweight', hg: 'hotel_gym', bb: 'bands_bodyweight' };
+      const equipMap = { bw: 'bodyweight', hg: 'hotel_gym', bb: 'bands_bodyweight', rw: 'road_warrior' };
       const equipmentType = equipMap[travelMatch[1]];
       const totalDays = parseInt(travelMatch[2]);
       onLoadTravel(equipmentType, totalDays)
