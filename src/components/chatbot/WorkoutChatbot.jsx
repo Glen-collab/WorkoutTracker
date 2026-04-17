@@ -86,38 +86,42 @@ const TREE = {
     ]
   },
   travel_equipment_1: {
-    message: "Got it \u2014 1 day! What equipment do you have access to?",
+    message: "Got it \u2014 1 day! What style?",
     options: [
       { label: "Bodyweight only", next: "travel_load_bw_1" },
       { label: "Hotel gym", next: "travel_load_hg_1" },
       { label: "Bands & bodyweight", next: "travel_load_bb_1" },
+      { label: "\u{1F3CB}\uFE0F Road Warrior", next: "travel_load_rw_1" },
       { label: "\u2190 Back", next: "travel_intro" }
     ]
   },
   travel_equipment_2: {
-    message: "Nice \u2014 2 days! What equipment do you have access to?",
+    message: "Nice \u2014 2 days! What style?",
     options: [
       { label: "Bodyweight only", next: "travel_load_bw_2" },
       { label: "Hotel gym", next: "travel_load_hg_2" },
       { label: "Bands & bodyweight", next: "travel_load_bb_2" },
+      { label: "\u{1F3CB}\uFE0F Road Warrior", next: "travel_load_rw_2" },
       { label: "\u2190 Back", next: "travel_intro" }
     ]
   },
   travel_equipment_3: {
-    message: "Awesome \u2014 3 days! What equipment do you have access to?",
+    message: "Awesome \u2014 3 days! What style?",
     options: [
       { label: "Bodyweight only", next: "travel_load_bw_3" },
       { label: "Hotel gym", next: "travel_load_hg_3" },
       { label: "Bands & bodyweight", next: "travel_load_bb_3" },
+      { label: "\u{1F3CB}\uFE0F Road Warrior", next: "travel_load_rw_3" },
       { label: "\u2190 Back", next: "travel_intro" }
     ]
   },
   travel_equipment_4: {
-    message: "4 days \u2014 full rotation! Each day hits different muscle groups. What equipment do you have access to?",
+    message: "4 days \u2014 full rotation! What style?",
     options: [
       { label: "Bodyweight only", next: "travel_load_bw_4" },
       { label: "Hotel gym", next: "travel_load_hg_4" },
       { label: "Bands & bodyweight", next: "travel_load_bb_4" },
+      { label: "\u{1F3CB}\uFE0F Road Warrior", next: "travel_load_rw_4" },
       { label: "\u2190 Back", next: "travel_intro" }
     ]
   },
@@ -133,6 +137,9 @@ const TREE = {
   travel_load_bw_4: { message: "Loading your 4-day bodyweight travel plan...", options: [] },
   travel_load_hg_4: { message: "Loading your 4-day hotel gym travel plan...", options: [] },
   travel_load_bb_4: { message: "Loading your 4-day bands & bodyweight travel plan...", options: [] },
+  travel_load_rw_1: { message: "Loading Road Warrior \u2014 Day 1...", options: [] },
+  travel_load_rw_2: { message: "Loading Road Warrior \u2014 2 days...", options: [] },
+  travel_load_rw_3: { message: "Loading Road Warrior \u2014 3 days...", options: [] },
   travel_load_rw_4: { message: "Loading Road Warrior \u2014 Executive Training...", options: [] },
   travel_loaded: {
     message: "Your travel workout is loaded! Close this chat and start training. When you're done, hit 'Log Workout' as usual. Come back here if you need more days!",
