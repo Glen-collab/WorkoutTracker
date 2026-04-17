@@ -803,13 +803,18 @@ export default function ExerciseCard({
 
     // Regular strength
     const sets = typeof ex.sets === 'number' ? ex.sets : (ex.setsCount || parseInt(ex.sets) || 1);
+    // Use previous week's weights as placeholder hints
+    const prevWeights = previousExerciseData?.weights || savedExerciseData?.weights || [];
     return (
       <>
         <div style={s.targetText}>
           {sets} sets x {ex.reps || '?'} reps
         </div>
         {ex.weight && <div style={s.detailRow}>Weight: {ex.weight}{ex.qualifier ? ` ${ex.qualifier}` : ''}</div>}
-        {Array.from({ length: sets }).map((_, si) => (
+        {Array.from({ length: sets }).map((_, si) => {
+          const prevW = prevWeights[si];
+          const wPlaceholder = prevW ? `${prevW} lbs (last wk)` : 'Weight (lbs)';
+          return (
           <div key={si}>
             <div style={s.setLabel}>Set {si + 1}</div>
             <TrackingInputs
@@ -818,13 +823,13 @@ export default function ExerciseCard({
               setIndex={si}
               weightValue={getTrack(si, 'weight')}
               repsValue={getTrack(si, 'reps')}
-              weightPlaceholder="Weight (lbs)"
+              weightPlaceholder={wPlaceholder}
               repsPlaceholder="Reps"
               onUpdate={onUpdateTracking}
               disabled={inputLocked}
             />
           </div>
-        ))}
+        );})}
         {renderExtraFields()}
         {renderMarkButton()}
         {renderRecSection()}
