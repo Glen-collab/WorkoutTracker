@@ -64,14 +64,15 @@ const TREE = {
       { label: "1 day", next: "travel_equipment_1" },
       { label: "2 days", next: "travel_equipment_2" },
       { label: "3 days", next: "travel_equipment_3" },
-      { label: "4+ days", next: "travel_extended" },
+      { label: "4 days", next: "travel_equipment_4" },
+      { label: "5+ days", next: "travel_extended" },
       { label: "\u2190 Back", next: "entry" }
     ]
   },
   travel_extended: {
-    message: "Here's the deal with vacation or work travel \u2014 something is always better than nothing! Grab the 3-day plan and just repeat it for however long you're gone. Cycle through Day 1, 2, 3, then back to Day 1. And if you want to skip a day to go explore? Do it. Enjoy your trip! You'll come back ready to crush it.",
+    message: "Here's the deal with vacation or work travel \u2014 something is always better than nothing! Grab the 4-day plan and cycle through it for however long you're gone. Each day hits different muscle groups so you stay balanced. And if you want to skip a day to go explore? Do it. Enjoy your trip! You'll come back ready to crush it.",
     options: [
-      { label: "Give me 3 days!", next: "travel_equipment_3" },
+      { label: "Give me 4 days!", next: "travel_equipment_4" },
       { label: "Thanks for the advice!", next: "entry" },
       { label: "\u2190 Back", next: "travel_intro" }
     ]
@@ -103,6 +104,15 @@ const TREE = {
       { label: "\u2190 Back", next: "travel_intro" }
     ]
   },
+  travel_equipment_4: {
+    message: "4 days \u2014 full rotation! Each day hits different muscle groups. What equipment do you have access to?",
+    options: [
+      { label: "Bodyweight only", next: "travel_load_bw_4" },
+      { label: "Hotel gym", next: "travel_load_hg_4" },
+      { label: "Bands & bodyweight", next: "travel_load_bb_4" },
+      { label: "\u2190 Back", next: "travel_intro" }
+    ]
+  },
   travel_load_bw_1: { message: "Loading your bodyweight travel workout...", options: [] },
   travel_load_bw_2: { message: "Loading your bodyweight travel workouts...", options: [] },
   travel_load_bw_3: { message: "Loading your bodyweight travel workouts...", options: [] },
@@ -112,6 +122,9 @@ const TREE = {
   travel_load_bb_1: { message: "Loading your bands & bodyweight travel workout...", options: [] },
   travel_load_bb_2: { message: "Loading your bands & bodyweight travel workouts...", options: [] },
   travel_load_bb_3: { message: "Loading your bands & bodyweight travel workouts...", options: [] },
+  travel_load_bw_4: { message: "Loading your 4-day bodyweight travel plan...", options: [] },
+  travel_load_hg_4: { message: "Loading your 4-day hotel gym travel plan...", options: [] },
+  travel_load_bb_4: { message: "Loading your 4-day bands & bodyweight travel plan...", options: [] },
   travel_loaded: {
     message: "Your travel workout is loaded! Close this chat and start training. When you're done, hit 'Log Workout' as usual. Come back here if you need more days!",
     options: [
