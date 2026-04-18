@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 
 const API_BASE = 'https://app.bestrongagain.com/api/workout/';
+const MEDIA_API_BASE = 'https://app.bestrongagain.com/api/media/';
 
 export default function useTrackerAPI() {
   const [loading, setLoading] = useState(false);
@@ -45,5 +46,21 @@ export default function useTrackerAPI() {
   const getWeeklyStats = useCallback((params) => apiCall('get-weekly-stats.php', params), [apiCall]);
   const getTravelWorkouts = useCallback((params) => apiCall('get-travel-workouts.php', params), [apiCall]);
 
-  return { loading, error, loadProgram, loadUserOverride, logWorkout, submitQuestionnaire, submitCompletion, getWeeklyStats, getTravelWorkouts };
+  // Fetches coach's / featured_global video overrides for the current user.
+  // Plain fetch (separate host path, no retry needed — failure = fall back to bundled videos).
+  const getTrackerOverrides = useCallback(async (email) => {
+    try {
+      const r = await fetch(MEDIA_API_BASE + 'tracker-overrides', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (!r.ok) return { overrides: {} };
+      return await r.json();
+    } catch {
+      return { overrides: {} };
+    }
+  }, []);
+
+  return { loading, error, loadProgram, loadUserOverride, logWorkout, submitQuestionnaire, submitCompletion, getWeeklyStats, getTravelWorkouts, getTrackerOverrides };
 }

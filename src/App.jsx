@@ -250,6 +250,18 @@ export default function App() {
 
       if (result.success && result.data && result.data.program) {
         const prog = result.data.program;
+        // Apply coach / featured_global video overrides before rendering
+        try {
+          const { overrides } = await api.getTrackerOverrides(u.email);
+          if (overrides && Object.keys(overrides).length && Array.isArray(prog.blocks)) {
+            for (const block of prog.blocks) {
+              if (!Array.isArray(block?.exercises)) continue;
+              for (const ex of block.exercises) {
+                if (ex?.name && overrides[ex.name]) ex.youtube = overrides[ex.name];
+              }
+            }
+          }
+        } catch { /* fall back to bundled videos silently */ }
         setProgram(prog);
 
         if (result.data.userPosition) {
