@@ -12,6 +12,15 @@ A PWA for clients to log workouts assigned by their trainer. Users enter an acce
 
 ---
 
+## Related Repos (BSA Ecosystem)
+
+- **`Glen-collab/bsa-coach-platform`** — Central Flask backend + React coach/admin dashboards. This tracker POSTs to `/api/workout/*` for program load/save + `/api/media/tracker-overrides` for per-coach video overrides. Cross-repo architecture: `bsa-coach-platform/docs/ARCHITECTURE.md`.
+- **`Glen-collab/workoutbuilder`** — Coach-facing program builder. Owns the 4 bundled exercise libraries that define every exercise this tracker can display.
+- **`Glen-collab/WorkoutTracker`** — (this repo) Client-facing PWA. Also hosts the `/tv` (two-QR landing), `/tv/static` (whiteboard + QR), and `/kiosk` (tablet picker) routes used on gym TVs / Raspberry Pi kiosks.
+- **`Glen-collab/react-trainer-dashboard`** — Coach management dashboard (send access codes that land here, view client progress).
+
+---
+
 ## Screen Flow
 
 ```
