@@ -231,7 +231,7 @@ function TVExercise({ exercise, blockIndex, exIndex, maxes, savedData, liveTrack
           {ex.distance && <span style={styles.cardioTag}>📏 {ex.distance} {ex.distanceUnit || 'mi'}</span>}
           {ex.intensity && <span style={styles.cardioTag}>🔥 {ex.intensity}</span>}
           {savedData?.actualDuration && <span style={styles.trackedTag}>Actual: {savedData.actualDuration} min</span>}
-          {savedData?.actualDistance && <span style={styles.trackedTag}>Actual: {savedData.actualDistance} mi</span>}
+          {savedData?.actualDistance && <span style={styles.trackedTag}>Actual: {savedData.actualDistance} {savedData.distanceUnit || ex.distanceUnit || 'mi'}</span>}
         </div>
       ) : (
         <div style={styles.setsRow}>
