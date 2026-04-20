@@ -326,6 +326,9 @@ export default function TVStatic() {
     );
   }
 
+  // Coach code from URL, surfaced in the footer for gym/brand attribution
+  const coachFooterCode = (new URLSearchParams(window.location.search).get('coach') || '').trim();
+
   const dpw = program?.daysPerWeek || 3;
   const tw = program?.totalWeeks || 4;
   const day1 = startDay;
@@ -340,7 +343,7 @@ export default function TVStatic() {
       <div style={s.topBar}>
         <div style={s.topBarLeft}>
           <h1 style={s.programTitle}>{program?.name || 'Workout'}</h1>
-          <span style={s.userBadge}>{userName || 'Athlete'}</span>
+          <InlineQR code={code} />
         </div>
         <div style={s.topBarRight}>
           <button onClick={() => navigateWeek(-1)} style={{ ...s.navBtn, opacity: currentWeek <= 1 ? 0.3 : 1 }} disabled={currentWeek <= 1}>{'\u25C0'}</button>
@@ -373,62 +376,47 @@ export default function TVStatic() {
 
       {/* Footer */}
       <div style={s.footer}>
-        <span>Code: {code}</span>
+        <span>Code: {code}{coachFooterCode && ` · Coach: ${coachFooterCode}`}</span>
         <button onClick={() => { setProgram(null); setAllBlocks({}); }} style={s.exitBtn}>Exit</button>
       </div>
-
-      {/* QR code corner — scan to open this workout on phone (auto-signs up under the gym's coach if new) */}
-      <QRCorner code={code} />
     </div>
   );
 }
 
-// ── QR Corner ─────────────────────────────────────────────────────────
-// Encodes a URL so clients in the gym can scan to open this workout on their phone.
-// Coach referral code is read from the /tv/static URL (?coach=GLENM7NUS) so each
-// Pi-powered gym TV can be configured to attribute sign-ups to its owning coach.
-function QRCorner({ code }) {
-  const { qrUrl, coachCode } = useMemo(() => {
+// ── Inline QR (lives in the header bar next to program title) ────────
+// Small QR badge — phone cameras can easily pick it up even at this size.
+function InlineQR({ code }) {
+  const { qrUrl } = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
     const coach = (params.get('coach') || '').trim();
-    // Priority URL: tracker with the workout code pre-filled, plus coach attribution.
-    // New users landing here will be prompted for email; coach code stored for future
-    // sign-up attribution.
-    const base = 'https://bestrongagain.netlify.app/';
     const q = new URLSearchParams();
     if (code) q.set('code', code);
     if (coach) q.set('coach', coach);
-    return { qrUrl: `${base}?${q.toString()}`, coachCode: coach };
+    return { qrUrl: `https://bestrongagain.netlify.app/?${q.toString()}` };
   }, [code]);
 
   return (
-    <div style={qs.wrap}>
-      <div style={qs.qrBox}>
-        <QRCodeSVG value={qrUrl} size={110} bgColor="#ffffff" fgColor="#0a0a1a" level="M" />
+    <div style={qs.inline}>
+      <div style={qs.inlineQrBox}>
+        <QRCodeSVG value={qrUrl} size={56} bgColor="#ffffff" fgColor="#0a0a1a" level="M" />
       </div>
-      <div style={qs.textCol}>
-        <div style={qs.title}>Scan to track on your phone</div>
-        <div style={qs.subtitle}>Open in the Be Strong Again tracker</div>
-        {coachCode && <div style={qs.coachLine}>Coach: {coachCode}</div>}
-      </div>
+      <div style={qs.inlineLabel}>Scan to track</div>
     </div>
   );
 }
 
 const qs = {
-  wrap: {
-    position: 'fixed', top: '12px', left: '50%', transform: 'translateX(-50%)',
-    background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.18)',
-    borderRadius: '14px', padding: '10px 16px',
-    display: 'flex', alignItems: 'center', gap: '14px',
-    backdropFilter: 'blur(10px)', boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
-    zIndex: 50,
+  // Inline (next to program title in header)
+  inline: {
+    display: 'flex', alignItems: 'center', gap: '8px',
+    padding: '4px 10px', background: 'rgba(255,255,255,0.08)',
+    border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px',
   },
-  textCol: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end' },
-  title: { color: '#fff', fontSize: 'clamp(13px, 1.1vw, 18px)', fontWeight: '700', letterSpacing: '0.3px' },
-  subtitle: { color: 'rgba(255,255,255,0.6)', fontSize: 'clamp(11px, 0.9vw, 15px)', fontWeight: '500', marginTop: '2px' },
-  qrBox: { background: '#fff', padding: '6px', borderRadius: '8px', display: 'inline-block' },
-  coachLine: { color: 'rgba(255,255,255,0.65)', fontSize: 'clamp(11px, 0.9vw, 14px)', fontWeight: '600', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' },
+  inlineQrBox: { background: '#fff', padding: '4px', borderRadius: '6px', lineHeight: 0 },
+  inlineLabel: {
+    fontSize: 'clamp(11px, 0.9vw, 16px)', fontWeight: '600',
+    color: 'rgba(255,255,255,0.75)', whiteSpace: 'nowrap',
+  },
 };
 
 // ── Styles ──
@@ -540,10 +528,10 @@ const s = {
   // Exercise row
   exerciseRow: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '8px 18px 8px 28px',
-    fontSize: 'clamp(17px, 1.6vw, 28px)',
+    padding: '9px 20px 9px 30px',
+    fontSize: 'clamp(18px, 1.75vw, 32px)',
     borderBottom: '1px solid rgba(255,255,255,0.04)',
-    minHeight: 'clamp(32px, 2.5vw, 50px)', flexShrink: 0,
+    minHeight: 'clamp(36px, 2.7vw, 56px)', flexShrink: 0,
   },
   exName: { color: '#fff', fontWeight: '500', flex: 1 },
   exDetail: {
