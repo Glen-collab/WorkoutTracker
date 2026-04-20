@@ -156,6 +156,8 @@ export default function TVStatic() {
   const [code, setCode] = useState('');
   const [allBlocks, setAllBlocks] = useState({});
   const [autoLoadError, setAutoLoadError] = useState(null);
+  // TV layout: 'two_day' (default), 'wod' (single fullwidth), 'wod_scaled' (Rx + Scaled)
+  const [layout, setLayout] = useState('two_day');
 
   const handleLoad = useCallback(async (info) => {
     const { data } = info;
@@ -330,6 +332,9 @@ export default function TVStatic() {
         if (!r.ok) return;
         const data = await r.json();
         if (cancelled) return;
+        // Keep layout in sync with what the coach picked on their dashboard
+        const serverLayout = data?.device?.layout || 'two_day';
+        setLayout((prev) => (prev === serverLayout ? prev : serverLayout));
         const serverCode = data?.active?.access_code;
         // If coach has no active program, show nothing / idle screen
         if (!serverCode) {
@@ -427,21 +432,52 @@ export default function TVStatic() {
         </div>
       </div>
 
-      {/* Two-column layout */}
+      {/* Column layout — branches on coach's selected view mode */}
       <div style={s.columnsContainer}>
-        <DayColumn
-          blocks={blocks1}
-          dayLabel={`Week ${currentWeek} — Day ${day1}`}
-          userName={userName}
-          maxes={maxes}
-        />
-        {blocks2 !== null && (
+        {layout === 'wod' ? (
+          // Single column fullwidth — CrossFit-style single WOD per session
           <DayColumn
-            blocks={blocks2}
-            dayLabel={`Week ${currentWeek} — Day ${day2}`}
+            blocks={blocks1}
+            dayLabel={`Today's WOD — Week ${currentWeek}, Day ${day1}`}
             userName={userName}
             maxes={maxes}
           />
+        ) : layout === 'wod_scaled' ? (
+          // Two columns: Day 1 = Rx/WOD, Day 2 = Scaled regression
+          <>
+            <DayColumn
+              blocks={blocks1}
+              dayLabel={`Rx / WOD — Week ${currentWeek}, Day ${day1}`}
+              userName={userName}
+              maxes={maxes}
+            />
+            {blocks2 !== null && (
+              <DayColumn
+                blocks={blocks2}
+                dayLabel={`Scaled — Week ${currentWeek}, Day ${day2}`}
+                userName={userName}
+                maxes={maxes}
+              />
+            )}
+          </>
+        ) : (
+          // Default two_day: today + tomorrow side-by-side
+          <>
+            <DayColumn
+              blocks={blocks1}
+              dayLabel={`Week ${currentWeek} — Day ${day1}`}
+              userName={userName}
+              maxes={maxes}
+            />
+            {blocks2 !== null && (
+              <DayColumn
+                blocks={blocks2}
+                dayLabel={`Week ${currentWeek} — Day ${day2}`}
+                userName={userName}
+                maxes={maxes}
+              />
+            )}
+          </>
         )}
       </div>
 
