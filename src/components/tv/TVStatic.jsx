@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { getBlockTypeName, getBlockIcon, get1RM, calculateWeight } from '../../utils/trackerHelpers';
 import { applyExerciseDefaults } from '../../data/exerciseDefaults';
 
@@ -318,9 +319,54 @@ export default function TVStatic() {
         <span>Code: {code}</span>
         <button onClick={() => { setProgram(null); setAllBlocks({}); }} style={s.exitBtn}>Exit</button>
       </div>
+
+      {/* QR code corner — scan to open this workout on phone (auto-signs up under the gym's coach if new) */}
+      <QRCorner code={code} />
     </div>
   );
 }
+
+// ── QR Corner ─────────────────────────────────────────────────────────
+// Encodes a URL so clients in the gym can scan to open this workout on their phone.
+// Coach referral code is read from the /tv/static URL (?coach=GLENM7NUS) so each
+// Pi-powered gym TV can be configured to attribute sign-ups to its owning coach.
+function QRCorner({ code }) {
+  const { qrUrl, coachCode } = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    const coach = (params.get('coach') || '').trim();
+    // Priority URL: tracker with the workout code pre-filled, plus coach attribution.
+    // New users landing here will be prompted for email; coach code stored for future
+    // sign-up attribution.
+    const base = 'https://bestrongagain.netlify.app/';
+    const q = new URLSearchParams();
+    if (code) q.set('code', code);
+    if (coach) q.set('coach', coach);
+    return { qrUrl: `${base}?${q.toString()}`, coachCode: coach };
+  }, [code]);
+
+  return (
+    <div style={qs.wrap}>
+      <div style={qs.title}>Scan to track on your phone</div>
+      <div style={qs.qrBox}>
+        <QRCodeSVG value={qrUrl} size={140} bgColor="#ffffff" fgColor="#0a0a1a" level="M" />
+      </div>
+      {coachCode && <div style={qs.coachLine}>Coach: {coachCode}</div>}
+    </div>
+  );
+}
+
+const qs = {
+  wrap: {
+    position: 'fixed', right: '16px', bottom: '40px',
+    background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)',
+    borderRadius: '12px', padding: '10px', textAlign: 'center',
+    backdropFilter: 'blur(10px)', boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+    zIndex: 50,
+  },
+  title: { color: 'rgba(255,255,255,0.8)', fontSize: '11px', fontWeight: '600', marginBottom: '6px', letterSpacing: '0.3px' },
+  qrBox: { background: '#fff', padding: '8px', borderRadius: '8px', display: 'inline-block' },
+  coachLine: { color: 'rgba(255,255,255,0.55)', fontSize: '10px', fontWeight: '600', marginTop: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' },
+};
 
 // ── Styles ──
 const s = {
