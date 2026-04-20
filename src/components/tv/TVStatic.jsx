@@ -268,6 +268,25 @@ export default function TVStatic() {
     setAllBlocks(newBlocks);
   }, [code, currentWeek, startDay, program]);
 
+  // Keyboard shortcuts — any remote/keyboard device that sends key events drives
+  // navigation. Works with CEC, Flirc USB IR receivers, or a plugged-in keyboard.
+  //   Arrow Left/Right   = back/forward 2 days (same as ▶▶)
+  //   Shift + Arrow L/R  = back/forward by week (same as ▶)
+  useEffect(() => {
+    const onKey = (e) => {
+      if (!program) return;
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+        e.preventDefault();
+        e.shiftKey ? navigateWeek(1) : navigateDays(1);
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault();
+        e.shiftKey ? navigateWeek(-1) : navigateDays(-1);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [program, navigateWeek, navigateDays]);
+
   // Auto-load workout from URL param ?code=XXXX so the Pi can boot straight
   // into the whiteboard without anyone typing a code in.
   useEffect(() => {
@@ -444,80 +463,93 @@ const s = {
   // Top bar
   topBar: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    marginBottom: '6px', flexShrink: 0,
+    marginBottom: '8px', flexShrink: 0,
   },
-  topBarLeft: { display: 'flex', alignItems: 'center', gap: '12px' },
-  programTitle: { fontSize: 'clamp(18px, 2.5vw, 28px)', fontWeight: '800', margin: 0, color: '#fff' },
+  topBarLeft: { display: 'flex', alignItems: 'center', gap: '16px' },
+  programTitle: { fontSize: 'clamp(22px, 2.6vw, 44px)', fontWeight: '800', margin: 0, color: '#fff' },
   userBadge: {
     background: 'rgba(102,126,234,0.3)', border: '1px solid rgba(102,126,234,0.5)',
-    borderRadius: '16px', padding: '4px 12px', fontSize: '14px', fontWeight: '600', color: '#b8c6ff',
+    borderRadius: '20px', padding: '6px 16px', fontSize: 'clamp(14px, 1.3vw, 20px)',
+    fontWeight: '600', color: '#b8c6ff',
   },
-  topBarRight: { display: 'flex', alignItems: 'center', gap: '6px' },
+  topBarRight: { display: 'flex', alignItems: 'center', gap: '8px' },
   navBtn: {
     background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
-    color: '#fff', borderRadius: '8px', padding: '4px 10px', fontSize: '16px',
-    fontWeight: '700', cursor: 'pointer',
+    color: '#fff', borderRadius: '10px', padding: '8px 14px',
+    fontSize: 'clamp(18px, 1.6vw, 26px)', fontWeight: '700', cursor: 'pointer',
   },
-  weekLabel: { fontSize: '16px', fontWeight: '600', color: 'rgba(255,255,255,0.7)', minWidth: '90px', textAlign: 'center' },
-  dayLabel: { fontSize: '14px', fontWeight: '600', color: 'rgba(255,255,255,0.5)', minWidth: '70px', textAlign: 'center' },
+  weekLabel: {
+    fontSize: 'clamp(16px, 1.5vw, 22px)', fontWeight: '600',
+    color: 'rgba(255,255,255,0.85)', minWidth: '120px', textAlign: 'center',
+  },
+  dayLabel: {
+    fontSize: 'clamp(14px, 1.3vw, 20px)', fontWeight: '600',
+    color: 'rgba(255,255,255,0.7)', minWidth: '90px', textAlign: 'center',
+  },
 
   // Two columns
   columnsContainer: {
-    flex: 1, display: 'flex', gap: '12px', overflow: 'hidden',
+    flex: 1, display: 'flex', gap: '14px', overflow: 'hidden',
   },
   dayColumn: {
-    flex: 1, background: 'rgba(255,255,255,0.04)', borderRadius: '10px',
+    flex: 1, background: 'rgba(255,255,255,0.04)', borderRadius: '12px',
     border: '1px solid rgba(255,255,255,0.08)', overflow: 'auto',
     display: 'flex', flexDirection: 'column',
   },
   dayHeader: {
     background: 'linear-gradient(135deg, #667eea, #764ba2)',
-    padding: '8px 14px', fontSize: '16px', fontWeight: '700', color: '#fff',
-    textAlign: 'center', flexShrink: 0,
+    padding: '10px 16px', fontSize: 'clamp(18px, 1.7vw, 26px)', fontWeight: '700',
+    color: '#fff', textAlign: 'center', flexShrink: 0,
   },
 
   // Theme row
   themeRow: {
-    padding: '4px 12px', fontSize: '11px', lineHeight: '1.3',
+    padding: '6px 14px', fontSize: 'clamp(13px, 1.1vw, 18px)', lineHeight: '1.3',
     color: 'rgba(255,255,255,0.5)', fontStyle: 'italic',
     borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0,
   },
 
   // Section row (warmup/cooldown inline)
   sectionRow: {
-    padding: '4px 12px', fontSize: '12px', lineHeight: '1.4',
-    color: 'rgba(255,255,255,0.6)',
+    padding: '6px 14px', fontSize: 'clamp(14px, 1.2vw, 19px)', lineHeight: '1.4',
+    color: 'rgba(255,255,255,0.75)',
     borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0,
   },
-  sectionLabel: { fontWeight: '700', color: 'rgba(255,255,255,0.8)', marginRight: '6px' },
-  sectionText: { color: 'rgba(255,255,255,0.5)' },
+  sectionLabel: { fontWeight: '700', color: '#fff', marginRight: '8px' },
+  sectionText: { color: 'rgba(255,255,255,0.65)' },
 
   // Block header
   blockHeaderRow: {
-    padding: '5px 12px', fontSize: '14px', fontWeight: '700',
-    color: '#b8c6ff', background: 'rgba(102,126,234,0.1)',
+    padding: '7px 14px', fontSize: 'clamp(16px, 1.4vw, 22px)', fontWeight: '700',
+    color: '#b8c6ff', background: 'rgba(102,126,234,0.15)',
     borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0,
-    display: 'flex', alignItems: 'center', gap: '6px',
+    display: 'flex', alignItems: 'center', gap: '8px',
   },
   circuitBadge: {
-    background: 'rgba(255,193,7,0.2)', color: '#ffd54f', borderRadius: '4px',
-    padding: '1px 6px', fontSize: '10px', fontWeight: '700', letterSpacing: '0.5px', marginLeft: 'auto',
+    background: 'rgba(255,193,7,0.25)', color: '#ffd54f', borderRadius: '5px',
+    padding: '2px 8px', fontSize: 'clamp(11px, 0.9vw, 15px)',
+    fontWeight: '700', letterSpacing: '0.5px', marginLeft: 'auto',
   },
 
   // Exercise row
   exerciseRow: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '3px 12px 3px 20px', fontSize: '13px',
-    borderBottom: '1px solid rgba(255,255,255,0.03)',
-    minHeight: '22px', flexShrink: 0,
+    padding: '5px 14px 5px 22px',
+    fontSize: 'clamp(15px, 1.3vw, 21px)',
+    borderBottom: '1px solid rgba(255,255,255,0.04)',
+    minHeight: 'clamp(26px, 2vw, 34px)', flexShrink: 0,
   },
   exName: { color: '#fff', fontWeight: '500', flex: 1 },
-  exDetail: { color: 'rgba(255,255,255,0.5)', fontWeight: '600', marginLeft: '8px', whiteSpace: 'nowrap', textAlign: 'right' },
+  exDetail: {
+    color: 'rgba(255,255,255,0.7)', fontWeight: '700', marginLeft: '8px',
+    whiteSpace: 'nowrap', textAlign: 'right',
+  },
 
   // Footer
   footer: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '4px 0', fontSize: '12px', color: 'rgba(255,255,255,0.3)',
+    padding: '6px 0', fontSize: 'clamp(12px, 1vw, 16px)',
+    color: 'rgba(255,255,255,0.4)',
     borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0,
   },
   exitBtn: {
