@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { getBlockTypeName, getBlockIcon, get1RM, calculateWeight } from '../../utils/trackerHelpers';
 import { applyExerciseDefaults } from '../../data/exerciseDefaults';
 import TVStatic from './TVStatic';
@@ -17,67 +18,97 @@ function generateRoomId() {
   return id;
 }
 
-// ── TV Landing: choose mode ──
+// ── TV Landing: two QRs side-by-side ──
+// Reads configurable URL params so each gym's Pi can be deployed with its own defaults:
+//   ?coach=GLENM7NUS    — coach referral code for sign-up attribution
+//   ?code=0715          — (optional) default workout access code for Show Workout QR
+// Falls through to old "click a card to enter mode" behavior when mouse present.
 function TVLanding({ roomId, deviceCount, onSwitchToStatic }) {
-  const [mode, setMode] = useState('choose'); // 'choose' | 'qr'
+  const [mode, setMode] = useState('choose'); // 'choose' | 'qr' (click-through still works)
 
-  const trackerUrl = `https://bestrongagain.netlify.app?tv=${roomId}`;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(trackerUrl)}&bgcolor=0f0c29&color=fff`;
+  const params = new URLSearchParams(window.location.search);
+  const coach = (params.get('coach') || '').trim();
+  const defaultCode = (params.get('code') || '').trim();
+
+  // QR 1: Phone Control — pairs phone + TV via WebSocket room
+  const pairUrl = (() => {
+    const q = new URLSearchParams({ tv: roomId });
+    if (coach) q.set('coach', coach);
+    return `https://bestrongagain.netlify.app?${q.toString()}`;
+  })();
+
+  // QR 2: Show Workout — scanner opens workout on their phone (no TV sync)
+  const workoutUrl = (() => {
+    const q = new URLSearchParams();
+    if (defaultCode) q.set('code', defaultCode);
+    if (coach) q.set('coach', coach);
+    return `https://bestrongagain.netlify.app/${q.toString() ? '?' + q.toString() : ''}`;
+  })();
 
   if (mode === 'qr') {
+    // Full-screen QR (clicked the Phone Control card)
     return (
       <div style={styles.landing}>
         <div style={styles.landingCard}>
           <h1 style={styles.landingTitle}>Scan to Start</h1>
           <p style={styles.landingSubtitle}>Point your phone camera at the QR code</p>
-
           <div style={styles.qrContainer}>
-            <img src={qrUrl} alt="Scan to connect" style={styles.qrImage} />
+            <QRCodeSVG value={pairUrl} size={300} bgColor="#0f0c29" fgColor="#ffffff" level="M" includeMargin />
           </div>
-
           {deviceCount > 1 ? (
-            <div style={styles.connectedBanner}>
-              {'\u{1F7E2}'} Phone connected — loading workout...
-            </div>
+            <div style={styles.connectedBanner}>🟢 Phone connected — loading workout...</div>
           ) : (
             <p style={styles.hint}>
               Scan with your phone camera, then log in with your access code.<br />
               Your workout will appear on this TV.
             </p>
           )}
-
-          <button onClick={() => setMode('choose')} style={styles.backLink}>
-            {'\u2190'} Back to options
-          </button>
+          <button onClick={() => setMode('choose')} style={styles.backLink}>← Back to options</button>
         </div>
       </div>
     );
   }
 
-  // Choose mode
+  // Default: two QRs side-by-side
   return (
     <div style={styles.landing}>
-      <div style={{ ...styles.landingCard, maxWidth: '700px' }}>
+      <div style={{ ...styles.landingCard, maxWidth: '860px' }}>
         <h1 style={styles.landingTitle}>Gym TV</h1>
-        <p style={styles.landingSubtitle}>Choose how to display your workout</p>
+        <p style={styles.landingSubtitle}>Scan a QR with your phone camera</p>
 
         <div style={styles.modeGrid}>
+          {/* QR 1 — Phone Control (pair + mirror) */}
           <button onClick={() => setMode('qr')} style={styles.modeCard}>
-            <span style={{ fontSize: '48px', marginBottom: '12px' }}>📱</span>
+            <span style={{ fontSize: '28px', marginBottom: '8px' }}>📱</span>
             <span style={styles.modeTitle}>Phone Control</span>
+            <div style={styles.qrInCard}>
+              <QRCodeSVG value={pairUrl} size={180} bgColor="#ffffff" fgColor="#0a0a1a" level="M" />
+            </div>
             <span style={styles.modeDesc}>
-              Scan QR with your phone. Track on phone, TV updates live.
+              Pairs your phone + TV. Track on phone, TV mirrors every set live.
             </span>
           </button>
 
+          {/* QR 2 — Show Workout on Phone (no TV sync) */}
           <button onClick={onSwitchToStatic} style={styles.modeCard}>
-            <span style={{ fontSize: '48px', marginBottom: '12px' }}>📋</span>
-            <span style={styles.modeTitle}>Show Workout</span>
+            <span style={{ fontSize: '28px', marginBottom: '8px' }}>📋</span>
+            <span style={styles.modeTitle}>Log on My Phone</span>
+            <div style={styles.qrInCard}>
+              <QRCodeSVG value={workoutUrl} size={180} bgColor="#ffffff" fgColor="#0a0a1a" level="M" />
+            </div>
             <span style={styles.modeDesc}>
-              Enter your code. See 2 days side-by-side like a whiteboard.
+              {defaultCode
+                ? `Opens today's workout (${defaultCode}) on your phone.`
+                : 'Opens the tracker on your phone — enter your access code.'}
             </span>
           </button>
         </div>
+
+        {coach && (
+          <p style={styles.coachFooter}>
+            Presented by coach <strong>{coach}</strong>
+          </p>
+        )}
       </div>
     </div>
   );
@@ -552,6 +583,14 @@ const styles = {
   },
   modeDesc: {
     fontSize: '14px', color: 'rgba(255,255,255,0.5)', lineHeight: '1.5',
+  },
+  qrInCard: {
+    background: '#fff', borderRadius: '12px', padding: '12px',
+    marginBottom: '14px',
+  },
+  coachFooter: {
+    marginTop: '22px', fontSize: '13px', color: 'rgba(255,255,255,0.45)',
+    textTransform: 'uppercase', letterSpacing: '1px',
   },
 
   // TV Display
