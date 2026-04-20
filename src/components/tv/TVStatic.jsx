@@ -403,26 +403,32 @@ function QRCorner({ code }) {
 
   return (
     <div style={qs.wrap}>
-      <div style={qs.title}>Scan to track on your phone</div>
       <div style={qs.qrBox}>
-        <QRCodeSVG value={qrUrl} size={140} bgColor="#ffffff" fgColor="#0a0a1a" level="M" />
+        <QRCodeSVG value={qrUrl} size={110} bgColor="#ffffff" fgColor="#0a0a1a" level="M" />
       </div>
-      {coachCode && <div style={qs.coachLine}>Coach: {coachCode}</div>}
+      <div style={qs.textCol}>
+        <div style={qs.title}>Scan to track on your phone</div>
+        <div style={qs.subtitle}>Open in the Be Strong Again tracker</div>
+        {coachCode && <div style={qs.coachLine}>Coach: {coachCode}</div>}
+      </div>
     </div>
   );
 }
 
 const qs = {
   wrap: {
-    position: 'fixed', right: '16px', bottom: '40px',
-    background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)',
-    borderRadius: '12px', padding: '10px', textAlign: 'center',
+    position: 'fixed', top: '12px', left: '50%', transform: 'translateX(-50%)',
+    background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.18)',
+    borderRadius: '14px', padding: '10px 16px',
+    display: 'flex', alignItems: 'center', gap: '14px',
     backdropFilter: 'blur(10px)', boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
     zIndex: 50,
   },
-  title: { color: 'rgba(255,255,255,0.8)', fontSize: '11px', fontWeight: '600', marginBottom: '6px', letterSpacing: '0.3px' },
-  qrBox: { background: '#fff', padding: '8px', borderRadius: '8px', display: 'inline-block' },
-  coachLine: { color: 'rgba(255,255,255,0.55)', fontSize: '10px', fontWeight: '600', marginTop: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' },
+  textCol: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end' },
+  title: { color: '#fff', fontSize: 'clamp(13px, 1.1vw, 18px)', fontWeight: '700', letterSpacing: '0.3px' },
+  subtitle: { color: 'rgba(255,255,255,0.6)', fontSize: 'clamp(11px, 0.9vw, 15px)', fontWeight: '500', marginTop: '2px' },
+  qrBox: { background: '#fff', padding: '6px', borderRadius: '8px', display: 'inline-block' },
+  coachLine: { color: 'rgba(255,255,255,0.65)', fontSize: 'clamp(11px, 0.9vw, 14px)', fontWeight: '600', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' },
 };
 
 // ── Styles ──
@@ -466,25 +472,25 @@ const s = {
     marginBottom: '8px', flexShrink: 0,
   },
   topBarLeft: { display: 'flex', alignItems: 'center', gap: '16px' },
-  programTitle: { fontSize: 'clamp(22px, 2.6vw, 44px)', fontWeight: '800', margin: 0, color: '#fff' },
+  programTitle: { fontSize: 'clamp(24px, 3vw, 56px)', fontWeight: '800', margin: 0, color: '#fff' },
   userBadge: {
     background: 'rgba(102,126,234,0.3)', border: '1px solid rgba(102,126,234,0.5)',
-    borderRadius: '20px', padding: '6px 16px', fontSize: 'clamp(14px, 1.3vw, 20px)',
+    borderRadius: '22px', padding: '6px 18px', fontSize: 'clamp(15px, 1.5vw, 26px)',
     fontWeight: '600', color: '#b8c6ff',
   },
-  topBarRight: { display: 'flex', alignItems: 'center', gap: '8px' },
+  topBarRight: { display: 'flex', alignItems: 'center', gap: '10px' },
   navBtn: {
     background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
-    color: '#fff', borderRadius: '10px', padding: '8px 14px',
-    fontSize: 'clamp(18px, 1.6vw, 26px)', fontWeight: '700', cursor: 'pointer',
+    color: '#fff', borderRadius: '10px', padding: '10px 16px',
+    fontSize: 'clamp(20px, 1.9vw, 34px)', fontWeight: '700', cursor: 'pointer',
   },
   weekLabel: {
-    fontSize: 'clamp(16px, 1.5vw, 22px)', fontWeight: '600',
-    color: 'rgba(255,255,255,0.85)', minWidth: '120px', textAlign: 'center',
+    fontSize: 'clamp(18px, 1.7vw, 30px)', fontWeight: '600',
+    color: 'rgba(255,255,255,0.85)', minWidth: '140px', textAlign: 'center',
   },
   dayLabel: {
-    fontSize: 'clamp(14px, 1.3vw, 20px)', fontWeight: '600',
-    color: 'rgba(255,255,255,0.7)', minWidth: '90px', textAlign: 'center',
+    fontSize: 'clamp(16px, 1.5vw, 26px)', fontWeight: '600',
+    color: 'rgba(255,255,255,0.7)', minWidth: '110px', textAlign: 'center',
   },
 
   // Two columns
@@ -498,46 +504,46 @@ const s = {
   },
   dayHeader: {
     background: 'linear-gradient(135deg, #667eea, #764ba2)',
-    padding: '10px 16px', fontSize: 'clamp(18px, 1.7vw, 26px)', fontWeight: '700',
-    color: '#fff', textAlign: 'center', flexShrink: 0,
+    padding: '12px 18px', fontSize: 'clamp(20px, 2vw, 36px)', fontWeight: '800',
+    color: '#fff', textAlign: 'center', flexShrink: 0, letterSpacing: '0.3px',
   },
 
   // Theme row
   themeRow: {
-    padding: '6px 14px', fontSize: 'clamp(13px, 1.1vw, 18px)', lineHeight: '1.3',
-    color: 'rgba(255,255,255,0.5)', fontStyle: 'italic',
+    padding: '8px 16px', fontSize: 'clamp(14px, 1.3vw, 22px)', lineHeight: '1.35',
+    color: 'rgba(255,255,255,0.55)', fontStyle: 'italic',
     borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0,
   },
 
   // Section row (warmup/cooldown inline)
   sectionRow: {
-    padding: '6px 14px', fontSize: 'clamp(14px, 1.2vw, 19px)', lineHeight: '1.4',
-    color: 'rgba(255,255,255,0.75)',
+    padding: '8px 16px', fontSize: 'clamp(16px, 1.5vw, 26px)', lineHeight: '1.4',
+    color: 'rgba(255,255,255,0.8)',
     borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0,
   },
   sectionLabel: { fontWeight: '700', color: '#fff', marginRight: '8px' },
-  sectionText: { color: 'rgba(255,255,255,0.65)' },
+  sectionText: { color: 'rgba(255,255,255,0.7)' },
 
   // Block header
   blockHeaderRow: {
-    padding: '7px 14px', fontSize: 'clamp(16px, 1.4vw, 22px)', fontWeight: '700',
-    color: '#b8c6ff', background: 'rgba(102,126,234,0.15)',
+    padding: '10px 16px', fontSize: 'clamp(18px, 1.7vw, 30px)', fontWeight: '700',
+    color: '#b8c6ff', background: 'rgba(102,126,234,0.18)',
     borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0,
-    display: 'flex', alignItems: 'center', gap: '8px',
+    display: 'flex', alignItems: 'center', gap: '10px',
   },
   circuitBadge: {
-    background: 'rgba(255,193,7,0.25)', color: '#ffd54f', borderRadius: '5px',
-    padding: '2px 8px', fontSize: 'clamp(11px, 0.9vw, 15px)',
+    background: 'rgba(255,193,7,0.25)', color: '#ffd54f', borderRadius: '6px',
+    padding: '3px 10px', fontSize: 'clamp(12px, 1vw, 18px)',
     fontWeight: '700', letterSpacing: '0.5px', marginLeft: 'auto',
   },
 
   // Exercise row
   exerciseRow: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '5px 14px 5px 22px',
-    fontSize: 'clamp(15px, 1.3vw, 21px)',
+    padding: '8px 18px 8px 28px',
+    fontSize: 'clamp(17px, 1.6vw, 28px)',
     borderBottom: '1px solid rgba(255,255,255,0.04)',
-    minHeight: 'clamp(26px, 2vw, 34px)', flexShrink: 0,
+    minHeight: 'clamp(32px, 2.5vw, 50px)', flexShrink: 0,
   },
   exName: { color: '#fff', fontWeight: '500', flex: 1 },
   exDetail: {
