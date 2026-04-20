@@ -319,12 +319,14 @@ export default function TVStatic() {
 
     // Pi-controlled mode: poll coach's active program every minute.
     if (!piId) return;
+    const deviceSerial = (params.get('device') || '').trim();
     let cancelled = false;
     const MEDIA_BASE = 'https://app.bestrongagain.com/api/kiosk/';
 
     const checkConfig = async () => {
       try {
-        const r = await fetch(`${MEDIA_BASE}tv-config?pi=${encodeURIComponent(piId)}`);
+        const deviceParam = deviceSerial ? `&device=${encodeURIComponent(deviceSerial)}` : '';
+        const r = await fetch(`${MEDIA_BASE}tv-config?pi=${encodeURIComponent(piId)}${deviceParam}`);
         if (!r.ok) return;
         const data = await r.json();
         if (cancelled) return;
