@@ -155,6 +155,7 @@ export default function TVStatic() {
   const [maxes, setMaxes] = useState({});
   const [code, setCode] = useState('');
   const [allBlocks, setAllBlocks] = useState({});
+  const [autoLoadError, setAutoLoadError] = useState(null);
 
   const handleLoad = useCallback(async (info) => {
     const { data } = info;
@@ -267,7 +268,44 @@ export default function TVStatic() {
     setAllBlocks(newBlocks);
   }, [code, currentWeek, startDay, program]);
 
-  if (!program) return <StaticCodeEntry onLoad={handleLoad} />;
+  // Auto-load workout from URL param ?code=XXXX so the Pi can boot straight
+  // into the whiteboard without anyone typing a code in.
+  useEffect(() => {
+    if (program) return;
+    const params = new URLSearchParams(window.location.search);
+    const urlCode = (params.get('code') || '').trim();
+    if (!/^\d{4}$/.test(urlCode)) return;
+    (async () => {
+      try {
+        const res = await fetch(API_BASE + 'load-program.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: urlCode, email: 'tv-display@bestrongagain.com' }),
+        });
+        const data = await res.json();
+        if (data.success && data.data?.program) {
+          handleLoad({ code: urlCode, data: data.data });
+        } else {
+          setAutoLoadError(`Access code ${urlCode} not found`);
+        }
+      } catch (e) {
+        setAutoLoadError('Network error loading workout');
+      }
+    })();
+  }, [program, handleLoad]);
+
+  if (!program) {
+    return (
+      <>
+        <StaticCodeEntry onLoad={handleLoad} />
+        {autoLoadError && (
+          <div style={{ position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)', background: '#fee2e2', color: '#991b1b', padding: '8px 14px', borderRadius: '8px', fontSize: '14px', fontWeight: '600' }}>
+            {autoLoadError}
+          </div>
+        )}
+      </>
+    );
+  }
 
   const dpw = program?.daysPerWeek || 3;
   const tw = program?.totalWeeks || 4;
