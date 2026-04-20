@@ -86,10 +86,15 @@ function StaticCodeEntry({ onLoad }) {
 }
 
 // ── Single Day Column ──
-function DayColumn({ blocks, dayLabel, userName, maxes }) {
+// fontScale > 1 zooms everything (text, spacing, icons) proportionally — used for
+// WOD Only mode where we have more horizontal real estate and bigger is better.
+function DayColumn({ blocks, dayLabel, userName, maxes, fontScale = 1 }) {
+  const columnStyle = fontScale !== 1
+    ? { ...s.dayColumn, zoom: fontScale }   // Chromium-native zoom; scales the whole subtree
+    : s.dayColumn;
   if (!blocks || blocks.length === 0) {
     return (
-      <div style={s.dayColumn}>
+      <div style={columnStyle}>
         <div style={s.dayHeader}>{dayLabel}</div>
         <div style={{ ...s.exerciseRow, color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>No workout data</div>
       </div>
@@ -139,7 +144,7 @@ function DayColumn({ blocks, dayLabel, userName, maxes }) {
   });
 
   return (
-    <div style={s.dayColumn}>
+    <div style={columnStyle}>
       <div style={s.dayHeader}>{dayLabel}</div>
       {rows}
     </div>
@@ -435,13 +440,17 @@ export default function TVStatic() {
       {/* Column layout — branches on coach's selected view mode */}
       <div style={s.columnsContainer}>
         {layout === 'wod' ? (
-          // Single column fullwidth — CrossFit-style single WOD per session
-          <DayColumn
-            blocks={blocks1}
-            dayLabel={`Today's WOD — Week ${currentWeek}, Day ${day1}`}
-            userName={userName}
-            maxes={maxes}
-          />
+          // Single column, centered with max-width so text doesn't stretch edge-to-edge
+          // on a 1920px TV. `fontScale` bumps text ~30% bigger since we have the real estate.
+          <div style={s.wodCenterWrap}>
+            <DayColumn
+              blocks={blocks1}
+              dayLabel={`Today's WOD — Week ${currentWeek}, Day ${day1}`}
+              userName={userName}
+              maxes={maxes}
+              fontScale={1.3}
+            />
+          </div>
         ) : layout === 'wod_scaled' ? (
           // Two columns: Day 1 = Rx/WOD, Day 2 = Scaled regression
           <>
@@ -588,9 +597,19 @@ const s = {
     color: 'rgba(255,255,255,0.7)', minWidth: '110px', textAlign: 'center',
   },
 
-  // Two columns
+  // Two columns (or single, in WOD mode)
   columnsContainer: {
     flex: 1, display: 'flex', gap: '14px', overflow: 'hidden',
+    justifyContent: 'center',   // centers single-column WOD layout on 1920px TVs
+  },
+  // Wraps the single day column in WOD mode so it doesn't stretch edge-to-edge.
+  // Max-width caps line length for readability; flex:1 + maxWidth together
+  // gives "grow to fit, but don't spread past this" behavior.
+  wodCenterWrap: {
+    flex: '1 1 auto',
+    maxWidth: '1200px',
+    display: 'flex',
+    minHeight: 0,  // needed so children overflow: auto actually scrolls inside flex
   },
   dayColumn: {
     flex: 1, background: 'rgba(255,255,255,0.04)', borderRadius: '12px',
