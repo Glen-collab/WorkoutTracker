@@ -287,33 +287,102 @@ export default function TVStatic() {
     return () => window.removeEventListener('keydown', onKey);
   }, [program, navigateWeek, navigateDays]);
 
-  // Auto-load workout from URL param ?code=XXXX so the Pi can boot straight
-  // into the whiteboard without anyone typing a code in.
+  // Auto-load workout from URL param ?code=XXXX (Pi boots with a fixed code)
+  // OR ?pi=<coach_user_id> (Pi boots tied to a coach — page polls the coach's
+  // "active program" and switches when they change it from their Gym TV page).
   useEffect(() => {
-    if (program) return;
     const params = new URLSearchParams(window.location.search);
     const urlCode = (params.get('code') || '').trim();
-    if (!/^\d{4}$/.test(urlCode)) return;
-    (async () => {
+    const piId = (params.get('pi') || '').trim();
+
+    // Fixed-code mode (legacy): load once.
+    if (!program && /^\d{4}$/.test(urlCode)) {
+      (async () => {
+        try {
+          const res = await fetch(API_BASE + 'load-program.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: urlCode, email: 'tv-display@bestrongagain.com' }),
+          });
+          const data = await res.json();
+          if (data.success && data.data?.program) {
+            handleLoad({ code: urlCode, data: data.data });
+          } else {
+            setAutoLoadError(`Access code ${urlCode} not found`);
+          }
+        } catch {
+          setAutoLoadError('Network error loading workout');
+        }
+      })();
+      return;
+    }
+
+    // Pi-controlled mode: poll coach's active program every minute.
+    if (!piId) return;
+    let cancelled = false;
+    const MEDIA_BASE = 'https://app.bestrongagain.com/api/kiosk/';
+
+    const checkConfig = async () => {
       try {
+        const r = await fetch(`${MEDIA_BASE}tv-config?pi=${encodeURIComponent(piId)}`);
+        if (!r.ok) return;
+        const data = await r.json();
+        if (cancelled) return;
+        const serverCode = data?.active?.access_code;
+        // If coach has no active program, show nothing / idle screen
+        if (!serverCode) {
+          if (program) { setProgram(null); setAllBlocks({}); setCode(''); }
+          return;
+        }
+        // If already showing this code, nothing to do
+        if (code === serverCode) return;
+        // Code changed — load the new program
         const res = await fetch(API_BASE + 'load-program.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: urlCode, email: 'tv-display@bestrongagain.com' }),
+          body: JSON.stringify({ code: serverCode, email: 'tv-display@bestrongagain.com' }),
         });
-        const data = await res.json();
-        if (data.success && data.data?.program) {
-          handleLoad({ code: urlCode, data: data.data });
-        } else {
-          setAutoLoadError(`Access code ${urlCode} not found`);
+        const d = await res.json();
+        if (d.success && d.data?.program && !cancelled) {
+          handleLoad({ code: serverCode, data: d.data });
         }
-      } catch (e) {
-        setAutoLoadError('Network error loading workout');
-      }
-    })();
-  }, [program, handleLoad]);
+      } catch { /* network hiccup — try again next tick */ }
+    };
+
+    checkConfig();
+    const iv = setInterval(checkConfig, 60_000);
+    return () => { cancelled = true; clearInterval(iv); };
+  }, [program, handleLoad, code]);
 
   if (!program) {
+    // If we're in Pi-controlled mode (?pi=), show an idle screen instead of the
+    // manual code-entry form — the coach picks a program from their dashboard.
+    const params = new URLSearchParams(window.location.search);
+    const piId = (params.get('pi') || '').trim();
+    if (piId) {
+      return (
+        <div style={{
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)',
+          color: '#fff',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          textAlign: 'center', padding: '24px',
+        }}>
+          <div>
+            <div style={{ fontSize: 'clamp(28px, 3vw, 56px)', fontWeight: '800', marginBottom: '14px' }}>
+              Be Strong Again
+            </div>
+            <div style={{ fontSize: 'clamp(18px, 1.6vw, 28px)', color: 'rgba(255,255,255,0.75)', marginBottom: '10px' }}>
+              Gym TV ready
+            </div>
+            <div style={{ fontSize: 'clamp(14px, 1.2vw, 20px)', color: 'rgba(255,255,255,0.5)' }}>
+              Waiting for your coach to pick today's workout…
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
       <>
         <StaticCodeEntry onLoad={handleLoad} />
