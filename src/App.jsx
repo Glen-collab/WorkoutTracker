@@ -1091,10 +1091,12 @@ export default function App() {
         />
       )}
 
-      {/* Floating chatbot - on access and program screens */}
+      {/* Floating chatbot + friends chat - on access and program screens */}
       {(screen === 'access' || screen === 'program') && (
-        <WorkoutChatbot ref={chatbotRef} userName={user?.name || 'there'} screen={screen} onLoadTravel={handleLoadTravelWorkout} />
-        <FriendChat />
+        <>
+          <WorkoutChatbot ref={chatbotRef} userName={user?.name || 'there'} screen={screen} onLoadTravel={handleLoadTravelWorkout} />
+          <FriendChat />
+        </>
       )}
 
       {/* TV scroll remote — floating arrows when connected to a TV */}
