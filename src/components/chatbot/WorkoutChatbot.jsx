@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
 import { PAIN_TREE, VIDEO_LIBRARY } from '../../data/painTreeData';
+import QuestionBlock from './QuestionBlock';
 
 const TREE = {
   // Access screen entry - simple help for new users
@@ -429,11 +430,7 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
   };
 
   if (!isOpen) {
-    return (
-      <button style={bubbleStyle} onClick={handleOpen} aria-label="Open chat">
-        <span role="img" aria-label="chat">💬</span>
-      </button>
-    );
+    return <QuestionBlock onClick={handleOpen} />;
   }
 
   return (
