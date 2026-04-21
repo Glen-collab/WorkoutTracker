@@ -11,6 +11,7 @@ import CongratulationsModal from './components/modals/CongratulationsModal';
 import WeeklySummaryModal from './components/modals/WeeklySummaryModal';
 import TestYourMight, { getWeekConfig } from './components/game/TestYourMight';
 import WorkoutChatbot from './components/chatbot/WorkoutChatbot';
+import FriendChat from './components/social/FriendChat';
 import { calcBlockTonnage, calcCardio, getDefaultWeight } from './components/program/DailyTonnage';
 import TVScreen from './components/tv/TVScreen';
 import TVStatic from './components/tv/TVStatic';
@@ -1093,6 +1094,7 @@ export default function App() {
       {/* Floating chatbot - on access and program screens */}
       {(screen === 'access' || screen === 'program') && (
         <WorkoutChatbot ref={chatbotRef} userName={user?.name || 'there'} screen={screen} onLoadTravel={handleLoadTravelWorkout} />
+        <FriendChat />
       )}
 
       {/* TV scroll remote — floating arrows when connected to a TV */}
