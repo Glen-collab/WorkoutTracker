@@ -1,4 +1,16 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+
+// ── Unit-safe formatter ──
+// Some older programs stored units inside the value field ("60s each side",
+// "100 M", "2min", "10 reps"). Blindly appending durationUnit produced garbage
+// like "60s each side min" on screen. Rule: if the value already contains any
+// letter, trust the user and display as-is — otherwise append the unit arg.
+function formatValueWithUnit(value, unit, fallback) {
+  if (value === null || value === undefined || value === '') return '';
+  const s = String(value).trim();
+  if (/[a-zA-Z]/.test(s)) return s;
+  return `${s} ${unit || fallback}`;
+}
 import { QRCodeSVG } from 'qrcode.react';
 import { getBlockTypeName, getBlockIcon, get1RM, calculateWeight } from '../../utils/trackerHelpers';
 import { applyExerciseDefaults } from '../../data/exerciseDefaults';
@@ -13,8 +25,8 @@ function formatExercise(exercise) {
   const reps = ex.repsPerSet?.[0] || ex.reps
     || (Array.isArray(ex.sets) && ex.sets.length > 0 && typeof ex.sets[0] === 'object' ? (ex.sets[0].reps || ex.sets[0].targetReps || '') : '')
     || '';
-  const duration = ex.duration ? `${ex.duration} ${ex.durationUnit || 'min'}` : '';
-  const distance = ex.distance ? `${ex.distance} ${ex.distanceUnit || 'mi'}` : '';
+  const duration = formatValueWithUnit(ex.duration, ex.durationUnit, 'min');
+  const distance = formatValueWithUnit(ex.distance, ex.distanceUnit, 'mi');
   const qualifier = ex.qualifier || '';
 
   let detail = '';

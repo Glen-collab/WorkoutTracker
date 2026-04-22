@@ -124,12 +124,22 @@ function getReps(ex) {
   return '';
 }
 
+// Safe unit formatter — see note in formatValueWithUnit.
+// If the stored value already contains letters (e.g. "60s each side",
+// "2min", "100 M"), show it verbatim instead of appending another unit.
+function formatValueWithUnit(value, unit, fallback) {
+  if (value === null || value === undefined || value === '') return '';
+  const s = String(value).trim();
+  if (/[a-zA-Z]/.test(s)) return s;
+  return `${s} ${unit || fallback}`;
+}
+
 function getDuration(ex) {
-  if (ex.duration) {
-    const unit = ex.durationUnit || 'min';
-    return `${ex.duration} ${unit}`;
-  }
-  return '';
+  return formatValueWithUnit(ex.duration, ex.durationUnit, 'min');
+}
+
+function getDistance(ex) {
+  return formatValueWithUnit(ex.distance, ex.distanceUnit, 'mi');
 }
 
 function getSetsCount(ex) {
@@ -152,9 +162,9 @@ function formatSetsReps(ex) {
     return sets > 0 ? `${sets}x${reps}` : `x${reps}`;
   }
   // Has distance
-  if (ex.distance) {
-    const unit = ex.distanceUnit || 'mi';
-    return sets > 0 ? `${sets}x ${ex.distance} ${unit}` : `${ex.distance} ${unit}`;
+  const distance = getDistance(ex);
+  if (distance) {
+    return sets > 0 ? `${sets}x ${distance}` : distance;
   }
   return '';
 }
@@ -227,8 +237,8 @@ function TVExercise({ exercise, blockIndex, exIndex, maxes, savedData, liveTrack
 
       {isCardio ? (
         <div style={styles.cardioInfo}>
-          {ex.duration && <span style={styles.cardioTag}>⏱ {ex.duration} {ex.durationUnit || 'min'}</span>}
-          {ex.distance && <span style={styles.cardioTag}>📏 {ex.distance} {ex.distanceUnit || 'mi'}</span>}
+          {ex.duration && <span style={styles.cardioTag}>⏱ {formatValueWithUnit(ex.duration, ex.durationUnit, 'min')}</span>}
+          {ex.distance && <span style={styles.cardioTag}>📏 {formatValueWithUnit(ex.distance, ex.distanceUnit, 'mi')}</span>}
           {ex.intensity && <span style={styles.cardioTag}>🔥 {ex.intensity}</span>}
           {savedData?.actualDuration && <span style={styles.trackedTag}>Actual: {savedData.actualDuration} min</span>}
           {savedData?.actualDistance && <span style={styles.trackedTag}>Actual: {savedData.actualDistance} {savedData.distanceUnit || ex.distanceUnit || 'mi'}</span>}
