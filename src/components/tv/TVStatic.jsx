@@ -365,6 +365,7 @@ export default function TVStatic() {
     const params = new URLSearchParams(window.location.search);
     const urlCode = (params.get('code') || '').trim();
     const piId = (params.get('pi') || '').trim();
+    const coachCode = (params.get('coach') || '').trim().toUpperCase();
 
     // Fixed-code mode (legacy): load once.
     if (!program && /^\d{4}$/.test(urlCode)) {
@@ -389,15 +390,20 @@ export default function TVStatic() {
     }
 
     // Pi-controlled mode: poll coach's active program every minute.
-    if (!piId) return;
+    // Identity comes from either ?pi=<uuid> (legacy) or ?coach=<referral_code>
+    // (universal SD — customer enters their coach's code in the setup portal).
+    if (!piId && !coachCode) return;
     const deviceSerial = (params.get('device') || '').trim();
     let cancelled = false;
     const MEDIA_BASE = 'https://app.bestrongagain.com/api/kiosk/';
+    const idParam = coachCode
+      ? `coach=${encodeURIComponent(coachCode)}`
+      : `pi=${encodeURIComponent(piId)}`;
 
     const checkConfig = async () => {
       try {
         const deviceParam = deviceSerial ? `&device=${encodeURIComponent(deviceSerial)}` : '';
-        const r = await fetch(`${MEDIA_BASE}tv-config?pi=${encodeURIComponent(piId)}${deviceParam}`);
+        const r = await fetch(`${MEDIA_BASE}tv-config?${idParam}${deviceParam}`);
         if (!r.ok) return;
         const data = await r.json();
         if (cancelled) return;
@@ -437,7 +443,8 @@ export default function TVStatic() {
     // manual code-entry form — the coach picks a program from their dashboard.
     const params = new URLSearchParams(window.location.search);
     const piId = (params.get('pi') || '').trim();
-    if (piId) {
+    const coachCode = (params.get('coach') || '').trim().toUpperCase();
+    if (piId || coachCode) {
       return (
         <div style={{
           minHeight: '100vh',
