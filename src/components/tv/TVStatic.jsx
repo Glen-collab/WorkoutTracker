@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { getBlockTypeName, getBlockIcon, get1RM, calculateWeight } from '../../utils/trackerHelpers';
 import { applyExerciseDefaults } from '../../data/exerciseDefaults';
@@ -88,13 +88,14 @@ function StaticCodeEntry({ onLoad }) {
 // ── Single Day Column ──
 // fontScale > 1 zooms everything (text, spacing, icons) proportionally — used for
 // WOD Only mode where we have more horizontal real estate and bigger is better.
-function DayColumn({ blocks, dayLabel, userName, maxes, fontScale = 1 }) {
+// scrollRef lets the parent scroll this column independently via remote keys.
+function DayColumn({ blocks, dayLabel, userName, maxes, fontScale = 1, scrollRef = null }) {
   const columnStyle = fontScale !== 1
     ? { ...s.dayColumn, zoom: fontScale }   // Chromium-native zoom; scales the whole subtree
     : s.dayColumn;
   if (!blocks || blocks.length === 0) {
     return (
-      <div style={columnStyle}>
+      <div ref={scrollRef} style={columnStyle}>
         <div style={s.dayHeader}>{dayLabel}</div>
         <div style={{ ...s.exerciseRow, color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>No workout data</div>
       </div>
@@ -144,7 +145,7 @@ function DayColumn({ blocks, dayLabel, userName, maxes, fontScale = 1 }) {
   });
 
   return (
-    <div style={columnStyle}>
+    <div ref={scrollRef} style={columnStyle}>
       <div style={s.dayHeader}>{dayLabel}</div>
       {rows}
     </div>
@@ -163,6 +164,30 @@ export default function TVStatic() {
   const [autoLoadError, setAutoLoadError] = useState(null);
   // TV layout: 'two_day' (default), 'wod' (single fullwidth), 'wod_scaled' (Rx + Scaled)
   const [layout, setLayout] = useState('two_day');
+
+  // Refs for per-column scrolling via remote (Flirc-mapped keys).
+  // j/k → left column down/up, n/m → right column down/up.
+  // In WOD (single-column) mode, all four keys scroll that lone column.
+  const leftColRef = useRef(null);
+  const rightColRef = useRef(null);
+  useEffect(() => {
+    const SCROLL_STEP = 120; // px per press — comfortable for remote use
+    const onKey = (e) => {
+      const left = leftColRef.current;
+      const right = rightColRef.current;
+      const sole = left || right; // in WOD single-col mode, only one ref is set
+      switch (e.key) {
+        case 'j': (left || sole)?.scrollBy({ top:  SCROLL_STEP, behavior: 'smooth' }); break;
+        case 'k': (left || sole)?.scrollBy({ top: -SCROLL_STEP, behavior: 'smooth' }); break;
+        case 'n': (right || sole)?.scrollBy({ top:  SCROLL_STEP, behavior: 'smooth' }); break;
+        case 'm': (right || sole)?.scrollBy({ top: -SCROLL_STEP, behavior: 'smooth' }); break;
+        default: return;
+      }
+      e.preventDefault();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const handleLoad = useCallback(async (info) => {
     const { data } = info;
@@ -449,6 +474,7 @@ export default function TVStatic() {
               userName={userName}
               maxes={maxes}
               fontScale={1.3}
+              scrollRef={leftColRef}
             />
           </div>
         ) : layout === 'wod_scaled' ? (
@@ -459,6 +485,7 @@ export default function TVStatic() {
               dayLabel={`Rx / WOD — Week ${currentWeek}, Day ${day1}`}
               userName={userName}
               maxes={maxes}
+              scrollRef={leftColRef}
             />
             {blocks2 !== null && (
               <DayColumn
@@ -466,6 +493,7 @@ export default function TVStatic() {
                 dayLabel={`Scaled — Week ${currentWeek}, Day ${day2}`}
                 userName={userName}
                 maxes={maxes}
+                scrollRef={rightColRef}
               />
             )}
           </>
@@ -477,6 +505,7 @@ export default function TVStatic() {
               dayLabel={`Week ${currentWeek} — Day ${day1}`}
               userName={userName}
               maxes={maxes}
+              scrollRef={leftColRef}
             />
             {blocks2 !== null && (
               <DayColumn
@@ -484,6 +513,7 @@ export default function TVStatic() {
                 dayLabel={`Week ${currentWeek} — Day ${day2}`}
                 userName={userName}
                 maxes={maxes}
+                scrollRef={rightColRef}
               />
             )}
           </>
