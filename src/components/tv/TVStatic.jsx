@@ -172,6 +172,10 @@ export default function TVStatic() {
   // TV layout: 'two_day' (default), 'wod' (single fullwidth), 'wod_scaled' (Rx + Scaled)
   const [layout, setLayout] = useState('two_day');
 
+  // Coach branding — gym_name, logo_data (base64), primary + accent hex colors.
+  // Fetched from /tv-config; falls back to BSA defaults when any field is null.
+  const [brand, setBrand] = useState(null);
+
   // Refs for per-column scrolling via remote (Flirc-mapped keys).
   // j/k → left column down/up, n/m → right column down/up.
   // In WOD (single-column) mode, all four keys scroll that lone column.
@@ -372,6 +376,8 @@ export default function TVStatic() {
         // Keep layout in sync with what the coach picked on their dashboard
         const serverLayout = data?.device?.layout || 'two_day';
         setLayout((prev) => (prev === serverLayout ? prev : serverLayout));
+        // Pick up coach branding (logo / colors / gym name)
+        if (data?.brand) setBrand(data.brand);
         const serverCode = data?.active?.access_code;
         // If coach has no active program, show nothing / idle screen
         if (!serverCode) {
@@ -450,12 +456,22 @@ export default function TVStatic() {
   const blocks1 = allBlocks[`${currentWeek}-${day1}`] || [];
   const blocks2 = day2 ? (allBlocks[`${currentWeek}-${day2}`] || []) : null;
 
+  // Branding — use coach's values when set, otherwise BSA defaults
+  const brandPrimary = brand?.primary || '#667eea';
+  const brandAccent  = brand?.accent  || '#764ba2';
+  const brandGradient = `linear-gradient(135deg, ${brandPrimary}, ${brandAccent})`;
+
   return (
-    <div style={s.container}>
+    <div style={{ ...s.container, '--brand-gradient': brandGradient }}>
       {/* Header bar */}
       <div style={s.topBar}>
         <div style={s.topBarLeft}>
-          <h1 style={s.programTitle}>{program?.name || 'Workout'}</h1>
+          {brand?.logo_data && (
+            <img src={brand.logo_data} alt="" style={s.brandLogo} />
+          )}
+          <h1 style={s.programTitle}>
+            {brand?.gym_name ? `${brand.gym_name} — ` : ''}{program?.name || 'Workout'}
+          </h1>
           <InlineQR code={code} />
         </div>
         <div style={s.topBarRight}>
@@ -654,9 +670,14 @@ const s = {
     display: 'flex', flexDirection: 'column',
   },
   dayHeader: {
-    background: 'linear-gradient(135deg, #667eea, #764ba2)',
+    background: 'var(--brand-gradient, linear-gradient(135deg, #667eea, #764ba2))',
     padding: '12px 18px', fontSize: 'clamp(20px, 2vw, 36px)', fontWeight: '800',
     color: '#fff', textAlign: 'center', flexShrink: 0, letterSpacing: '0.3px',
+  },
+  // Coach logo next to program title
+  brandLogo: {
+    height: 'clamp(32px, 3.5vh, 56px)', width: 'auto', objectFit: 'contain',
+    borderRadius: '6px',
   },
 
   // Theme row
