@@ -123,13 +123,20 @@ function DayColumn({ blocks, dayLabel, userName, maxes, fontScale = 1, scrollRef
         </div>
       );
     } else {
-      // Block header
-      rows.push(
-        <div key={`${bi}-header`} style={s.blockHeaderRow}>
-          {getBlockIcon(block.type)} {typeName}
-          {block.circuitType && <span style={s.circuitBadge}>{block.circuitType.toUpperCase()}</span>}
-        </div>
-      );
+      // Thin divider between blocks (skip before first block — dayHeader separates it)
+      if (bi > 0) {
+        rows.push(<div key={`${bi}-divider`} style={s.blockDivider} />);
+      }
+      // Only render a visible label when it's a circuit with a type (AMRAP/EMOM/Tabata)
+      // — that info actually changes how the block is performed. Plain supersets/trisets
+      // don't need a title since the rows already speak for themselves.
+      if (block.circuitType) {
+        rows.push(
+          <div key={`${bi}-circuit`} style={s.circuitTag}>
+            <span style={s.circuitBadge}>{block.circuitType.toUpperCase()}</span>
+          </div>
+        );
+      }
 
       // Exercise rows
       (block.exercises || []).forEach((exercise, ei) => {
@@ -668,12 +675,21 @@ const s = {
   sectionLabel: { fontWeight: '700', color: '#fff', marginRight: '8px' },
   sectionText: { color: 'rgba(255,255,255,0.7)' },
 
-  // Block header
+  // Block header — deprecated (kept for reference). Current design uses blockDivider.
   blockHeaderRow: {
     padding: '10px 16px', fontSize: 'clamp(18px, 1.7vw, 30px)', fontWeight: '700',
     color: '#b8c6ff', background: 'rgba(102,126,234,0.18)',
     borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0,
     display: 'flex', alignItems: 'center', gap: '10px',
+  },
+  // Thin line between blocks — replaces the old full-width header row
+  blockDivider: {
+    height: '1px', background: 'rgba(255,255,255,0.12)', margin: '6px 12px',
+    flexShrink: 0,
+  },
+  // Compact badge row — only shown when a block has a circuit type (AMRAP/EMOM/Tabata)
+  circuitTag: {
+    padding: '4px 16px', flexShrink: 0,
   },
   circuitBadge: {
     background: 'rgba(255,193,7,0.25)', color: '#ffd54f', borderRadius: '6px',
