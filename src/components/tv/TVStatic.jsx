@@ -176,6 +176,34 @@ export default function TVStatic() {
   // Fetched from /tv-config; falls back to BSA defaults when any field is null.
   const [brand, setBrand] = useState(null);
 
+  // Full-screen brand takeover that fires every 15 min for 3s.
+  // Doubles as burn-in mitigation (rearranges bright/dark pixels on schedule)
+  // and reinforces the gym's identity for anyone walking by.
+  const [showLogoFlash, setShowLogoFlash] = useState(false);
+  useEffect(() => {
+    if (!program) return;
+    const hasContent = !!(brand?.logo_data || brand?.gym_name);
+    if (!hasContent) return;
+
+    const FLASH_DURATION_MS = 3_000;
+    const FLASH_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
+    const FIRST_FLASH_DELAY_MS = 30_000;      // first flash 30s after load
+
+    const triggerFlash = () => {
+      setShowLogoFlash(true);
+      setTimeout(() => setShowLogoFlash(false), FLASH_DURATION_MS);
+    };
+    let intervalId;
+    const firstTimer = setTimeout(() => {
+      triggerFlash();
+      intervalId = setInterval(triggerFlash, FLASH_INTERVAL_MS);
+    }, FIRST_FLASH_DELAY_MS);
+    return () => {
+      clearTimeout(firstTimer);
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [program, brand]);
+
   // Refs for per-column scrolling via remote (Flirc-mapped keys).
   // j/k → left column down/up, n/m → right column down/up.
   // In WOD (single-column) mode, all four keys scroll that lone column.
@@ -463,6 +491,26 @@ export default function TVStatic() {
 
   return (
     <div style={{ ...s.container, '--brand-gradient': brandGradient }}>
+      {/* CSS keyframes for the brand takeover fade-in/out */}
+      <style>{`
+        @keyframes bsa-brand-flash {
+          0%   { opacity: 0; transform: scale(0.98); }
+          15%  { opacity: 1; transform: scale(1); }
+          85%  { opacity: 1; transform: scale(1); }
+          100% { opacity: 0; transform: scale(1.02); }
+        }
+      `}</style>
+      {/* Brand takeover every 15 min — burn-in protection + identity reinforcement */}
+      {showLogoFlash && (
+        <div style={{ ...s.brandFlash, background: brandGradient }}>
+          {brand?.logo_data && (
+            <img src={brand.logo_data} alt="" style={s.brandFlashLogo} />
+          )}
+          {brand?.gym_name && (
+            <div style={s.brandFlashName}>{brand.gym_name}</div>
+          )}
+        </div>
+      )}
       {/* Header bar */}
       <div style={s.topBar}>
         <div style={s.topBarLeft}>
@@ -678,6 +726,23 @@ const s = {
   brandLogo: {
     height: 'clamp(32px, 3.5vh, 56px)', width: 'auto', objectFit: 'contain',
     borderRadius: '6px',
+  },
+
+  // Full-screen brand takeover (fires every 15 min for 3s)
+  brandFlash: {
+    position: 'fixed', inset: 0, zIndex: 9999,
+    display: 'flex', flexDirection: 'column',
+    alignItems: 'center', justifyContent: 'center', gap: '36px',
+    animation: 'bsa-brand-flash 3s ease-in-out forwards',
+  },
+  brandFlashLogo: {
+    maxWidth: '60vw', maxHeight: '60vh', objectFit: 'contain',
+    filter: 'drop-shadow(0 10px 40px rgba(0,0,0,0.35))',
+  },
+  brandFlashName: {
+    color: '#fff', fontSize: 'clamp(36px, 6vw, 96px)', fontWeight: 900,
+    letterSpacing: '0.5px', textShadow: '0 6px 30px rgba(0,0,0,0.35)',
+    textAlign: 'center', padding: '0 40px',
   },
 
   // Theme row
