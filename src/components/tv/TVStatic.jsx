@@ -684,7 +684,7 @@ const s = {
   },
   // Thin line between blocks — replaces the old full-width header row
   blockDivider: {
-    height: '1px', background: 'rgba(255,255,255,0.12)', margin: '6px 12px',
+    height: '1px', background: 'rgba(255,255,255,0.35)', margin: '6px 12px',
     flexShrink: 0,
   },
   // Compact badge row — only shown when a block has a circuit type (AMRAP/EMOM/Tabata)
