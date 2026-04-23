@@ -1115,7 +1115,7 @@ export default function App() {
         <>
           <WorkoutChatbot ref={chatbotRef} userName={user?.name || 'there'} screen={screen} onLoadTravel={handleLoadTravelWorkout} />
           <FriendChat />
-          <CastStatusPillConnector />
+          {screen === 'program' && <CastStatusPillConnector />}
         </>
       )}
 

@@ -68,6 +68,32 @@ export default function useCastSync() {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
+  // Verify the cached pair_code is still alive on the backend. If the TV closed
+  // or the session expired, clear silently so the pill doesn't linger on refresh.
+  useEffect(() => {
+    if (!pairCode) return;
+    let cancelled = false;
+    const verify = async () => {
+      try {
+        const r = await fetch(`${CAST_API}/poll/${pairCode}`);
+        const d = await r.json();
+        if (cancelled) return;
+        // Clear if session is truly gone. `bound:false` on its own is fine —
+        // that just means paired but not yet pushed; only an explicit `expired`
+        // or missing bound flag + missing bound state warrants clearing.
+        if (d.expired) {
+          sessionStorage.removeItem(STORAGE_KEY);
+          setPairCodeState(null);
+        }
+      } catch {
+        // network hiccup — leave it; user can tap Stop if they need to force-clear
+      }
+    };
+    verify();
+    const iv = setInterval(verify, 60_000); // re-check every minute
+    return () => { cancelled = true; clearInterval(iv); };
+  }, [pairCode]);
+
   // Push scroll position while active
   useDebouncedPush(!!pairCode, pairCode);
 
