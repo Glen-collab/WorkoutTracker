@@ -9,7 +9,7 @@ import React from 'react';
 const s = {
   pill: {
     position: 'fixed', bottom: 16, right: 16, zIndex: 9998,
-    display: 'flex', alignItems: 'center', gap: 8,
+    display: 'flex', alignItems: 'center', gap: 10,
     padding: '6px 8px 6px 8px', borderRadius: 999,
     background: 'linear-gradient(135deg, #ff9a3c, #ffd200)',
     boxShadow: '0 6px 20px rgba(0,0,0,0.25)',
@@ -59,8 +59,8 @@ export default function CastStatusPill({ pairCode, onStop, onNav }) {
   };
   return (
     <div style={s.pill}>
-      <button style={s.arrowBtn} onClick={() => nudge(-1)} title="Previous section on TV" aria-label="Previous section on TV">▲</button>
-      <button style={s.arrowBtn} onClick={() => nudge(1)}  title="Next section on TV" aria-label="Next section on TV">▼</button>
+      <button style={{ ...s.arrowBtn, marginRight: 6 }} onClick={() => nudge(-1)} title="Previous section on TV" aria-label="Previous section on TV">▲</button>
+      <button style={{ ...s.arrowBtn, marginRight: 6 }} onClick={() => nudge(1)}  title="Next section on TV" aria-label="Next section on TV">▼</button>
       <span style={s.live}></span>
       <span>Cast</span>
       <span style={s.code}>{pairCode}</span>

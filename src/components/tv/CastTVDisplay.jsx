@@ -360,12 +360,21 @@ function CastedWorkout({ session, pairCode }) {
     const node = blockRefs.current[activeBlockIdx];
     if (!node) return;
     const rect = node.getBoundingClientRect();
-    const absoluteTop = rect.top + window.scrollY;
-    const viewH = window.innerHeight;
-    const docMax = Math.max(0, document.documentElement.scrollHeight - viewH);
+    const se = document.scrollingElement || document.documentElement;
+    const currentScroll = (typeof window.scrollY === 'number' ? window.scrollY : se.scrollTop) || 0;
+    const absoluteTop = rect.top + currentScroll;
+    const viewH = window.innerHeight || se.clientHeight;
+    const docMax = Math.max(0, se.scrollHeight - viewH);
     const desired = absoluteTop - (viewH - rect.height) / 2;
     const target = Math.max(0, Math.min(docMax, desired));
-    window.scrollTo({ top: target, behavior: 'smooth' });
+    // TV browsers are inconsistent — some ignore the {top, behavior} form,
+    // some silently refuse smooth scrolling, some want scrollingElement.
+    // Try every flavor so the scroll actually lands on Fire TV / Tizen /
+    // Roku / TCL / Vizio browsers alike.
+    try { window.scrollTo({ top: target, behavior: 'auto' }); } catch {}
+    try { window.scrollTo(0, target); } catch {}
+    try { se.scrollTop = target; } catch {}
+    if (document.body) { try { document.body.scrollTop = target; } catch {} }
   }, [activeBlockIdx, playingExercise, program]);
 
   if (err) return <div style={s.pairWrap}><div style={s.hint}>{err}</div></div>;
