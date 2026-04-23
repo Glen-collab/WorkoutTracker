@@ -71,8 +71,9 @@ const s = {
   },
 
   // Two-day whiteboard layout — gym-wall view with two columns side by
-  // side. Each column scrolls independently but the ▲▼ remote scrolls
-  // both in unison so the TV keeps them aligned.
+  // side. Matches the sizing of TVStatic.jsx (the Pi-kiosk view) so a
+  // TV-across-the-room user can read it clearly. Each column scrolls
+  // independently but the ▲▼ remote scrolls both in unison.
   twoDayShell: {
     height: '100vh', width: '100vw',
     background: '#0f0c29', color: '#fff',
@@ -80,28 +81,67 @@ const s = {
     display: 'flex', flexDirection: 'column', overflow: 'hidden',
   },
   twoDayHeader: {
-    padding: '1.5vh 2vw 1vh',
-    borderBottom: '2px solid rgba(255,255,255,0.15)',
+    padding: '8px 18px',
+    borderBottom: '1px solid rgba(255,255,255,0.08)',
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
     flexShrink: 0, gap: 12, flexWrap: 'wrap',
   },
+  twoDayProgramTitle: {
+    fontSize: 'clamp(24px, 3vw, 56px)', fontWeight: 800, margin: 0, color: '#fff',
+  },
+  twoDayProgramMeta: {
+    color: 'rgba(255,255,255,0.6)', fontSize: 'clamp(14px, 1.3vw, 22px)',
+  },
   twoDayCols: {
     flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr',
-    gap: '1.5vw', padding: '1vh 1.5vw 2vh',
-    minHeight: 0,  // required so the child can shrink and overflow inside a grid
+    gap: '12px', padding: '8px 12px 12px',
+    minHeight: 0,
   },
   twoDayCol: {
     minHeight: 0, overflowY: 'auto', overflowX: 'hidden',
-    background: 'rgba(255,255,255,0.03)',
+    background: 'rgba(255,255,255,0.04)',
     border: '1px solid rgba(255,255,255,0.08)',
     borderRadius: '12px',
-    padding: '1.5vh 1.5vw 75vh',
+    display: 'flex', flexDirection: 'column',
     WebkitOverflowScrolling: 'touch',
   },
-  twoDayColLabel: {
-    fontSize: 'clamp(20px, 2vw, 32px)', fontWeight: 800, color: '#ffd200',
-    letterSpacing: '1px', textTransform: 'uppercase',
-    marginBottom: '1vh',
+  twoDayColHeader: {
+    background: 'linear-gradient(135deg, #667eea, #764ba2)',
+    padding: '12px 18px', fontSize: 'clamp(20px, 2vw, 36px)', fontWeight: 800,
+    color: '#fff', textAlign: 'center', flexShrink: 0, letterSpacing: '0.3px',
+  },
+  twoDayColBody: {
+    overflowY: 'auto', overflowX: 'hidden', flex: 1,
+    padding: '4px 0 40vh',  // bottom padding so last section can scroll into view
+  },
+  twoDayBlockDivider: {
+    height: '1px', background: 'rgba(255,255,255,0.4)', margin: '6px 12px', flexShrink: 0,
+  },
+  twoDayCircuitTag: {
+    padding: '4px 16px', flexShrink: 0,
+  },
+  twoDayCircuitBadge: {
+    display: 'inline-block',
+    background: 'rgba(255,193,7,0.25)', color: '#ffd54f', borderRadius: '6px',
+    padding: '3px 10px', fontSize: 'clamp(12px, 1vw, 18px)',
+    fontWeight: 700, letterSpacing: '0.5px',
+  },
+  twoDayExRow: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    padding: '9px 20px 9px 30px',
+    fontSize: 'clamp(18px, 1.75vw, 32px)',
+    borderBottom: '1px solid rgba(255,255,255,0.04)',
+    flexShrink: 0, gap: '12px',
+  },
+  twoDayExName: { color: '#fff', fontWeight: 500, flex: 1 },
+  twoDayExDetail: {
+    color: 'rgba(255,255,255,0.7)', fontWeight: 700,
+    whiteSpace: 'nowrap', textAlign: 'right',
+  },
+  twoDayColEmpty: {
+    padding: '24px 18px', color: 'rgba(255,255,255,0.55)',
+    fontSize: 'clamp(16px, 1.5vw, 26px)', lineHeight: 1.4,
+    textAlign: 'center',
   },
   wkHeader: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -421,23 +461,24 @@ function CastedWorkout({ session, pairCode }) {
   if (!program) return <div style={s.pairWrap}><div style={s.hint}><span style={s.spinner}></span>Loading your workout…</div></div>;
 
   // Two-day whiteboard — gym wall view, two columns side by side.
+  // Sizing mirrors TVStatic.jsx so reading from across the room works.
   if (layout === 'two_day') {
     return (
       <>
         <div style={s.twoDayShell}>
           <div style={s.twoDayHeader}>
-            <div style={s.wkTitle}>{program.name || program.programName || 'Your Workout'}</div>
-            <div style={s.wkMeta}>
+            <h1 style={s.twoDayProgramTitle}>{program.name || program.programName || 'Your Workout'}</h1>
+            <div style={s.twoDayProgramMeta}>
               Week {wk}{session.user_name ? ` · ${session.user_name}` : ''}
             </div>
           </div>
           <div style={s.twoDayCols}>
-            <DayColumn
+            <TwoDayColumn
               label={`Day ${day}`}
               blocks={blocks}
               colRef={leftColRef}
             />
-            <DayColumn
+            <TwoDayColumn
               label={dayBLabel}
               blocks={blocksB}
               colRef={rightColRef}
@@ -480,28 +521,39 @@ function CastedWorkout({ session, pairCode }) {
   );
 }
 
-// One column of the two-day whiteboard. Scrolls independently but the
-// remote ▲▼ scrolls both columns in sync.
-function DayColumn({ label, blocks, colRef, emptyMsg }) {
+// One column of the two-day whiteboard. Gradient header bar + thin
+// dividers between blocks + dense exercise rows — matches TVStatic's
+// kiosk sizing so the TV is legible from across the gym. The ref is on
+// the scrollable body so the remote's ▲▼ can scroll this column.
+function TwoDayColumn({ label, blocks, colRef, emptyMsg }) {
+  const hasBlocks = Array.isArray(blocks) && blocks.length > 0;
   return (
-    <div ref={colRef} style={s.twoDayCol}>
-      <div style={s.twoDayColLabel}>{label}</div>
-      {(!blocks || blocks.length === 0) && (
-        <div style={{ ...s.hint, fontSize: 'clamp(16px, 1.6vw, 26px)' }}>
-          {emptyMsg || 'No exercises found for this day.'}
-        </div>
-      )}
-      {(blocks || []).map((block, bi) => (
-        <div key={block.id || bi} style={s.blockCard}>
-          <div style={s.blockType}>
-            {(block.type || 'Block').replace(/-/g, ' ')}
-            {block.circuitType ? ` · ${block.circuitType}` : ''}
-          </div>
-          {(block.exercises || []).map((ex, ei) => (
-            <ExerciseRow key={ei} ex={ex} first={ei === 0} />
-          ))}
-        </div>
-      ))}
+    <div style={s.twoDayCol}>
+      <div style={s.twoDayColHeader}>{label}</div>
+      <div ref={colRef} style={s.twoDayColBody}>
+        {!hasBlocks && (
+          <div style={s.twoDayColEmpty}>{emptyMsg || 'No exercises found for this day.'}</div>
+        )}
+        {hasBlocks && blocks.map((block, bi) => (
+          <React.Fragment key={block.id || bi}>
+            {bi > 0 && <div style={s.twoDayBlockDivider} />}
+            {block.circuitType && (
+              <div style={s.twoDayCircuitTag}>
+                <span style={s.twoDayCircuitBadge}>{block.circuitType}</span>
+              </div>
+            )}
+            {(block.exercises || []).map((ex, ei) => {
+              const detail = formatSetsReps(ex);
+              return (
+                <div key={ei} style={s.twoDayExRow}>
+                  <span style={s.twoDayExName}>{ex.name}</span>
+                  {detail && <span style={s.twoDayExDetail}>{detail}</span>}
+                </div>
+              );
+            })}
+          </React.Fragment>
+        ))}
+      </div>
     </div>
   );
 }
