@@ -92,6 +92,10 @@ const s = {
   twoDayProgramMeta: {
     color: 'rgba(255,255,255,0.6)', fontSize: 'clamp(14px, 1.3vw, 22px)',
   },
+  twoDayBrandLogo: {
+    height: 'clamp(32px, 3.5vh, 56px)', width: 'auto', objectFit: 'contain',
+    borderRadius: '6px', flexShrink: 0,
+  },
   twoDayCols: {
     flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr',
     gap: '12px', padding: '8px 12px 12px',
@@ -387,6 +391,7 @@ function CastedWorkout({ session, pairCode }) {
   // Poll every 1s for nav events + playing_exercise + layout (phone-as-remote).
   const [playingExercise, setPlayingExercise] = useState(null);
   const [layout, setLayoutState] = useState(session.layout || 'one_day');
+  const [brand, setBrand] = useState(session.brand || null);
   const lastNavUpdatedRef = useRef(null);
   const scrollerRef = useRef(null);       // one_day scroller
   const leftColRef  = useRef(null);       // two_day left column
@@ -411,6 +416,17 @@ function CastedWorkout({ session, pairCode }) {
         });
         // Layout flip (phone toggled one_day ↔ two_day mid-cast)
         if (d.layout && d.layout !== layout) setLayoutState(d.layout);
+        // Brand — set once, keep only if changed so we don't thrash React
+        if (d.brand) {
+          setBrand((prev) => {
+            const same = prev
+              && prev.primary === d.brand.primary
+              && prev.accent === d.brand.accent
+              && prev.gym_name === d.brand.gym_name
+              && prev.logo_data === d.brand.logo_data;
+            return same ? prev : d.brand;
+          });
+        }
         // Phone ▲▼ → scrollBy on the active container(s). Amazon Silk
         // ignores programmatic window.scrollTo/scrollBy, but it DOES
         // respect scroll calls on a plain div with overflow:auto (same
@@ -463,12 +479,25 @@ function CastedWorkout({ session, pairCode }) {
   // Two-day whiteboard — gym wall view, two columns side by side.
   // Sizing mirrors TVStatic.jsx so reading from across the room works.
   if (layout === 'two_day') {
+    const brandPrimary = brand?.primary || '#667eea';
+    const brandAccent  = brand?.accent  || '#764ba2';
+    const brandGym     = brand?.gym_name;
+    const brandLogo    = brand?.logo_data;
+    const colHeaderBg  = `linear-gradient(135deg, ${brandPrimary}, ${brandAccent})`;
     return (
       <>
         <div style={s.twoDayShell}>
           <div style={s.twoDayHeader}>
-            <h1 style={s.twoDayProgramTitle}>{program.name || program.programName || 'Your Workout'}</h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
+              {brandLogo && <img src={brandLogo} alt="" style={s.twoDayBrandLogo} />}
+              <h1 style={s.twoDayProgramTitle}>
+                {brandGym || program.name || program.programName || 'Your Workout'}
+              </h1>
+            </div>
             <div style={s.twoDayProgramMeta}>
+              {brandGym && (program.name || program.programName)
+                ? <span>{program.name || program.programName} · </span>
+                : null}
               Week {wk}{session.user_name ? ` · ${session.user_name}` : ''}
             </div>
           </div>
@@ -477,12 +506,14 @@ function CastedWorkout({ session, pairCode }) {
               label={`Day ${day}`}
               blocks={blocks}
               colRef={leftColRef}
+              headerBg={colHeaderBg}
             />
             <TwoDayColumn
               label={dayBLabel}
               blocks={blocksB}
               colRef={rightColRef}
               emptyMsg={`No workout built yet for ${dayBLabel}`}
+              headerBg={colHeaderBg}
             />
           </div>
         </div>
@@ -525,11 +556,12 @@ function CastedWorkout({ session, pairCode }) {
 // dividers between blocks + dense exercise rows — matches TVStatic's
 // kiosk sizing so the TV is legible from across the gym. The ref is on
 // the scrollable body so the remote's ▲▼ can scroll this column.
-function TwoDayColumn({ label, blocks, colRef, emptyMsg }) {
+function TwoDayColumn({ label, blocks, colRef, emptyMsg, headerBg }) {
   const hasBlocks = Array.isArray(blocks) && blocks.length > 0;
+  const headerStyle = headerBg ? { ...s.twoDayColHeader, background: headerBg } : s.twoDayColHeader;
   return (
     <div style={s.twoDayCol}>
-      <div style={s.twoDayColHeader}>{label}</div>
+      <div style={headerStyle}>{label}</div>
       <div ref={colRef} style={s.twoDayColBody}>
         {!hasBlocks && (
           <div style={s.twoDayColEmpty}>{emptyMsg || 'No exercises found for this day.'}</div>
