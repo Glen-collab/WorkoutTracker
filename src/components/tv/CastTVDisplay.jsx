@@ -54,11 +54,20 @@ const s = {
     display: 'inline-block', marginRight: 8, verticalAlign: 'middle',
   },
 
-  // Workout view styles
-  wkWrap: {
-    minHeight: '100vh', background: '#0f0c29', color: '#fff',
+  // Workout view styles — the OUTER shell is 100vh with overflow hidden,
+  // and a scrollable inner container handles all scrolling. This matches
+  // TVScreen.jsx (the /tv URL) which scrolls reliably on Amazon Silk even
+  // though programmatic window.scrollTo does not. See comment in the
+  // `nav_direction` effect below.
+  wkShell: {
+    height: '100vh', width: '100vw', overflow: 'hidden',
+    background: '#0f0c29', color: '#fff',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
-    padding: '2vh 3vw 6vh',
+  },
+  wkScroller: {
+    height: '100vh', overflowY: 'auto', overflowX: 'hidden',
+    padding: '2vh 3vw 75vh',
+    WebkitOverflowScrolling: 'touch',
   },
   wkHeader: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -280,11 +289,10 @@ function CastedWorkout({ session, pairCode }) {
     })();
   }, [session]);
 
-  // Poll every 1s for nav_index + playing_exercise (phone-as-remote).
+  // Poll every 1s for nav events + playing_exercise (phone-as-remote).
   const [playingExercise, setPlayingExercise] = useState(null);
-  const [navIndex, setNavIndex] = useState(0);
   const lastNavUpdatedRef = useRef(null);
-  const totalBlocksRef = useRef(0);
+  const scrollerRef = useRef(null);
   useEffect(() => {
     if (!program || !pairCode) return;
     let cancelled = false;
@@ -303,27 +311,18 @@ function CastedWorkout({ session, pairCode }) {
           if (prevName !== nextName) return nextPlaying;
           return prev;
         });
-        // Section-by-section navigation (phone ▲▼ → nav_index).
-        // Only react when nav_updated_at changes so manual TV scrolling
-        // doesn't get overwritten on every poll.
+        // Phone ▲▼ → scrollBy on the inner container. Amazon Silk ignores
+        // programmatic window.scrollTo/scrollBy, but it DOES respect scroll
+        // calls on a plain div with overflow:auto (same trick used by
+        // TVScreen.jsx which also ships over Silk).
         if (!nextPlaying && d.nav_updated_at && d.nav_updated_at !== lastNavUpdatedRef.current) {
           lastNavUpdatedRef.current = d.nav_updated_at;
-          const raw = Math.max(0, parseInt(d.nav_index, 10) || 0);
-          const total = totalBlocksRef.current;
-          // Self-heal: phone can spam ▼ past the last block (it doesn't know
-          // the count). Clamp and persist the correction back to the server
-          // so ▲ starts counting from the real last block, not from 99.
-          if (total > 0 && raw > total - 1) {
-            const fixed = total - 1;
-            fetch(`${API_BASE}/nav`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ pair_code: pairCode, index: fixed }),
-              keepalive: true,
-            }).catch(() => {});
-            setNavIndex(fixed);
-          } else {
-            setNavIndex(raw);
+          const dir = d.nav_direction === 'prev' ? -1 : 1;
+          const step = Math.round((scrollerRef.current?.clientHeight || window.innerHeight || 720) * 0.75);
+          if (scrollerRef.current && typeof scrollerRef.current.scrollBy === 'function') {
+            try { scrollerRef.current.scrollBy({ top: step * dir, behavior: 'smooth' }); } catch {}
+          } else if (scrollerRef.current) {
+            scrollerRef.current.scrollTop += step * dir;
           }
         }
       } catch {}
@@ -343,63 +342,22 @@ function CastedWorkout({ session, pairCode }) {
     || program?.blocks
     || [];
 
-  const totalBlocks = blocks.length;
-  const activeBlockIdx = totalBlocks > 0 ? Math.min(navIndex, totalBlocks - 1) : 0;
-  const blockRefs = useRef([]);
-  // Let the poll loop read the current count without re-subscribing.
-  totalBlocksRef.current = totalBlocks;
-
-  // Scroll the active block (section) into the center of the TV whenever
-  // the phone advances nav_index. We compute the target scrollTop manually
-  // (instead of scrollIntoView({block:'center'})) because TV browsers
-  // sometimes bail out when the element is already partially visible —
-  // that was causing block 1 to only show its bottom edge and block 2 to
-  // never actually move to the center.
-  useEffect(() => {
-    if (playingExercise || !program) return;
-    const node = blockRefs.current[activeBlockIdx];
-    if (!node) return;
-    const rect = node.getBoundingClientRect();
-    const se = document.scrollingElement || document.documentElement;
-    const currentScroll = (typeof window.scrollY === 'number' ? window.scrollY : se.scrollTop) || 0;
-    const absoluteTop = rect.top + currentScroll;
-    const viewH = window.innerHeight || se.clientHeight;
-    const docMax = Math.max(0, se.scrollHeight - viewH);
-    const desired = absoluteTop - (viewH - rect.height) / 2;
-    const target = Math.max(0, Math.min(docMax, desired));
-    // TV browsers are inconsistent — some ignore the {top, behavior} form,
-    // some silently refuse smooth scrolling, some want scrollingElement.
-    // Try every flavor so the scroll actually lands on Fire TV / Tizen /
-    // Roku / TCL / Vizio browsers alike.
-    try { window.scrollTo({ top: target, behavior: 'auto' }); } catch {}
-    try { window.scrollTo(0, target); } catch {}
-    try { se.scrollTop = target; } catch {}
-    if (document.body) { try { document.body.scrollTop = target; } catch {} }
-  }, [activeBlockIdx, playingExercise, program]);
-
   if (err) return <div style={s.pairWrap}><div style={s.hint}>{err}</div></div>;
   if (!program) return <div style={s.pairWrap}><div style={s.hint}><span style={s.spinner}></span>Loading your workout…</div></div>;
 
   return (
     <>
-      <div style={s.wkWrap}>
-        <div style={s.wkHeader}>
-          <div style={s.wkTitle}>{program.name || program.programName || 'Your Workout'}</div>
-          <div style={s.wkMeta}>
-            Week {wk} · Day {day}
-            {totalBlocks > 0 ? ` · Section ${activeBlockIdx + 1} of ${totalBlocks}` : ''}
-            {session.user_name ? ` · ${session.user_name}` : ''}
+      <div style={s.wkShell}>
+        <div ref={scrollerRef} style={s.wkScroller}>
+          <div style={s.wkHeader}>
+            <div style={s.wkTitle}>{program.name || program.programName || 'Your Workout'}</div>
+            <div style={s.wkMeta}>
+              Week {wk} · Day {day}{session.user_name ? ` · ${session.user_name}` : ''}
+            </div>
           </div>
-        </div>
-        {blocks.length === 0 && <div style={s.hint}>No exercises found for this day.</div>}
-        {blocks.map((block, bi) => {
-          const isActive = bi === activeBlockIdx && totalBlocks > 0;
-          return (
-            <div
-              key={block.id || bi}
-              ref={(el) => { blockRefs.current[bi] = el; }}
-              style={{ ...s.blockCard, ...(isActive ? s.blockCardActive : {}) }}
-            >
+          {blocks.length === 0 && <div style={s.hint}>No exercises found for this day.</div>}
+          {blocks.map((block, bi) => (
+            <div key={block.id || bi} style={s.blockCard}>
               <div style={s.blockType}>
                 {(block.type || 'Block').replace(/-/g, ' ')}
                 {block.circuitType ? ` · ${block.circuitType}` : ''}
@@ -408,11 +366,8 @@ function CastedWorkout({ session, pairCode }) {
                 <ExerciseRow key={ei} ex={ex} first={ei === 0} />
               ))}
             </div>
-          );
-        })}
-        {/* Big spacer so even the last section can land mid-screen when
-            scrollIntoView({block:'center'}) runs. */}
-        <div style={{ height: '75vh' }} />
+          ))}
+        </div>
       </div>
       {playingExercise && <FullScreenExerciseVideo ex={playingExercise} />}
     </>
