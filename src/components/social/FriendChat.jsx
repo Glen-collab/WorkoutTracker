@@ -343,7 +343,10 @@ export default function FriendChat() {
 // ── Styles ──────────────────────────────────────────────────────────
 const s = {
   bubble: {
-    position: 'fixed', top: '14px', right: '14px', zIndex: 999,
+    // Sit well below the program header so the "📺 Cast to TV" pill is never
+    // covered. Keep it reachable on all screen sizes without going bottom-right
+    // (that corner is owned by the Cast status pill when active).
+    position: 'fixed', top: '88px', right: '14px', zIndex: 999,
     width: '52px', height: '52px', borderRadius: '50%', border: 'none',
     background: 'linear-gradient(135deg, #B37602, #8a5b00)',
     color: '#fff', fontSize: '22px', cursor: 'pointer',
@@ -357,7 +360,7 @@ const s = {
     border: '2px solid #fff',
   },
   panel: {
-    position: 'fixed', top: '14px', right: '14px', zIndex: 999,
+    position: 'fixed', top: '88px', right: '14px', zIndex: 999,
     width: '360px', maxWidth: 'calc(100vw - 28px)',
     height: '520px', maxHeight: 'calc(100vh - 28px)',
     background: '#fff', borderRadius: '16px',
