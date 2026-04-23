@@ -1110,12 +1110,15 @@ export default function App() {
         />
       )}
 
-      {/* Floating chatbot + friends chat - on access and program screens */}
+      {/* Floating chatbot on access and program screens */}
       {(screen === 'access' || screen === 'program') && (
+        <WorkoutChatbot ref={chatbotRef} userName={user?.name || 'there'} screen={screen} onLoadTravel={handleLoadTravelWorkout} />
+      )}
+      {/* Friends chat only inside the workout — not the login screen */}
+      {screen === 'program' && (
         <>
-          <WorkoutChatbot ref={chatbotRef} userName={user?.name || 'there'} screen={screen} onLoadTravel={handleLoadTravelWorkout} />
           <FriendChat />
-          {screen === 'program' && <CastStatusPillConnector />}
+          <CastStatusPillConnector />
         </>
       )}
 

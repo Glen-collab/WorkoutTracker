@@ -210,7 +210,13 @@ export default function FriendChat() {
         onClick={() => setOpen(true)}
         style={s.bubble}
       >
-        <span style={{ fontSize: '26px' }}>💬</span>
+        {/* White chat-bubble glyph sitting inside the glass dome */}
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path
+            d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8A2.5 2.5 0 0 1 17.5 16H12l-4.2 3.5a.6.6 0 0 1-1-.46V16H6.5A2.5 2.5 0 0 1 4 13.5v-8Z"
+            fill="#fff"
+          />
+        </svg>
         {unread > 0 && (
           <span style={s.badge}>{unread > 9 ? '9+' : unread}</span>
         )}
@@ -387,12 +393,20 @@ const s = {
     // Sit well below the program header so the "📺 Cast to TV" pill is never
     // covered. Keep it reachable on all screen sizes without going bottom-right
     // (that corner is owned by the Cast status pill when active).
+    //
+    // Glassy "water drop" look — translucent fisheye dome. Radial gradient
+    // fakes the highlight of a bubble; backdrop-filter blurs whatever is
+    // behind it so you get that see-through glass effect.
     position: 'fixed', top: '88px', right: '14px', zIndex: 999,
-    width: '52px', height: '52px', borderRadius: '50%', border: 'none',
-    background: 'linear-gradient(135deg, #B37602, #8a5b00)',
-    color: '#fff', fontSize: '22px', cursor: 'pointer',
+    width: '54px', height: '54px', borderRadius: '50%',
+    border: '1px solid rgba(255,255,255,0.35)',
+    background: 'radial-gradient(circle at 32% 28%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.18) 38%, rgba(255,255,255,0.05) 70%, rgba(0,0,0,0.12) 100%)',
+    backdropFilter: 'blur(14px) saturate(1.6)',
+    WebkitBackdropFilter: 'blur(14px) saturate(1.6)',
+    color: '#fff', cursor: 'pointer',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+    boxShadow: '0 6px 18px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -6px 12px rgba(0,0,0,0.12)',
+    padding: 0,
   },
   badge: {
     position: 'absolute', top: '-4px', right: '-4px',
