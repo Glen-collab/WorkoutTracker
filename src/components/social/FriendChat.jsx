@@ -229,44 +229,57 @@ export default function FriendChat() {
         <div style={s.panelBody}>
           {magicSent ? (
             <>
-              <p style={{ ...s.muted, fontSize: '14px', lineHeight: '1.5', color: '#0f5132' }}>
-                <strong>Check your inbox.</strong> We sent a sign-in link to<br/><code style={{ background: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}>{loginEmail.trim().toLowerCase()}</code>
+              <div style={{ fontSize: '18px', fontWeight: 700, color: '#0f5132', marginBottom: '10px' }}>
+                Check your email ✉️
+              </div>
+              <p style={{ fontSize: '14px', lineHeight: '1.5', color: '#333' }}>
+                We sent a link to:<br/>
+                <code style={{ background: '#f0f0f0', padding: '3px 8px', borderRadius: '4px', fontSize: '13px', wordBreak: 'break-all' }}>{loginEmail.trim().toLowerCase()}</code>
+              </p>
+              <p style={{ fontSize: '14px', lineHeight: '1.5', color: '#333', marginTop: '12px' }}>
+                Open your email. Tap the big <strong>Sign In</strong> button. You're done.
               </p>
               <p style={{ ...s.muted, fontSize: '12px', marginTop: '10px' }}>
-                The link expires in 10 minutes. Tap it from the same device you want to chat on.
+                Link works for 10 minutes. Open it on this same phone.
               </p>
               <button
                 style={{ ...s.primaryBtn, background: '#e5e7eb', color: '#333', marginTop: '14px' }}
                 onClick={() => { setMagicSent(false); setLoginEmail(''); }}
               >
-                Use a different email
+                Wrong email? Start over
               </button>
             </>
           ) : (
             <>
-              <p style={s.muted}>
-                Type your email — we'll send you a one-tap sign-in link. <strong>No password needed.</strong>
+              <div style={{ fontSize: '16px', fontWeight: 700, color: '#1a1a2e', marginBottom: '6px' }}>
+                Step 1 — sign you in
+              </div>
+              <p style={{ fontSize: '14px', color: '#333', lineHeight: '1.5', marginBottom: '10px' }}>
+                Type <strong>YOUR</strong> email. (Not your friend's.) We'll email you a link to tap.
               </p>
               <form onSubmit={handleMagicLink}>
-                <input style={s.input} type="email" placeholder="your@email.com" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} autoFocus autoComplete="email" />
+                <input style={s.input} type="email" placeholder="your own email here" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} autoFocus autoComplete="email" />
                 {authError && <div style={s.errorBox}>{authError}</div>}
                 <button type="submit" style={s.primaryBtn} disabled={magicSending}>
-                  {magicSending ? 'Sending…' : 'Send sign-in link'}
+                  {magicSending ? 'Sending…' : 'Email me my link'}
                 </button>
               </form>
-              <p style={{ ...s.muted, fontSize: '11px', marginTop: '10px' }}>
-                First time? We'll make an account for you automatically. No payment required.
+              <p style={{ ...s.muted, fontSize: '12px', marginTop: '12px', lineHeight: '1.5' }}>
+                No password. No payment. New here? We'll make you an account.
               </p>
             </>
           )}
         </div>
       ) : !consented ? (
         <div style={s.panelBody}>
-          <div style={s.muted}><b>Before you message:</b></div>
-          <div style={{ fontSize: '13px', lineHeight: '1.5', color: '#333', background: '#f8f9fa', padding: '12px', borderRadius: '8px', margin: '8px 0' }}>
-            Your messages may be reviewed by Be Strong Again coaches and admins for safety and product improvement. Keep it respectful. Direct messages are friend-only — you'll need to add + accept friendships before chatting.
+          <div style={{ fontSize: '16px', fontWeight: 700, color: '#1a1a2e', marginBottom: '8px' }}>
+            One last thing
           </div>
-          <button style={s.primaryBtn} onClick={acceptConsent}>I Agree — Start Messaging</button>
+          <div style={{ fontSize: '14px', lineHeight: '1.55', color: '#333', background: '#f8f9fa', padding: '14px', borderRadius: '8px', margin: '4px 0 12px' }}>
+            A coach may read your chats to keep things safe.<br/>
+            Be kind. Only message friends.
+          </div>
+          <button style={s.primaryBtn} onClick={acceptConsent}>Got it — let me chat</button>
         </div>
       ) : activeFriend ? (
         // THREAD VIEW
@@ -330,18 +343,21 @@ export default function FriendChat() {
             </div>
           )}
 
-          <div style={s.sectionLabel}>Add a Friend</div>
+          <div style={s.sectionLabel}>Step 2 — Add a friend</div>
+          <p style={{ fontSize: '13px', color: '#555', margin: '2px 0 8px', lineHeight: 1.4 }}>
+            Type <strong>your friend's</strong> email. They'll get a message. They say yes or no.
+          </p>
           <div style={{ display: 'flex', gap: '6px', marginBottom: '4px' }}>
-            <input style={{ ...s.input, margin: 0 }} type="email" placeholder="friend@example.com" value={addEmail} onChange={(e) => setAddEmail(e.target.value)} />
-            <button onClick={addFriend} style={s.primaryBtn_sm}>Invite</button>
+            <input style={{ ...s.input, margin: 0 }} type="email" placeholder="your friend's email" value={addEmail} onChange={(e) => setAddEmail(e.target.value)} />
+            <button onClick={addFriend} style={s.primaryBtn_sm}>Send</button>
           </div>
           {addStatus && (
             <div style={{ fontSize: '12px', color: addStatus.ok ? '#16a34a' : '#991b1b', marginBottom: '12px' }}>{addStatus.msg}</div>
           )}
 
-          <div style={{ ...s.sectionLabel, marginTop: '12px' }}>Friends ({friends.length})</div>
+          <div style={{ ...s.sectionLabel, marginTop: '12px' }}>Your friends ({friends.length})</div>
           {friends.length === 0 ? (
-            <div style={{ ...s.muted, textAlign: 'center', padding: '16px 0' }}>No friends yet — invite someone above.</div>
+            <div style={{ ...s.muted, textAlign: 'center', padding: '16px 0' }}>No friends yet. Add one above 👆</div>
           ) : friends.map((f) => (
             <button key={f.id} onClick={() => setActiveFriend(f)} style={s.friendBtn}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
