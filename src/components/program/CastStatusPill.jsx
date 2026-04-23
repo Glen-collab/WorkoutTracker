@@ -59,8 +59,8 @@ export default function CastStatusPill({ pairCode, onStop, onNav }) {
   };
   return (
     <div style={s.pill}>
-      <button style={s.arrowBtn} onClick={() => nudge(-1)} title="Previous exercise on TV" aria-label="Previous exercise on TV">▲</button>
-      <button style={s.arrowBtn} onClick={() => nudge(1)}  title="Next exercise on TV" aria-label="Next exercise on TV">▼</button>
+      <button style={s.arrowBtn} onClick={() => nudge(-1)} title="Previous section on TV" aria-label="Previous section on TV">▲</button>
+      <button style={s.arrowBtn} onClick={() => nudge(1)}  title="Next section on TV" aria-label="Next section on TV">▼</button>
       <span style={s.live}></span>
       <span>Cast</span>
       <span style={s.code}>{pairCode}</span>

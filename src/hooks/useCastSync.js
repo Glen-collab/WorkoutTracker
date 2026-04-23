@@ -8,6 +8,14 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 
 const CAST_API = 'https://app.bestrongagain.com/api/cast';
 const STORAGE_KEY = 'bsa_cast_pair';
+// Same-tab pub/sub — the browser's `storage` event only fires in OTHER tabs,
+// so multiple useCastSync() instances in the same tab need a custom channel
+// or they fall out of sync (e.g. CastButton.startCast would set state and
+// sessionStorage but CastStatusPill's hook instance would never hear about it).
+const CHANGE_EVENT = 'bsa:cast-change';
+function broadcastCastChange(code) {
+  try { window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: code })); } catch {}
+}
 
 // Debounce helper
 function useDebouncedPush(active, pairCode) {
@@ -64,8 +72,14 @@ export default function useCastSync() {
     const onStorage = (e) => {
       if (e.key === STORAGE_KEY) setPairCodeState(e.newValue || null);
     };
+    // Same-tab channel for startCast/stopCast triggered from a sibling component.
+    const onChange = (e) => setPairCodeState(e.detail || null);
     window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    window.addEventListener(CHANGE_EVENT, onChange);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener(CHANGE_EVENT, onChange);
+    };
   }, []);
 
   // Verify the cached pair_code is still alive on the backend. If the TV closed
@@ -84,6 +98,7 @@ export default function useCastSync() {
         if (d.expired) {
           sessionStorage.removeItem(STORAGE_KEY);
           setPairCodeState(null);
+          broadcastCastChange(null);
         }
       } catch {
         // network hiccup — leave it; user can tap Stop if they need to force-clear
@@ -100,6 +115,7 @@ export default function useCastSync() {
   const startCast = useCallback((code) => {
     sessionStorage.setItem(STORAGE_KEY, code);
     setPairCodeState(code);
+    broadcastCastChange(code);
   }, []);
 
   const castPlay = useCallback(async (exercise) => {
@@ -132,6 +148,7 @@ export default function useCastSync() {
     const code = sessionStorage.getItem(STORAGE_KEY);
     sessionStorage.removeItem(STORAGE_KEY);
     setPairCodeState(null);
+    broadcastCastChange(null);
     if (code) {
       try {
         await fetch(CAST_API + '/stop', {
