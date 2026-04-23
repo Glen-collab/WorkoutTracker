@@ -96,6 +96,27 @@ const s = {
     height: 'clamp(32px, 3.5vh, 56px)', width: 'auto', objectFit: 'contain',
     borderRadius: '6px', flexShrink: 0,
   },
+
+  // Full-screen brand takeover that fires every 15 min for 3s in two-day
+  // mode. Doubles as OLED burn-in mitigation (rearranges bright/dark
+  // pixels on schedule) and gives the gym extra branding reps for
+  // anyone walking by the TV.
+  brandFlash: {
+    position: 'fixed', inset: 0, zIndex: 9999,
+    display: 'flex', flexDirection: 'column',
+    alignItems: 'center', justifyContent: 'center', gap: '36px',
+    animation: 'bsa-brand-flash 3s ease-in-out forwards',
+    pointerEvents: 'none',
+  },
+  brandFlashLogo: {
+    maxWidth: '60vw', maxHeight: '60vh', objectFit: 'contain',
+    filter: 'drop-shadow(0 10px 40px rgba(0,0,0,0.35))',
+  },
+  brandFlashName: {
+    color: '#fff', fontSize: 'clamp(36px, 6vw, 96px)', fontWeight: 900,
+    letterSpacing: '0.5px', textShadow: '0 6px 30px rgba(0,0,0,0.35)',
+    textAlign: 'center', padding: '0 40px',
+  },
   twoDayCols: {
     flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr',
     gap: '12px', padding: '8px 12px 12px',
@@ -208,11 +229,19 @@ const s = {
   },
 };
 
-// One-time inject of keyframes
+// One-time inject of keyframes — spinner + brand-flash overlay
 if (typeof document !== 'undefined' && !document.getElementById('bsa-cast-kf')) {
   const el = document.createElement('style');
   el.id = 'bsa-cast-kf';
-  el.textContent = '@keyframes bsa-spin { to { transform: rotate(360deg); } }';
+  el.textContent = `
+    @keyframes bsa-spin { to { transform: rotate(360deg); } }
+    @keyframes bsa-brand-flash {
+      0%   { opacity: 0; transform: scale(0.98); }
+      15%  { opacity: 1; transform: scale(1); }
+      85%  { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(1.02); }
+    }
+  `;
   document.head.appendChild(el);
 }
 
@@ -388,10 +417,37 @@ function CastedWorkout({ session, pairCode }) {
     })();
   }, [session]);
 
+  // Brand flash every 15 min (3s duration, first at 30s after bind) —
+  // only in two-day whiteboard mode and only when there's something
+  // worth flashing (logo or gym name). Single-day cast is personal use,
+  // a takeover would be annoying.
+  useEffect(() => {
+    if (layout !== 'two_day') { setShowLogoFlash(false); return; }
+    const hasContent = !!(brand?.logo_data || brand?.gym_name);
+    if (!hasContent) return;
+    const FLASH_MS = 3000;
+    const INTERVAL_MS = 15 * 60 * 1000;
+    const FIRST_DELAY = 30_000;
+    const trigger = () => {
+      setShowLogoFlash(true);
+      setTimeout(() => setShowLogoFlash(false), FLASH_MS);
+    };
+    let intervalId;
+    const firstTimer = setTimeout(() => {
+      trigger();
+      intervalId = setInterval(trigger, INTERVAL_MS);
+    }, FIRST_DELAY);
+    return () => {
+      clearTimeout(firstTimer);
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [layout, brand?.logo_data, brand?.gym_name]);
+
   // Poll every 1s for nav events + playing_exercise + layout (phone-as-remote).
   const [playingExercise, setPlayingExercise] = useState(null);
   const [layout, setLayoutState] = useState(session.layout || 'one_day');
   const [brand, setBrand] = useState(session.brand || null);
+  const [showLogoFlash, setShowLogoFlash] = useState(false);
   const lastNavUpdatedRef = useRef(null);
   const scrollerRef = useRef(null);       // one_day scroller
   const leftColRef  = useRef(null);       // two_day left column
@@ -486,6 +542,13 @@ function CastedWorkout({ session, pairCode }) {
     const colHeaderBg  = `linear-gradient(135deg, ${brandPrimary}, ${brandAccent})`;
     return (
       <>
+        {/* 3-second brand takeover that fades in and out every 15 min */}
+        {showLogoFlash && (
+          <div style={{ ...s.brandFlash, background: colHeaderBg }}>
+            {brandLogo && <img src={brandLogo} alt="" style={s.brandFlashLogo} />}
+            {brandGym && <div style={s.brandFlashName}>{brandGym}</div>}
+          </div>
+        )}
         <div style={s.twoDayShell}>
           <div style={s.twoDayHeader}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
