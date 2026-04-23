@@ -77,24 +77,40 @@ const s = {
     fontSize: 'clamp(14px, 1.2vw, 20px)', fontWeight: 800, color: '#ffd200',
     textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '1vh',
   },
+  // BIG-TEXT list (no video thumbnails — phone is the remote, videos go full-screen on demand)
   exRow: {
-    display: 'flex', gap: '2vw', alignItems: 'flex-start',
-    padding: '1.2vh 0', borderTop: '1px solid rgba(255,255,255,0.06)',
+    display: 'flex', gap: '3vw', alignItems: 'baseline',
+    padding: '2vh 0', borderTop: '1px solid rgba(255,255,255,0.06)',
   },
   exRowFirst: { borderTop: 'none' },
-  exLeft: { flex: '0 0 40%', display: 'flex', flexDirection: 'column' },
-  exName: { fontSize: 'clamp(18px, 2vw, 34px)', fontWeight: 800, lineHeight: 1.2, marginBottom: '0.8vh' },
-  exDetail: { fontSize: 'clamp(16px, 1.5vw, 26px)', color: '#ffd200', fontWeight: 700 },
-  exNotes: { fontSize: 'clamp(12px, 1.1vw, 18px)', color: 'rgba(255,255,255,0.55)', marginTop: '0.5vh', lineHeight: 1.3 },
-  exVideo: {
-    flex: 1, aspectRatio: '16 / 9', background: '#000',
-    borderRadius: '10px', overflow: 'hidden',
-    maxHeight: '26vh',
+  exName: { fontSize: 'clamp(26px, 3vw, 48px)', fontWeight: 800, lineHeight: 1.15, flex: 1 },
+  exDetail: { fontSize: 'clamp(24px, 2.6vw, 42px)', color: '#ffd200', fontWeight: 800, flex: '0 0 auto', textAlign: 'right', whiteSpace: 'nowrap' },
+  exNotes: { fontSize: 'clamp(16px, 1.4vw, 22px)', color: 'rgba(255,255,255,0.55)', marginTop: '0.6vh', lineHeight: 1.35, width: '100%' },
+
+  // FULL-SCREEN video overlay (shown when phone beams a specific exercise)
+  videoOverlay: {
+    position: 'fixed', inset: 0, zIndex: 10000,
+    background: '#000', display: 'flex', flexDirection: 'column',
   },
-  exNoVideo: {
-    flex: 1, aspectRatio: '16 / 9', background: 'rgba(255,255,255,0.03)',
-    borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    color: 'rgba(255,255,255,0.3)', fontSize: 'clamp(14px, 1.4vw, 22px)', maxHeight: '26vh',
+  videoHeader: {
+    padding: '2vh 3vw', background: 'linear-gradient(180deg, rgba(0,0,0,0.85), rgba(0,0,0,0))',
+    position: 'absolute', top: 0, left: 0, right: 0, zIndex: 2,
+  },
+  videoTitle: {
+    fontSize: 'clamp(32px, 3.2vw, 52px)', fontWeight: 900, color: '#fff', lineHeight: 1.1,
+    textShadow: '0 2px 10px rgba(0,0,0,0.6)',
+  },
+  videoDetail: {
+    fontSize: 'clamp(22px, 2.2vw, 36px)', color: '#ffd200', fontWeight: 800,
+    marginTop: '0.5vh', textShadow: '0 2px 8px rgba(0,0,0,0.6)',
+  },
+  videoHint: {
+    position: 'absolute', bottom: '2vh', left: 0, right: 0, textAlign: 'center',
+    color: 'rgba(255,255,255,0.55)', fontSize: 'clamp(14px, 1.3vw, 22px)',
+    letterSpacing: 1, zIndex: 2, textShadow: '0 2px 6px rgba(0,0,0,0.8)',
+  },
+  videoIframe: {
+    position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0,
   },
 };
 
@@ -126,28 +142,40 @@ function formatSetsReps(ex) {
   return qualifier && detail ? `${detail} ${qualifier}` : (detail || qualifier);
 }
 
+// Big-text-only row — no video thumbnails. Phone beams videos full-screen via /play.
 function ExerciseRow({ ex, first }) {
   const detail = formatSetsReps(ex);
   return (
-    <div style={{ ...s.exRow, ...(first ? s.exRowFirst : {}) }}>
-      <div style={s.exLeft}>
-        <div style={s.exName}>{ex.name}</div>
-        {detail && <div style={s.exDetail}>{detail}</div>}
-        {ex.notes && <div style={s.exNotes}>{ex.notes}</div>}
-      </div>
-      {ex.youtube ? (
-        <div style={s.exVideo}>
-          <iframe
-            src={`${ex.youtube}?preload=none&autoplay=false&muted=true&controls=true`}
-            style={{ width: '100%', height: '100%', border: 0 }}
-            allow="encrypted-media; picture-in-picture; fullscreen"
-            allowFullScreen
-            title={ex.name}
-          />
-        </div>
-      ) : (
-        <div style={s.exNoVideo}>No demo video</div>
+    <div style={{ ...s.exRow, ...(first ? s.exRowFirst : {}), flexWrap: 'wrap' }}>
+      <div style={s.exName}>{ex.name}</div>
+      {detail && <div style={s.exDetail}>{detail}</div>}
+      {ex.notes && <div style={s.exNotes}>{ex.notes}</div>}
+    </div>
+  );
+}
+
+// Full-screen video overlay when the phone has beamed a specific exercise.
+function FullScreenExerciseVideo({ ex }) {
+  const detail = formatSetsReps(ex);
+  const url = ex.youtube
+    ? `${ex.youtube}?autoplay=true&muted=true&controls=true&preload=auto`
+    : null;
+  return (
+    <div style={s.videoOverlay}>
+      {url && (
+        <iframe
+          src={url}
+          style={s.videoIframe}
+          allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+          allowFullScreen
+          title={ex.name}
+        />
       )}
+      <div style={s.videoHeader}>
+        <div style={s.videoTitle}>{ex.name}</div>
+        {detail && <div style={s.videoDetail}>{detail}</div>}
+      </div>
+      <div style={s.videoHint}>Tap 📹 on your phone again to return</div>
     </div>
   );
 }
@@ -245,9 +273,9 @@ function CastedWorkout({ session, pairCode }) {
     })();
   }, [session]);
 
-  // Mirror the phone's scroll position — poll every 1s and scrollTo if changed.
-  // Also handle phone-side "Stop" (backend returns expired: true).
+  // Poll every 1s for scroll position + playing_exercise (phone-as-remote).
   const lastFracRef = useRef(-1);
+  const [playingExercise, setPlayingExercise] = useState(null);
   useEffect(() => {
     if (!program || !pairCode) return;
     let cancelled = false;
@@ -256,18 +284,24 @@ function CastedWorkout({ session, pairCode }) {
         const r = await fetch(`${API_BASE}/poll/${pairCode}`);
         const d = await r.json();
         if (cancelled) return;
-        if (d.expired) {
-          // Phone stopped casting — reload to reset to pairing screen
-          window.location.reload();
-          return;
-        }
-        const frac = typeof d.scroll_frac === 'number' ? d.scroll_frac : 0;
-        if (Math.abs(frac - lastFracRef.current) > 0.02) {
-          lastFracRef.current = frac;
-          const max = document.documentElement.scrollHeight - window.innerHeight;
-          // 'auto' = instant snap. Smooth animation was causing jitter when
-          // successive updates interrupted each other mid-animation.
-          window.scrollTo({ top: Math.max(0, Math.round(max * frac)), behavior: 'auto' });
+        if (d.expired) { window.location.reload(); return; }
+        // Full-screen video override (phone taps 📹 on an exercise)
+        const nextPlaying = d.playing_exercise || null;
+        setPlayingExercise((prev) => {
+          // Only re-set if content changed (so React doesn't churn the iframe)
+          const prevName = prev?.name || null;
+          const nextName = nextPlaying?.name || null;
+          if (prevName !== nextName) return nextPlaying;
+          return prev;
+        });
+        // Scroll sync for list view only (pointless while video is full-screen)
+        if (!nextPlaying) {
+          const frac = typeof d.scroll_frac === 'number' ? d.scroll_frac : 0;
+          if (Math.abs(frac - lastFracRef.current) > 0.02) {
+            lastFracRef.current = frac;
+            const max = document.documentElement.scrollHeight - window.innerHeight;
+            window.scrollTo({ top: Math.max(0, Math.round(max * frac)), behavior: 'auto' });
+          }
         }
       } catch {}
     };
@@ -287,23 +321,26 @@ function CastedWorkout({ session, pairCode }) {
     || [];
 
   return (
-    <div style={s.wkWrap}>
-      <div style={s.wkHeader}>
-        <div style={s.wkTitle}>{program.name || program.programName || 'Your Workout'}</div>
-        <div style={s.wkMeta}>Week {wk} · Day {day}{session.user_name ? ` · ${session.user_name}` : ''}</div>
-      </div>
-      {blocks.length === 0 && <div style={s.hint}>No exercises found for this day.</div>}
-      {blocks.map((block, bi) => (
-        <div key={block.id || bi} style={s.blockCard}>
-          <div style={s.blockType}>
-            {(block.type || 'Block').replace(/-/g, ' ')}
-            {block.circuitType ? ` · ${block.circuitType}` : ''}
-          </div>
-          {(block.exercises || []).map((ex, ei) => (
-            <ExerciseRow key={ei} ex={ex} first={ei === 0} />
-          ))}
+    <>
+      <div style={s.wkWrap}>
+        <div style={s.wkHeader}>
+          <div style={s.wkTitle}>{program.name || program.programName || 'Your Workout'}</div>
+          <div style={s.wkMeta}>Week {wk} · Day {day}{session.user_name ? ` · ${session.user_name}` : ''}</div>
         </div>
-      ))}
-    </div>
+        {blocks.length === 0 && <div style={s.hint}>No exercises found for this day.</div>}
+        {blocks.map((block, bi) => (
+          <div key={block.id || bi} style={s.blockCard}>
+            <div style={s.blockType}>
+              {(block.type || 'Block').replace(/-/g, ' ')}
+              {block.circuitType ? ` · ${block.circuitType}` : ''}
+            </div>
+            {(block.exercises || []).map((ex, ei) => (
+              <ExerciseRow key={ei} ex={ex} first={ei === 0} />
+            ))}
+          </div>
+        ))}
+      </div>
+      {playingExercise && <FullScreenExerciseVideo ex={playingExercise} />}
+    </>
   );
 }
