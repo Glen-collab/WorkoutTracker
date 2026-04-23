@@ -405,7 +405,26 @@ export default function TVStatic() {
     // Identity comes from either ?pi=<uuid> (legacy) or ?coach=<referral_code>
     // (universal SD — customer enters their coach's code in the setup portal).
     if (!piId && !coachCode) return;
-    const deviceSerial = (params.get('device') || '').trim();
+    // Device identity. The Pi passes its CPU serial as ?device=...
+    // A plain smart-TV browser has no hardware serial, so we mint a
+    // stable per-browser UUID the first time this page is loaded and
+    // keep it in localStorage. Each of the gym's 4 TVs then becomes its
+    // own row in coach_devices and the coach can name/program each one
+    // independently from /gym-tv.
+    let deviceSerial = (params.get('device') || '').trim();
+    if (!deviceSerial) {
+      try {
+        const KEY = 'bsa_tv_device_id';
+        deviceSerial = localStorage.getItem(KEY) || '';
+        if (!deviceSerial) {
+          const rand = (typeof crypto !== 'undefined' && crypto.randomUUID)
+            ? crypto.randomUUID()
+            : 'tv-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+          deviceSerial = 'tv-' + rand;
+          localStorage.setItem(KEY, deviceSerial);
+        }
+      } catch { /* localStorage blocked — device stays unregistered; still works but can't be renamed */ }
+    }
     let cancelled = false;
     const MEDIA_BASE = 'https://app.bestrongagain.com/api/kiosk/';
     const idParam = coachCode
