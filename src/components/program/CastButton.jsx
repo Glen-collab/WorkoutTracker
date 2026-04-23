@@ -37,6 +37,23 @@ const s = {
     border: '2px solid #d1d5db', borderRadius: 10, marginBottom: 14,
     boxSizing: 'border-box',
   },
+  layoutLabel: { fontSize: 12, fontWeight: 700, color: '#444', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
+  layoutRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 },
+  layoutBtn: {
+    padding: '10px 10px',
+    border: '2px solid #d1d5db',
+    borderRadius: 10,
+    background: '#fff',
+    cursor: 'pointer',
+    textAlign: 'left',
+    transition: 'border-color 150ms, background 150ms',
+  },
+  layoutBtnActive: {
+    borderColor: '#ff9a3c',
+    background: 'linear-gradient(135deg, rgba(255,210,0,0.1), rgba(255,154,60,0.05))',
+  },
+  layoutBtnTitle: { fontSize: 13, fontWeight: 800, color: '#1a1a2e', marginBottom: 2 },
+  layoutBtnSub: { fontSize: 11, color: '#666', lineHeight: 1.3 },
   row: { display: 'flex', gap: 10 },
   primary: {
     flex: 1, padding: 12, border: 'none', borderRadius: 10,
@@ -67,6 +84,9 @@ export default function CastButton({
   const [code, setCode] = useState('');
   const [status, setStatus] = useState(null);
   const [busy, setBusy] = useState(false);
+  // 'one_day' — mobile workout mirrored to the TV (default)
+  // 'two_day' — two-column gym whiteboard (today + tomorrow)
+  const [layout, setLayout] = useState('one_day');
   const { startCast } = useCastSync();
 
   const reset = () => { setCode(''); setStatus(null); setBusy(false); };
@@ -102,10 +122,12 @@ export default function CastButton({
           // side, which otherwise returns the server's "current day" —
           // not necessarily the day the user is casting.
           program_data: program || undefined,
+          layout,
         }),
       });
       const d = await r.json();
       if (d.success) {
+        try { sessionStorage.setItem('bsa_cast_layout', layout); } catch {}
         startCast(code);   // begin live scroll sync
         setStatus({ ok: true, msg: 'Sent! Your TV will follow as you scroll.' });
         setTimeout(close, 1800);
@@ -141,6 +163,25 @@ export default function CastButton({
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
             />
+            <div style={s.layoutLabel}>TV layout</div>
+            <div style={s.layoutRow}>
+              <button
+                type="button"
+                onClick={() => setLayout('one_day')}
+                style={{ ...s.layoutBtn, ...(layout === 'one_day' ? s.layoutBtnActive : {}) }}
+              >
+                <div style={s.layoutBtnTitle}>Today's workout</div>
+                <div style={s.layoutBtnSub}>Mirror your phone screen</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setLayout('two_day')}
+                style={{ ...s.layoutBtn, ...(layout === 'two_day' ? s.layoutBtnActive : {}) }}
+              >
+                <div style={s.layoutBtnTitle}>Two-day whiteboard</div>
+                <div style={s.layoutBtnSub}>Today + tomorrow side by side</div>
+              </button>
+            </div>
             <div style={s.row}>
               <button style={s.cancel} onClick={close} disabled={busy}>Cancel</button>
               <button style={s.primary} onClick={send} disabled={busy}>

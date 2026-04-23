@@ -49,18 +49,38 @@ if (typeof document !== 'undefined' && !document.getElementById('bsa-cast-pill-k
   document.head.appendChild(el);
 }
 
-export default function CastStatusPill({ pairCode, onStop, onNav }) {
+export default function CastStatusPill({ pairCode, onStop, onNav, onLayout }) {
+  const [layout, setLayoutLocal] = React.useState(() => {
+    try { return sessionStorage.getItem('bsa_cast_layout') || 'one_day'; }
+    catch { return 'one_day'; }
+  });
   if (!pairCode) return null;
-  // ▲▼ jump to the previous/next exercise on the TV (centered, with the
-  // next/previous card peeking top & bottom). Falls back to a small window
-  // scroll on this device too so the phone UI follows along.
+  // ▲▼ scroll the TV page/section. Applies to both one-day and two-day
+  // layouts — in two-day mode the TV scrolls both columns in sync.
   const nudge = (dir) => {
     try { onNav && onNav(dir > 0 ? 'next' : 'prev'); } catch {}
   };
+  const flip = () => {
+    const next = layout === 'two_day' ? 'one_day' : 'two_day';
+    setLayoutLocal(next);
+    try { sessionStorage.setItem('bsa_cast_layout', next); } catch {}
+    try { onLayout && onLayout(next); } catch {}
+  };
+  const layoutTitle = layout === 'two_day'
+    ? 'Two-day whiteboard (tap to switch to single-day)'
+    : 'Single-day view (tap to switch to two-day whiteboard)';
   return (
     <div style={s.pill}>
       <button style={{ ...s.arrowBtn, marginRight: 6 }} onClick={() => nudge(-1)} title="Previous section on TV" aria-label="Previous section on TV">▲</button>
       <button style={{ ...s.arrowBtn, marginRight: 6 }} onClick={() => nudge(1)}  title="Next section on TV" aria-label="Next section on TV">▼</button>
+      <button
+        style={{ ...s.arrowBtn, marginRight: 6, fontSize: 16 }}
+        onClick={flip}
+        title={layoutTitle}
+        aria-label={layoutTitle}
+      >
+        {layout === 'two_day' ? '⊟' : '⊡'}
+      </button>
       <span style={s.live}></span>
       <span>Cast</span>
       <span style={s.code}>{pairCode}</span>

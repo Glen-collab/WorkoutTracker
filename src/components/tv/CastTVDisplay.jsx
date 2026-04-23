@@ -69,6 +69,40 @@ const s = {
     padding: '2vh 3vw 75vh',
     WebkitOverflowScrolling: 'touch',
   },
+
+  // Two-day whiteboard layout — gym-wall view with two columns side by
+  // side. Each column scrolls independently but the ▲▼ remote scrolls
+  // both in unison so the TV keeps them aligned.
+  twoDayShell: {
+    height: '100vh', width: '100vw',
+    background: '#0f0c29', color: '#fff',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+    display: 'flex', flexDirection: 'column', overflow: 'hidden',
+  },
+  twoDayHeader: {
+    padding: '1.5vh 2vw 1vh',
+    borderBottom: '2px solid rgba(255,255,255,0.15)',
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    flexShrink: 0, gap: 12, flexWrap: 'wrap',
+  },
+  twoDayCols: {
+    flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr',
+    gap: '1.5vw', padding: '1vh 1.5vw 2vh',
+    minHeight: 0,  // required so the child can shrink and overflow inside a grid
+  },
+  twoDayCol: {
+    minHeight: 0, overflowY: 'auto', overflowX: 'hidden',
+    background: 'rgba(255,255,255,0.03)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: '12px',
+    padding: '1.5vh 1.5vw 75vh',
+    WebkitOverflowScrolling: 'touch',
+  },
+  twoDayColLabel: {
+    fontSize: 'clamp(20px, 2vw, 32px)', fontWeight: 800, color: '#ffd200',
+    letterSpacing: '1px', textTransform: 'uppercase',
+    marginBottom: '1vh',
+  },
   wkHeader: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
     paddingBottom: '1.5vh', borderBottom: '2px solid rgba(255,255,255,0.15)',
@@ -298,10 +332,13 @@ function CastedWorkout({ session, pairCode }) {
     })();
   }, [session]);
 
-  // Poll every 1s for nav events + playing_exercise (phone-as-remote).
+  // Poll every 1s for nav events + playing_exercise + layout (phone-as-remote).
   const [playingExercise, setPlayingExercise] = useState(null);
+  const [layout, setLayoutState] = useState(session.layout || 'one_day');
   const lastNavUpdatedRef = useRef(null);
-  const scrollerRef = useRef(null);
+  const scrollerRef = useRef(null);       // one_day scroller
+  const leftColRef  = useRef(null);       // two_day left column
+  const rightColRef = useRef(null);       // two_day right column
   useEffect(() => {
     if (!program || !pairCode) return;
     let cancelled = false;
@@ -320,25 +357,31 @@ function CastedWorkout({ session, pairCode }) {
           if (prevName !== nextName) return nextPlaying;
           return prev;
         });
-        // Phone ▲▼ → scrollBy on the inner container. Amazon Silk ignores
-        // programmatic window.scrollTo/scrollBy, but it DOES respect scroll
-        // calls on a plain div with overflow:auto (same trick used by
-        // TVScreen.jsx which also ships over Silk).
+        // Layout flip (phone toggled one_day ↔ two_day mid-cast)
+        if (d.layout && d.layout !== layout) setLayoutState(d.layout);
+        // Phone ▲▼ → scrollBy on the active container(s). Amazon Silk
+        // ignores programmatic window.scrollTo/scrollBy, but it DOES
+        // respect scroll calls on a plain div with overflow:auto (same
+        // trick used by TVScreen.jsx which also ships over Silk). In
+        // two-day mode we scroll BOTH columns so they stay aligned.
         if (!nextPlaying && d.nav_updated_at && d.nav_updated_at !== lastNavUpdatedRef.current) {
           lastNavUpdatedRef.current = d.nav_updated_at;
           const dir = d.nav_direction === 'prev' ? -1 : 1;
-          const step = Math.round((scrollerRef.current?.clientHeight || window.innerHeight || 720) * 0.75);
-          if (scrollerRef.current && typeof scrollerRef.current.scrollBy === 'function') {
-            try { scrollerRef.current.scrollBy({ top: step * dir, behavior: 'smooth' }); } catch {}
-          } else if (scrollerRef.current) {
-            scrollerRef.current.scrollTop += step * dir;
-          }
+          const targets = [scrollerRef.current, leftColRef.current, rightColRef.current].filter(Boolean);
+          targets.forEach(el => {
+            const step = Math.round((el.clientHeight || window.innerHeight || 720) * 0.75);
+            if (typeof el.scrollBy === 'function') {
+              try { el.scrollBy({ top: step * dir, behavior: 'smooth' }); } catch {}
+            } else {
+              el.scrollTop += step * dir;
+            }
+          });
         }
       } catch {}
     };
     const iv = setInterval(tick, 1000);
     return () => { cancelled = true; clearInterval(iv); };
-  }, [program, pairCode]);
+  }, [program, pairCode, layout]);
 
   const wk = session.week || 1;
   const day = session.day || 1;
@@ -351,9 +394,51 @@ function CastedWorkout({ session, pairCode }) {
     || program?.blocks
     || [];
 
+  // For two-day whiteboard: day B = day + 1 in the same week. Wraps to
+  // day 1 if we're on the last day of the week (coach wants to see the
+  // cycle, not a blank second column).
+  const daysPerWeek = program?.daysPerWeek
+    || program?.program_data?.daysPerWeek
+    || Math.max(...(allMap ? Object.keys(allMap).map(k => parseInt(k.split('-')[1], 10) || 0) : [1]))
+    || 1;
+  const dayB = day >= daysPerWeek ? 1 : day + 1;
+  const wkB  = day >= daysPerWeek ? (wk + 1) : wk;  // if we wrapped, bump the week label too
+  const blocksB = (allMap && (allMap[`${wkB}-${dayB}`] || allMap[`${wk}-${dayB}`])) || [];
+
   if (err) return <div style={s.pairWrap}><div style={s.hint}>{err}</div></div>;
   if (!program) return <div style={s.pairWrap}><div style={s.hint}><span style={s.spinner}></span>Loading your workout…</div></div>;
 
+  // Two-day whiteboard — gym wall view, two columns side by side.
+  if (layout === 'two_day') {
+    return (
+      <>
+        <div style={s.twoDayShell}>
+          <div style={s.twoDayHeader}>
+            <div style={s.wkTitle}>{program.name || program.programName || 'Your Workout'}</div>
+            <div style={s.wkMeta}>
+              Week {wk}{session.user_name ? ` · ${session.user_name}` : ''}
+            </div>
+          </div>
+          <div style={s.twoDayCols}>
+            <DayColumn
+              label={`Day ${day}`}
+              blocks={blocks}
+              colRef={leftColRef}
+            />
+            <DayColumn
+              label={dayB > day ? `Day ${dayB}` : `Week ${wkB} · Day ${dayB}`}
+              blocks={blocksB}
+              colRef={rightColRef}
+              emptyMsg={`No workout set for Day ${dayB}`}
+            />
+          </div>
+        </div>
+        {playingExercise && <FullScreenExerciseVideo ex={playingExercise} />}
+      </>
+    );
+  }
+
+  // Default: one-day big-text view (phone-mirror mode).
   return (
     <>
       <div style={s.wkShell}>
@@ -380,5 +465,31 @@ function CastedWorkout({ session, pairCode }) {
       </div>
       {playingExercise && <FullScreenExerciseVideo ex={playingExercise} />}
     </>
+  );
+}
+
+// One column of the two-day whiteboard. Scrolls independently but the
+// remote ▲▼ scrolls both columns in sync.
+function DayColumn({ label, blocks, colRef, emptyMsg }) {
+  return (
+    <div ref={colRef} style={s.twoDayCol}>
+      <div style={s.twoDayColLabel}>{label}</div>
+      {(!blocks || blocks.length === 0) && (
+        <div style={{ ...s.hint, fontSize: 'clamp(16px, 1.6vw, 26px)' }}>
+          {emptyMsg || 'No exercises found for this day.'}
+        </div>
+      )}
+      {(blocks || []).map((block, bi) => (
+        <div key={block.id || bi} style={s.blockCard}>
+          <div style={s.blockType}>
+            {(block.type || 'Block').replace(/-/g, ' ')}
+            {block.circuitType ? ` · ${block.circuitType}` : ''}
+          </div>
+          {(block.exercises || []).map((ex, ei) => (
+            <ExerciseRow key={ei} ex={ex} first={ei === 0} />
+          ))}
+        </div>
+      ))}
+    </div>
   );
 }
