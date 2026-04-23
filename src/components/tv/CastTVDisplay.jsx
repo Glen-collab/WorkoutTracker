@@ -306,12 +306,17 @@ function CastedWorkout({ session, pairCode }) {
   const [err, setErr] = useState(null);
 
   useEffect(() => {
-    // If program_data was pushed directly (richer), use it. Otherwise fall back to load-program.php.
-    if (session.program_data) {
-      setProgram(session.program_data);
+    // Fast path: paint the pushed program_data immediately so the TV doesn't
+    // sit on a spinner while the backend fetch is in flight.
+    if (session.program_data) setProgram(session.program_data);
+
+    // Always also fetch from load-program.php — the phone only pushes the
+    // *current* day's blocks, and the two-day whiteboard needs allWorkouts
+    // for day+1. Merging the two gives fast first paint plus the full map.
+    if (!session.access_code) {
+      if (!session.program_data) setErr('No workout found');
       return;
     }
-    if (!session.access_code) { setErr('No workout found'); return; }
     (async () => {
       try {
         const r = await fetch(WORKOUT_API + 'load-program.php', {
@@ -321,13 +326,20 @@ function CastedWorkout({ session, pairCode }) {
             code: session.access_code,
             email: session.user_email || 'cast-viewer@bestrongagain.com',
             name: session.user_name || 'Cast Viewer',
+            requested_week: session.week,
+            requested_day: session.day,
           }),
         });
         const d = await r.json();
-        if (d?.success && d.data?.program) setProgram(d.data.program);
-        else setErr('Workout not found');
+        if (d?.success && d.data?.program) {
+          // Merge the server's full program (with allWorkouts) on top of
+          // whatever the phone pushed — server wins on anything it has.
+          setProgram((prev) => ({ ...(prev || {}), ...d.data.program }));
+        } else if (!session.program_data) {
+          setErr('Workout not found');
+        }
       } catch {
-        setErr('Network error loading workout');
+        if (!session.program_data) setErr('Network error loading workout');
       }
     })();
   }, [session]);
@@ -394,16 +406,16 @@ function CastedWorkout({ session, pairCode }) {
     || program?.blocks
     || [];
 
-  // For two-day whiteboard: day B = day + 1 in the same week. Wraps to
-  // day 1 if we're on the last day of the week (coach wants to see the
-  // cycle, not a blank second column).
-  const daysPerWeek = program?.daysPerWeek
-    || program?.program_data?.daysPerWeek
-    || Math.max(...(allMap ? Object.keys(allMap).map(k => parseInt(k.split('-')[1], 10) || 0) : [1]))
-    || 1;
-  const dayB = day >= daysPerWeek ? 1 : day + 1;
-  const wkB  = day >= daysPerWeek ? (wk + 1) : wk;  // if we wrapped, bump the week label too
-  const blocksB = (allMap && (allMap[`${wkB}-${dayB}`] || allMap[`${wk}-${dayB}`])) || [];
+  // Two-day whiteboard: right column is *always* day + 1 in the same week.
+  // If that key doesn't exist (we've rolled past the end of the program's
+  // week), fall back to "{week+1}-1" so a 4-day-program casting Day 4
+  // still shows a sensible next-day. Empty → the column renders a
+  // "No workout for Day X" placeholder.
+  const dayB = day + 1;
+  const keyNextSameWeek = `${wk}-${dayB}`;
+  const keyNextWeekDay1 = `${wk + 1}-1`;
+  const blocksB = (allMap && (allMap[keyNextSameWeek] || allMap[keyNextWeekDay1])) || [];
+  const dayBLabel = (allMap && allMap[keyNextSameWeek]) ? `Day ${dayB}` : `Week ${wk + 1} · Day 1`;
 
   if (err) return <div style={s.pairWrap}><div style={s.hint}>{err}</div></div>;
   if (!program) return <div style={s.pairWrap}><div style={s.hint}><span style={s.spinner}></span>Loading your workout…</div></div>;
@@ -426,10 +438,10 @@ function CastedWorkout({ session, pairCode }) {
               colRef={leftColRef}
             />
             <DayColumn
-              label={dayB > day ? `Day ${dayB}` : `Week ${wkB} · Day ${dayB}`}
+              label={dayBLabel}
               blocks={blocksB}
               colRef={rightColRef}
-              emptyMsg={`No workout set for Day ${dayB}`}
+              emptyMsg={`No workout built yet for ${dayBLabel}`}
             />
           </div>
         </div>
