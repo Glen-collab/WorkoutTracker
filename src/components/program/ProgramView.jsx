@@ -296,6 +296,7 @@ export default function ProgramView({
           isLastDay={travelMode ? travelDay >= travelTotalDays : isLastDay}
           isCustomWorkout={isCustomWorkout}
           customReason={customReason}
+          maxes={maxes}
         />
 
         {savedWorkout && (

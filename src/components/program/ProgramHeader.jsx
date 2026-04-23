@@ -1,4 +1,5 @@
 import React from 'react';
+import CastButton from './CastButton';
 
 const s = {
   card: {
@@ -98,6 +99,7 @@ export default function ProgramHeader({
   onNavigateToDay,
   isCustomWorkout,
   customReason,
+  maxes,
 }) {
   const showNav = totalWeeks > 1 || daysPerWeek > 1;
   const days = Array.from({ length: daysPerWeek || 1 }, (_, i) => i + 1);
@@ -116,7 +118,17 @@ export default function ProgramHeader({
 
   return (
     <div style={s.card}>
-      <h2 style={s.title}>{program?.name || 'Workout Program'}</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', flexWrap: 'wrap', marginBottom: '4px' }}>
+        <h2 style={{ ...s.title, margin: 0 }}>{program?.name || 'Workout Program'}</h2>
+        <CastButton
+          program={program}
+          userEmail={userEmail}
+          userName={userName}
+          currentWeek={currentWeek}
+          currentDay={currentDay}
+          maxes={maxes}
+        />
+      </div>
       <div style={s.meta}>
         For: {userName} ({userEmail})
       </div>

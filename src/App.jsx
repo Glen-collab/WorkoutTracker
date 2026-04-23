@@ -15,12 +15,14 @@ import FriendChat from './components/social/FriendChat';
 import { calcBlockTonnage, calcCardio, getDefaultWeight } from './components/program/DailyTonnage';
 import TVScreen from './components/tv/TVScreen';
 import TVStatic from './components/tv/TVStatic';
+import CastTVDisplay from './components/tv/CastTVDisplay';
 import KioskScreen from './components/kiosk/KioskScreen';
 
 // Check if TV mode requested via /tv path or ?tv=1 param
 const isTVMode = window.location.pathname === '/tv' || new URLSearchParams(window.location.search).get('tv') === '1';
 const isStaticTV = window.location.pathname === '/tv/static';
 const isKioskMode = window.location.pathname === '/kiosk';
+const isCastMode = window.location.pathname === '/cast';
 
 const WS_BASE = 'wss://app.bestrongagain.com/ws/';
 const tvRoomId = new URLSearchParams(window.location.search).get('tv');
@@ -34,6 +36,7 @@ const containerStyle = {
 export default function App() {
   // TV modes — completely separate views, no phone UI loaded
   if (isStaticTV) return <TVStatic />;
+  if (isCastMode)  return <CastTVDisplay />;
   if (isKioskMode) return <KioskScreen />;
   if (isTVMode) return <TVScreen />;
 
