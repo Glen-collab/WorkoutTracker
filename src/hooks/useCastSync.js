@@ -76,6 +76,19 @@ export default function useCastSync() {
     setPairCodeState(code);
   }, []);
 
+  const castPlay = useCallback(async (exercise) => {
+    const code = sessionStorage.getItem(STORAGE_KEY);
+    if (!code) return;
+    try {
+      await fetch(CAST_API + '/play', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pair_code: code, exercise: exercise || null }),
+        keepalive: true,
+      });
+    } catch {}
+  }, []);
+
   const stopCast = useCallback(async () => {
     const code = sessionStorage.getItem(STORAGE_KEY);
     sessionStorage.removeItem(STORAGE_KEY);
@@ -92,5 +105,5 @@ export default function useCastSync() {
     }
   }, []);
 
-  return { pairCode, startCast, stopCast };
+  return { pairCode, startCast, stopCast, castPlay };
 }

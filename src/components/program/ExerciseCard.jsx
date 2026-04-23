@@ -1189,7 +1189,37 @@ export default function ExerciseCard({
           {ex.youtube && (
             <button
               style={{ ...s.videoBtn, ...(showVideo ? s.videoBtnActive : {}) }}
-              onClick={(e) => { e.stopPropagation(); setShowVideo(v => !v); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                const next = !showVideo;
+                setShowVideo(next);
+                // If we're actively casting to a TV, also beam (or clear) this
+                // exercise full-screen on the TV. Lazily-loaded to avoid
+                // coupling ExerciseCard to the cast hook.
+                try {
+                  const pair = sessionStorage.getItem('bsa_cast_pair');
+                  if (pair) {
+                    const payload = next ? {
+                      name: ex.name,
+                      youtube: ex.youtube,
+                      sets: ex.sets,
+                      reps: ex.reps || (ex.repsPerSet && ex.repsPerSet[0]) || '',
+                      duration: ex.duration || '',
+                      durationUnit: ex.durationUnit || '',
+                      distance: ex.distance || '',
+                      distanceUnit: ex.distanceUnit || '',
+                      qualifier: ex.qualifier || '',
+                      notes: ex.notes || '',
+                    } : null;
+                    fetch('https://app.bestrongagain.com/api/cast/play', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ pair_code: pair, exercise: payload }),
+                      keepalive: true,
+                    }).catch(() => {});
+                  }
+                } catch {}
+              }}
             >
               {showVideo ? '\u2716' : '\uD83D\uDCF9'}
             </button>
