@@ -277,8 +277,11 @@ function CastedWorkout({ session, pairCode }) {
 
   const wk = session.week || 1;
   const day = session.day || 1;
-  const allWorkouts = program.allWorkouts || program.program_data?.allWorkouts || {};
-  const blocks = allWorkouts[`${wk}-${day}`] || [];
+  // load-program.php returns a flat `blocks` array for the current day.
+  // Programs pushed directly (with full program_data) use `allWorkouts[wk-day]`.
+  const blocks = program.blocks
+    || (program.allWorkouts || program.program_data?.allWorkouts || {})[`${wk}-${day}`]
+    || [];
 
   return (
     <div style={s.wkWrap}>
