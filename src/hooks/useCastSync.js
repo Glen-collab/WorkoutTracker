@@ -21,7 +21,7 @@ function useDebouncedPush(active, pairCode) {
       const max = document.documentElement.scrollHeight - window.innerHeight;
       const frac = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
       // Only push if fraction changed meaningfully (avoid spam)
-      if (Math.abs(frac - lastSentRef.current) < 0.005) return;
+      if (Math.abs(frac - lastSentRef.current) < 0.02) return;
       lastSentRef.current = frac;
       fetch(CAST_API + '/scroll', {
         method: 'POST',
@@ -31,12 +31,15 @@ function useDebouncedPush(active, pairCode) {
       }).catch(() => {});
     };
 
+    // Fire on scroll-END — wait until scrolling has settled for 350ms before
+    // sending to the backend. Avoids flooding the TV during flick-scrolls and
+    // layout-shift scroll bursts triggered by opening a video on mobile Safari.
     const onScroll = () => {
-      if (timerRef.current) return;
+      if (timerRef.current) window.clearTimeout(timerRef.current);
       timerRef.current = window.setTimeout(() => {
         timerRef.current = null;
         pushNow();
-      }, 250); // 4× per second max
+      }, 350);
     };
 
     // Push once immediately so the TV lands at the right spot the moment it binds

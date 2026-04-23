@@ -138,9 +138,10 @@ function ExerciseRow({ ex, first }) {
       {ex.youtube ? (
         <div style={s.exVideo}>
           <iframe
-            src={`${ex.youtube}?muted=true&loop=true&autoplay=true&controls=false&preload=metadata`}
+            src={`${ex.youtube}?preload=metadata&controls=true&loop=true`}
             style={{ width: '100%', height: '100%', border: 0 }}
             allow="autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
             title={ex.name}
           />
         </div>
@@ -261,10 +262,12 @@ function CastedWorkout({ session, pairCode }) {
           return;
         }
         const frac = typeof d.scroll_frac === 'number' ? d.scroll_frac : 0;
-        if (Math.abs(frac - lastFracRef.current) > 0.002) {
+        if (Math.abs(frac - lastFracRef.current) > 0.02) {
           lastFracRef.current = frac;
           const max = document.documentElement.scrollHeight - window.innerHeight;
-          window.scrollTo({ top: Math.max(0, Math.round(max * frac)), behavior: 'smooth' });
+          // 'auto' = instant snap. Smooth animation was causing jitter when
+          // successive updates interrupted each other mid-animation.
+          window.scrollTo({ top: Math.max(0, Math.round(max * frac)), behavior: 'auto' });
         }
       } catch {}
     };
