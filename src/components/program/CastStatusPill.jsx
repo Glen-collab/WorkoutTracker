@@ -7,8 +7,8 @@ import React from 'react';
 const s = {
   pill: {
     position: 'fixed', bottom: 16, right: 16, zIndex: 9998,
-    display: 'flex', alignItems: 'center', gap: 8,
-    padding: '8px 10px 8px 14px', borderRadius: 999,
+    display: 'flex', alignItems: 'center', gap: 6,
+    padding: '6px 8px 6px 12px', borderRadius: 999,
     background: 'linear-gradient(135deg, #ff9a3c, #ffd200)',
     boxShadow: '0 6px 20px rgba(0,0,0,0.25)',
     color: '#1a1a2e', fontSize: 13, fontWeight: 700,
@@ -18,6 +18,13 @@ const s = {
   code: {
     fontFamily: 'ui-monospace, Consolas, monospace', letterSpacing: 2,
     background: 'rgba(0,0,0,0.12)', padding: '2px 8px', borderRadius: 6,
+  },
+  arrowBtn: {
+    width: 30, height: 30, border: 'none', borderRadius: '50%',
+    background: 'rgba(0,0,0,0.12)', color: '#1a1a2e',
+    fontSize: 16, fontWeight: 900, cursor: 'pointer', padding: 0,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    lineHeight: 1,
   },
   stop: {
     padding: '5px 10px', border: 'none', borderRadius: 999,
@@ -40,11 +47,19 @@ if (typeof document !== 'undefined' && !document.getElementById('bsa-cast-pill-k
 
 export default function CastStatusPill({ pairCode, onStop }) {
   if (!pairCode) return null;
+  // Scroll the phone (which scroll-sync already mirrors to the TV).
+  // 0.75 × viewport keeps a line of overlap so the user keeps context.
+  const nudge = (dir) => {
+    const step = Math.max(200, Math.round(window.innerHeight * 0.75)) * dir;
+    window.scrollBy({ top: step, left: 0, behavior: 'smooth' });
+  };
   return (
     <div style={s.pill}>
       <span style={s.live}></span>
-      <span>Casting</span>
+      <span>Cast</span>
       <span style={s.code}>{pairCode}</span>
+      <button style={s.arrowBtn} onClick={() => nudge(-1)} title="Scroll TV up" aria-label="Scroll TV up">▲</button>
+      <button style={s.arrowBtn} onClick={() => nudge(1)}  title="Scroll TV down" aria-label="Scroll TV down">▼</button>
       <button style={s.stop} onClick={onStop}>Stop</button>
     </div>
   );
