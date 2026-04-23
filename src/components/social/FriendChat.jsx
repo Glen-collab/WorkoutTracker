@@ -45,8 +45,9 @@ export default function FriendChat() {
   const [messages, setMessages] = useState([]);
   const [composeText, setComposeText] = useState('');
   const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
   const [authError, setAuthError] = useState(null);
+  const [magicSent, setMagicSent] = useState(false);
+  const [magicSending, setMagicSending] = useState(false);
   const [addEmail, setAddEmail] = useState('');
   const [addStatus, setAddStatus] = useState(null);
   const pollRef = useRef(null);
@@ -117,23 +118,25 @@ export default function FriendChat() {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages.length]);
 
-  const handleLogin = async (e) => {
+  const handleMagicLink = async (e) => {
     e.preventDefault();
     setAuthError(null);
+    const email = (loginEmail || '').trim().toLowerCase();
+    if (!email.includes('@')) { setAuthError('Enter a valid email'); return; }
+    setMagicSending(true);
     try {
-      const res = await fetch(API + '/auth/login', {
+      const res = await fetch(API + '/auth/magic-link/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: loginEmail.trim(), password: loginPassword }),
+        body: JSON.stringify({ email }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Login failed');
-      localStorage.setItem('bsa_token', data.token);
-      localStorage.setItem('bsa_user', JSON.stringify(data.user));
-      setMe(data.user);
-      setLoginPassword('');
+      if (!res.ok || !data.success) throw new Error(data.error || 'Could not send link');
+      setMagicSent(true);
     } catch (err) {
       setAuthError(err.message);
+    } finally {
+      setMagicSending(false);
     }
   };
 
@@ -224,16 +227,38 @@ export default function FriendChat() {
 
       {!hasToken ? (
         <div style={s.panelBody}>
-          <p style={s.muted}>Sign in with your Be Strong Again account to chat with friends.</p>
-          <form onSubmit={handleLogin}>
-            <input style={s.input} type="email" placeholder="Email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} autoFocus />
-            <input style={s.input} type="password" placeholder="Password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} />
-            {authError && <div style={s.errorBox}>{authError}</div>}
-            <button type="submit" style={s.primaryBtn}>Sign In</button>
-          </form>
-          <p style={{ ...s.muted, fontSize: '11px', marginTop: '10px' }}>
-            No account? Sign up at <a href="https://app.bestrongagain.com/register" target="_blank" rel="noreferrer" style={s.link}>app.bestrongagain.com</a>
-          </p>
+          {magicSent ? (
+            <>
+              <p style={{ ...s.muted, fontSize: '14px', lineHeight: '1.5', color: '#0f5132' }}>
+                <strong>Check your inbox.</strong> We sent a sign-in link to<br/><code style={{ background: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}>{loginEmail.trim().toLowerCase()}</code>
+              </p>
+              <p style={{ ...s.muted, fontSize: '12px', marginTop: '10px' }}>
+                The link expires in 10 minutes. Tap it from the same device you want to chat on.
+              </p>
+              <button
+                style={{ ...s.primaryBtn, background: '#e5e7eb', color: '#333', marginTop: '14px' }}
+                onClick={() => { setMagicSent(false); setLoginEmail(''); }}
+              >
+                Use a different email
+              </button>
+            </>
+          ) : (
+            <>
+              <p style={s.muted}>
+                Type your email — we'll send you a one-tap sign-in link. <strong>No password needed.</strong>
+              </p>
+              <form onSubmit={handleMagicLink}>
+                <input style={s.input} type="email" placeholder="your@email.com" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} autoFocus autoComplete="email" />
+                {authError && <div style={s.errorBox}>{authError}</div>}
+                <button type="submit" style={s.primaryBtn} disabled={magicSending}>
+                  {magicSending ? 'Sending…' : 'Send sign-in link'}
+                </button>
+              </form>
+              <p style={{ ...s.muted, fontSize: '11px', marginTop: '10px' }}>
+                First time? We'll make an account for you automatically. No payment required.
+              </p>
+            </>
+          )}
         </div>
       ) : !consented ? (
         <div style={s.panelBody}>

@@ -14,6 +14,7 @@ import WorkoutChatbot from './components/chatbot/WorkoutChatbot';
 import FriendChat from './components/social/FriendChat';
 import CastStatusPill from './components/program/CastStatusPill';
 import useCastSync from './hooks/useCastSync';
+import MagicLinkConsume from './components/MagicLinkConsume';
 import { calcBlockTonnage, calcCardio, getDefaultWeight } from './components/program/DailyTonnage';
 import TVScreen from './components/tv/TVScreen';
 import TVStatic from './components/tv/TVStatic';
@@ -25,6 +26,7 @@ const isTVMode = window.location.pathname === '/tv' || new URLSearchParams(windo
 const isStaticTV = window.location.pathname === '/tv/static';
 const isKioskMode = window.location.pathname === '/kiosk';
 const isCastMode = window.location.pathname === '/cast';
+const isMagicMode = window.location.pathname === '/magic';
 
 const WS_BASE = 'wss://app.bestrongagain.com/ws/';
 const tvRoomId = new URLSearchParams(window.location.search).get('tv');
@@ -48,6 +50,7 @@ export default function App() {
   if (isCastMode)  return <CastTVDisplay />;
   if (isKioskMode) return <KioskScreen />;
   if (isTVMode) return <TVScreen />;
+  if (isMagicMode) return <MagicLinkConsume />;
 
   // Continues below — phone/tracker UI. CastStatusPillConnector is rendered inline
   // and handles its own subscription to cast state. Defining here so it's in scope.
