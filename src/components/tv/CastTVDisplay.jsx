@@ -138,9 +138,9 @@ function ExerciseRow({ ex, first }) {
       {ex.youtube ? (
         <div style={s.exVideo}>
           <iframe
-            src={`${ex.youtube}?preload=metadata&controls=true&loop=true`}
+            src={`${ex.youtube}?preload=none&autoplay=false&muted=true&controls=true`}
             style={{ width: '100%', height: '100%', border: 0 }}
-            allow="autoplay; encrypted-media; picture-in-picture"
+            allow="encrypted-media; picture-in-picture; fullscreen"
             allowFullScreen
             title={ex.name}
           />
