@@ -1076,6 +1076,7 @@ export default function App() {
       {screen === 'program' && program && (
         <ProgramView
           program={program}
+          user={user}
           userName={user.name}
           userEmail={user.email}
           currentWeek={currentWeek}

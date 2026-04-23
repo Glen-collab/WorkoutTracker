@@ -55,7 +55,8 @@ const s = {
 };
 
 export default function CastButton({
-  program,        // workout program object (must have .accessCode or .access_code)
+  program,        // workout program object (for display name only)
+  accessCode,     // user's current access code — this is what the TV loads
   userEmail,
   userName,
   currentWeek,
@@ -76,7 +77,9 @@ export default function CastButton({
       setStatus({ ok: false, msg: 'Enter the 4-digit code shown on your TV.' });
       return;
     }
-    const access = program?.accessCode || program?.access_code;
+    // User's currently loaded workout code — falls back to program.accessCode
+    // if wired differently elsewhere.
+    const access = accessCode || program?.accessCode || program?.access_code;
     if (!access) {
       setStatus({ ok: false, msg: 'No active workout to cast.' });
       return;

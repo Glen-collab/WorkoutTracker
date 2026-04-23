@@ -151,6 +151,7 @@ const s = {
 
 export default function ProgramView({
   program,
+  user,
   userName,
   userEmail,
   currentWeek,
@@ -284,6 +285,7 @@ export default function ProgramView({
 
         <ProgramHeader
           program={program}
+          user={user}
           userName={userName}
           userEmail={userEmail}
           currentWeek={travelMode ? 1 : currentWeek}

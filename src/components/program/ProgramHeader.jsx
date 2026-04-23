@@ -89,6 +89,7 @@ const s = {
 
 export default function ProgramHeader({
   program,
+  user,
   userName,
   userEmail,
   currentWeek,
@@ -122,6 +123,7 @@ export default function ProgramHeader({
         <h2 style={{ ...s.title, margin: 0 }}>{program?.name || 'Workout Program'}</h2>
         <CastButton
           program={program}
+          accessCode={user?.accessCode}
           userEmail={userEmail}
           userName={userName}
           currentWeek={currentWeek}
