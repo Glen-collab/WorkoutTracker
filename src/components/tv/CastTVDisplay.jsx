@@ -156,6 +156,7 @@ export default function CastTVDisplay() {
   const [session, setSession] = useState(null);
   const [error, setError] = useState(null);
   const pollRef = useRef(null);
+  const pairCodeRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -166,6 +167,7 @@ export default function CastTVDisplay() {
         if (!d.success) throw new Error(d.message || 'Could not get a pairing code');
         if (cancelled) return;
         setPairCode(d.pair_code);
+        pairCodeRef.current = d.pair_code;
         pollRef.current = setInterval(async () => {
           try {
             const pr = await fetch(`${API_BASE}/poll/${d.pair_code}`);
@@ -186,7 +188,7 @@ export default function CastTVDisplay() {
     return () => { cancelled = true; if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
 
-  if (session) return <CastedWorkout session={session} />;
+  if (session) return <CastedWorkout session={session} pairCode={pairCode} />;
 
   return (
     <div style={s.pairWrap}>
@@ -211,7 +213,7 @@ export default function CastTVDisplay() {
 }
 
 // ── Loads the program and renders today's workout full-screen ──
-function CastedWorkout({ session }) {
+function CastedWorkout({ session, pairCode }) {
   const [program, setProgram] = useState(null);
   const [err, setErr] = useState(null);
 
@@ -241,6 +243,34 @@ function CastedWorkout({ session }) {
       }
     })();
   }, [session]);
+
+  // Mirror the phone's scroll position — poll every 1s and scrollTo if changed.
+  // Also handle phone-side "Stop" (backend returns expired: true).
+  const lastFracRef = useRef(-1);
+  useEffect(() => {
+    if (!program || !pairCode) return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const r = await fetch(`${API_BASE}/poll/${pairCode}`);
+        const d = await r.json();
+        if (cancelled) return;
+        if (d.expired) {
+          // Phone stopped casting — reload to reset to pairing screen
+          window.location.reload();
+          return;
+        }
+        const frac = typeof d.scroll_frac === 'number' ? d.scroll_frac : 0;
+        if (Math.abs(frac - lastFracRef.current) > 0.002) {
+          lastFracRef.current = frac;
+          const max = document.documentElement.scrollHeight - window.innerHeight;
+          window.scrollTo({ top: Math.max(0, Math.round(max * frac)), behavior: 'smooth' });
+        }
+      } catch {}
+    };
+    const iv = setInterval(tick, 1000);
+    return () => { cancelled = true; clearInterval(iv); };
+  }, [program, pairCode]);
 
   if (err) return <div style={s.pairWrap}><div style={s.hint}>{err}</div></div>;
   if (!program) return <div style={s.pairWrap}><div style={s.hint}><span style={s.spinner}></span>Loading your workout…</div></div>;

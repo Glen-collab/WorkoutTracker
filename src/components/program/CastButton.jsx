@@ -5,6 +5,7 @@
 // page (which has been polling) picks it up within 2 seconds.
 
 import React, { useState } from 'react';
+import useCastSync from '../../hooks/useCastSync';
 
 const CAST_API = 'https://app.bestrongagain.com/api/cast';
 
@@ -65,6 +66,7 @@ export default function CastButton({
   const [code, setCode] = useState('');
   const [status, setStatus] = useState(null);
   const [busy, setBusy] = useState(false);
+  const { startCast } = useCastSync();
 
   const reset = () => { setCode(''); setStatus(null); setBusy(false); };
   const close = () => { setOpen(false); reset(); };
@@ -96,7 +98,8 @@ export default function CastButton({
       });
       const d = await r.json();
       if (d.success) {
-        setStatus({ ok: true, msg: 'Sent! Your TV should switch within 2 seconds.' });
+        startCast(code);   // begin live scroll sync
+        setStatus({ ok: true, msg: 'Sent! Your TV will follow as you scroll.' });
         setTimeout(close, 1800);
       } else {
         setStatus({ ok: false, msg: d.message || 'Could not cast. Try a fresh code.' });

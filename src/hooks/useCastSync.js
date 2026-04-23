@@ -1,0 +1,93 @@
+// useCastSync.js
+// When the tracker successfully casts, we stash the pair_code in sessionStorage.
+// This hook reads it, pushes this device's scroll position (as a 0..1 fraction of
+// scrollable height) to the backend whenever the user scrolls, and exposes
+// helpers to stop the cast from anywhere in the app.
+
+import { useEffect, useState, useCallback, useRef } from 'react';
+
+const CAST_API = 'https://app.bestrongagain.com/api/cast';
+const STORAGE_KEY = 'bsa_cast_pair';
+
+// Debounce helper
+function useDebouncedPush(active, pairCode) {
+  const timerRef = useRef(null);
+  const lastSentRef = useRef(-1);
+
+  useEffect(() => {
+    if (!active || !pairCode) return;
+
+    const pushNow = () => {
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      const frac = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+      // Only push if fraction changed meaningfully (avoid spam)
+      if (Math.abs(frac - lastSentRef.current) < 0.005) return;
+      lastSentRef.current = frac;
+      fetch(CAST_API + '/scroll', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pair_code: pairCode, scroll_frac: frac }),
+        keepalive: true,
+      }).catch(() => {});
+    };
+
+    const onScroll = () => {
+      if (timerRef.current) return;
+      timerRef.current = window.setTimeout(() => {
+        timerRef.current = null;
+        pushNow();
+      }, 250); // 4× per second max
+    };
+
+    // Push once immediately so the TV lands at the right spot the moment it binds
+    pushNow();
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    // Also push on resize (scrollable height can change)
+    window.addEventListener('resize', onScroll);
+    return () => {
+      if (timerRef.current) { window.clearTimeout(timerRef.current); timerRef.current = null; }
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [active, pairCode]);
+}
+
+export default function useCastSync() {
+  const [pairCode, setPairCodeState] = useState(() => sessionStorage.getItem(STORAGE_KEY) || null);
+
+  // Listen for other tabs/components setting the cast pair
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === STORAGE_KEY) setPairCodeState(e.newValue || null);
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  // Push scroll position while active
+  useDebouncedPush(!!pairCode, pairCode);
+
+  const startCast = useCallback((code) => {
+    sessionStorage.setItem(STORAGE_KEY, code);
+    setPairCodeState(code);
+  }, []);
+
+  const stopCast = useCallback(async () => {
+    const code = sessionStorage.getItem(STORAGE_KEY);
+    sessionStorage.removeItem(STORAGE_KEY);
+    setPairCodeState(null);
+    if (code) {
+      try {
+        await fetch(CAST_API + '/stop', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pair_code: code }),
+          keepalive: true,
+        });
+      } catch {}
+    }
+  }, []);
+
+  return { pairCode, startCast, stopCast };
+}

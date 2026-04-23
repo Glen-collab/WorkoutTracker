@@ -12,6 +12,8 @@ import WeeklySummaryModal from './components/modals/WeeklySummaryModal';
 import TestYourMight, { getWeekConfig } from './components/game/TestYourMight';
 import WorkoutChatbot from './components/chatbot/WorkoutChatbot';
 import FriendChat from './components/social/FriendChat';
+import CastStatusPill from './components/program/CastStatusPill';
+import useCastSync from './hooks/useCastSync';
 import { calcBlockTonnage, calcCardio, getDefaultWeight } from './components/program/DailyTonnage';
 import TVScreen from './components/tv/TVScreen';
 import TVStatic from './components/tv/TVStatic';
@@ -33,12 +35,22 @@ const containerStyle = {
   fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
 };
 
+// Tiny wrapper that hooks up the cast pill without leaking cast state into the
+// main App render. Uses sessionStorage under the hood.
+function CastStatusPillConnector() {
+  const { pairCode, stopCast } = useCastSync();
+  return <CastStatusPill pairCode={pairCode} onStop={stopCast} />;
+}
+
 export default function App() {
   // TV modes — completely separate views, no phone UI loaded
   if (isStaticTV) return <TVStatic />;
   if (isCastMode)  return <CastTVDisplay />;
   if (isKioskMode) return <KioskScreen />;
   if (isTVMode) return <TVScreen />;
+
+  // Continues below — phone/tracker UI. CastStatusPillConnector is rendered inline
+  // and handles its own subscription to cast state. Defining here so it's in scope.
 
   const state = useTrackerState();
   const api = useTrackerAPI();
@@ -1099,6 +1111,7 @@ export default function App() {
         <>
           <WorkoutChatbot ref={chatbotRef} userName={user?.name || 'there'} screen={screen} onLoadTravel={handleLoadTravelWorkout} />
           <FriendChat />
+          <CastStatusPillConnector />
         </>
       )}
 
