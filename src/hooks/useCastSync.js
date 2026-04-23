@@ -115,6 +115,19 @@ export default function useCastSync() {
     } catch {}
   }, []);
 
+  const castNav = useCallback(async (direction) => {
+    const code = sessionStorage.getItem(STORAGE_KEY);
+    if (!code) return;
+    try {
+      await fetch(CAST_API + '/nav', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pair_code: code, direction }),
+        keepalive: true,
+      });
+    } catch {}
+  }, []);
+
   const stopCast = useCallback(async () => {
     const code = sessionStorage.getItem(STORAGE_KEY);
     sessionStorage.removeItem(STORAGE_KEY);
@@ -131,5 +144,5 @@ export default function useCastSync() {
     }
   }, []);
 
-  return { pairCode, startCast, stopCast, castPlay };
+  return { pairCode, startCast, stopCast, castPlay, castNav };
 }

@@ -40,8 +40,8 @@ const containerStyle = {
 // Tiny wrapper that hooks up the cast pill without leaking cast state into the
 // main App render. Uses sessionStorage under the hood.
 function CastStatusPillConnector() {
-  const { pairCode, stopCast } = useCastSync();
-  return <CastStatusPill pairCode={pairCode} onStop={stopCast} />;
+  const { pairCode, stopCast, castNav } = useCastSync();
+  return <CastStatusPill pairCode={pairCode} onStop={stopCast} onNav={castNav} />;
 }
 
 export default function App() {

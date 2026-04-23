@@ -1,14 +1,16 @@
 // CastStatusPill.jsx
 // Floating indicator shown whenever the tracker is actively casting to a TV.
-// Bottom-right corner. Shows the code + a Stop button.
+// Bottom-right corner. Shows the code, up/down nav arrows (jump exercise-by-
+// exercise on the TV), and a Stop button. Arrows are on the LEFT side of the
+// pill with clear space before Stop so fat-thumb taps don't kill the cast.
 
 import React from 'react';
 
 const s = {
   pill: {
     position: 'fixed', bottom: 16, right: 16, zIndex: 9998,
-    display: 'flex', alignItems: 'center', gap: 6,
-    padding: '6px 8px 6px 12px', borderRadius: 999,
+    display: 'flex', alignItems: 'center', gap: 8,
+    padding: '6px 8px 6px 8px', borderRadius: 999,
     background: 'linear-gradient(135deg, #ff9a3c, #ffd200)',
     boxShadow: '0 6px 20px rgba(0,0,0,0.25)',
     color: '#1a1a2e', fontSize: 13, fontWeight: 700,
@@ -20,20 +22,22 @@ const s = {
     background: 'rgba(0,0,0,0.12)', padding: '2px 8px', borderRadius: 6,
   },
   arrowBtn: {
-    width: 30, height: 30, border: 'none', borderRadius: '50%',
-    background: 'rgba(0,0,0,0.12)', color: '#1a1a2e',
-    fontSize: 16, fontWeight: 900, cursor: 'pointer', padding: 0,
+    width: 44, height: 44, border: 'none', borderRadius: '50%',
+    background: 'rgba(0,0,0,0.18)', color: '#1a1a2e',
+    fontSize: 22, fontWeight: 900, cursor: 'pointer', padding: 0,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     lineHeight: 1,
+    boxShadow: 'inset 0 -2px 0 rgba(0,0,0,0.12)',
   },
   stop: {
-    padding: '5px 10px', border: 'none', borderRadius: 999,
+    marginLeft: 14,
+    padding: '8px 14px', border: 'none', borderRadius: 999,
     background: 'rgba(0,0,0,0.75)', color: '#fff',
-    fontSize: 12, fontWeight: 700, cursor: 'pointer',
+    fontSize: 13, fontWeight: 700, cursor: 'pointer',
   },
   live: {
     width: 9, height: 9, borderRadius: '50%',
-    background: '#b91c1c', marginRight: 2,
+    background: '#b91c1c', marginLeft: 2,
     animation: 'bsa-cast-pulse 1.4s ease-in-out infinite',
   },
 };
@@ -45,21 +49,21 @@ if (typeof document !== 'undefined' && !document.getElementById('bsa-cast-pill-k
   document.head.appendChild(el);
 }
 
-export default function CastStatusPill({ pairCode, onStop }) {
+export default function CastStatusPill({ pairCode, onStop, onNav }) {
   if (!pairCode) return null;
-  // Scroll the phone (which scroll-sync already mirrors to the TV).
-  // 0.75 × viewport keeps a line of overlap so the user keeps context.
+  // ▲▼ jump to the previous/next exercise on the TV (centered, with the
+  // next/previous card peeking top & bottom). Falls back to a small window
+  // scroll on this device too so the phone UI follows along.
   const nudge = (dir) => {
-    const step = Math.max(200, Math.round(window.innerHeight * 0.75)) * dir;
-    window.scrollBy({ top: step, left: 0, behavior: 'smooth' });
+    try { onNav && onNav(dir > 0 ? 'next' : 'prev'); } catch {}
   };
   return (
     <div style={s.pill}>
+      <button style={s.arrowBtn} onClick={() => nudge(-1)} title="Previous exercise on TV" aria-label="Previous exercise on TV">▲</button>
+      <button style={s.arrowBtn} onClick={() => nudge(1)}  title="Next exercise on TV" aria-label="Next exercise on TV">▼</button>
       <span style={s.live}></span>
       <span>Cast</span>
       <span style={s.code}>{pairCode}</span>
-      <button style={s.arrowBtn} onClick={() => nudge(-1)} title="Scroll TV up" aria-label="Scroll TV up">▲</button>
-      <button style={s.arrowBtn} onClick={() => nudge(1)}  title="Scroll TV down" aria-label="Scroll TV down">▼</button>
       <button style={s.stop} onClick={onStop}>Stop</button>
     </div>
   );

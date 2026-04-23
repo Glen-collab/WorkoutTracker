@@ -79,10 +79,16 @@ const s = {
   },
   // BIG-TEXT list (no video thumbnails — phone is the remote, videos go full-screen on demand)
   exRow: {
-    display: 'flex', gap: '3vw', alignItems: 'baseline',
-    padding: '2vh 0', borderTop: '1px solid rgba(255,255,255,0.06)',
+    display: 'flex', gap: '3vw', alignItems: 'baseline', flexWrap: 'wrap',
+    padding: '2vh 1.5vw', borderTop: '1px solid rgba(255,255,255,0.06)',
+    borderRadius: 10, transition: 'background 250ms ease, box-shadow 250ms ease, transform 250ms ease',
   },
   exRowFirst: { borderTop: 'none' },
+  exRowActive: {
+    background: 'linear-gradient(135deg, rgba(255,210,0,0.18), rgba(255,154,60,0.12))',
+    boxShadow: '0 0 0 2px rgba(255,210,0,0.55), 0 8px 30px rgba(0,0,0,0.35)',
+    transform: 'scale(1.01)',
+  },
   exName: { fontSize: 'clamp(26px, 3vw, 48px)', fontWeight: 800, lineHeight: 1.15, flex: 1 },
   exDetail: { fontSize: 'clamp(24px, 2.6vw, 42px)', color: '#ffd200', fontWeight: 800, flex: '0 0 auto', textAlign: 'right', whiteSpace: 'nowrap' },
   exNotes: { fontSize: 'clamp(16px, 1.4vw, 22px)', color: 'rgba(255,255,255,0.55)', marginTop: '0.6vh', lineHeight: 1.35, width: '100%' },
@@ -143,16 +149,17 @@ function formatSetsReps(ex) {
 }
 
 // Big-text-only row — no video thumbnails. Phone beams videos full-screen via /play.
-function ExerciseRow({ ex, first }) {
+// Receives a ref so the TV can scroll this row into view when the phone hits ▲▼.
+const ExerciseRow = React.forwardRef(function ExerciseRow({ ex, first, active }, ref) {
   const detail = formatSetsReps(ex);
   return (
-    <div style={{ ...s.exRow, ...(first ? s.exRowFirst : {}), flexWrap: 'wrap' }}>
+    <div ref={ref} style={{ ...s.exRow, ...(first ? s.exRowFirst : {}), ...(active ? s.exRowActive : {}) }}>
       <div style={s.exName}>{ex.name}</div>
       {detail && <div style={s.exDetail}>{detail}</div>}
       {ex.notes && <div style={s.exNotes}>{ex.notes}</div>}
     </div>
   );
-}
+});
 
 // Full-screen video overlay when the phone has beamed a specific exercise.
 function FullScreenExerciseVideo({ ex }) {
@@ -273,9 +280,10 @@ function CastedWorkout({ session, pairCode }) {
     })();
   }, [session]);
 
-  // Poll every 1s for scroll position + playing_exercise (phone-as-remote).
-  const lastFracRef = useRef(-1);
+  // Poll every 1s for nav_index + playing_exercise (phone-as-remote).
   const [playingExercise, setPlayingExercise] = useState(null);
+  const [navIndex, setNavIndex] = useState(0);
+  const lastNavUpdatedRef = useRef(null);
   useEffect(() => {
     if (!program || !pairCode) return;
     let cancelled = false;
@@ -294,14 +302,13 @@ function CastedWorkout({ session, pairCode }) {
           if (prevName !== nextName) return nextPlaying;
           return prev;
         });
-        // Scroll sync for list view only (pointless while video is full-screen)
-        if (!nextPlaying) {
-          const frac = typeof d.scroll_frac === 'number' ? d.scroll_frac : 0;
-          if (Math.abs(frac - lastFracRef.current) > 0.02) {
-            lastFracRef.current = frac;
-            const max = document.documentElement.scrollHeight - window.innerHeight;
-            window.scrollTo({ top: Math.max(0, Math.round(max * frac)), behavior: 'auto' });
-          }
+        // Exercise-by-exercise navigation (phone ▲▼ → nav_index).
+        // We only react when nav_updated_at changes — prevents re-scrolling
+        // every poll if the user manually scrolled the TV.
+        if (!nextPlaying && d.nav_updated_at && d.nav_updated_at !== lastNavUpdatedRef.current) {
+          lastNavUpdatedRef.current = d.nav_updated_at;
+          const idx = Math.max(0, parseInt(d.nav_index, 10) || 0);
+          setNavIndex(idx);
         }
       } catch {}
     };
@@ -309,16 +316,37 @@ function CastedWorkout({ session, pairCode }) {
     return () => { cancelled = true; clearInterval(iv); };
   }, [program, pairCode]);
 
-  if (err) return <div style={s.pairWrap}><div style={s.hint}>{err}</div></div>;
-  if (!program) return <div style={s.pairWrap}><div style={s.hint}><span style={s.spinner}></span>Loading your workout…</div></div>;
-
   const wk = session.week || 1;
   const day = session.day || 1;
   // load-program.php returns a flat `blocks` array for the current day.
   // Programs pushed directly (with full program_data) use `allWorkouts[wk-day]`.
-  const blocks = program.blocks
-    || (program.allWorkouts || program.program_data?.allWorkouts || {})[`${wk}-${day}`]
+  const blocks = program?.blocks
+    || (program?.allWorkouts || program?.program_data?.allWorkouts || {})[`${wk}-${day}`]
     || [];
+
+  // Flat list of {block, ex, globalIndex} — used by the ▲▼ remote to scroll
+  // the current exercise to the center of the TV screen.
+  const flat = [];
+  blocks.forEach((block, bi) => {
+    (block.exercises || []).forEach((ex, ei) => {
+      flat.push({ block, bi, ex, ei, globalIndex: flat.length });
+    });
+  });
+  const totalExercises = flat.length;
+  const activeIdx = totalExercises > 0 ? Math.min(navIndex, totalExercises - 1) : 0;
+  const rowRefs = useRef([]);
+
+  // Scroll the active exercise card into view (centered) when nav_index changes.
+  useEffect(() => {
+    if (playingExercise || !program) return;
+    const node = rowRefs.current[activeIdx];
+    if (node && typeof node.scrollIntoView === 'function') {
+      node.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }, [activeIdx, playingExercise, program]);
+
+  if (err) return <div style={s.pairWrap}><div style={s.hint}>{err}</div></div>;
+  if (!program) return <div style={s.pairWrap}><div style={s.hint}><span style={s.spinner}></span>Loading your workout…</div></div>;
 
   return (
     <>
@@ -334,11 +362,22 @@ function CastedWorkout({ session, pairCode }) {
               {(block.type || 'Block').replace(/-/g, ' ')}
               {block.circuitType ? ` · ${block.circuitType}` : ''}
             </div>
-            {(block.exercises || []).map((ex, ei) => (
-              <ExerciseRow key={ei} ex={ex} first={ei === 0} />
-            ))}
+            {(block.exercises || []).map((ex, ei) => {
+              const gi = flat.findIndex(f => f.bi === bi && f.ei === ei);
+              return (
+                <ExerciseRow
+                  key={ei}
+                  ref={(el) => { rowRefs.current[gi] = el; }}
+                  ex={ex}
+                  first={ei === 0}
+                  active={gi === activeIdx && totalExercises > 0}
+                />
+              );
+            })}
           </div>
         ))}
+        {/* Spacer so the last exercise can still center on the screen */}
+        <div style={{ height: '40vh' }} />
       </div>
       {playingExercise && <FullScreenExerciseVideo ex={playingExercise} />}
     </>
