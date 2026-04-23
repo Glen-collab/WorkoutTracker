@@ -284,6 +284,7 @@ function CastedWorkout({ session, pairCode }) {
   const [playingExercise, setPlayingExercise] = useState(null);
   const [navIndex, setNavIndex] = useState(0);
   const lastNavUpdatedRef = useRef(null);
+  const totalBlocksRef = useRef(0);
   useEffect(() => {
     if (!program || !pairCode) return;
     let cancelled = false;
@@ -302,13 +303,28 @@ function CastedWorkout({ session, pairCode }) {
           if (prevName !== nextName) return nextPlaying;
           return prev;
         });
-        // Exercise-by-exercise navigation (phone ▲▼ → nav_index).
-        // We only react when nav_updated_at changes — prevents re-scrolling
-        // every poll if the user manually scrolled the TV.
+        // Section-by-section navigation (phone ▲▼ → nav_index).
+        // Only react when nav_updated_at changes so manual TV scrolling
+        // doesn't get overwritten on every poll.
         if (!nextPlaying && d.nav_updated_at && d.nav_updated_at !== lastNavUpdatedRef.current) {
           lastNavUpdatedRef.current = d.nav_updated_at;
-          const idx = Math.max(0, parseInt(d.nav_index, 10) || 0);
-          setNavIndex(idx);
+          const raw = Math.max(0, parseInt(d.nav_index, 10) || 0);
+          const total = totalBlocksRef.current;
+          // Self-heal: phone can spam ▼ past the last block (it doesn't know
+          // the count). Clamp and persist the correction back to the server
+          // so ▲ starts counting from the real last block, not from 99.
+          if (total > 0 && raw > total - 1) {
+            const fixed = total - 1;
+            fetch(`${API_BASE}/nav`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ pair_code: pairCode, index: fixed }),
+              keepalive: true,
+            }).catch(() => {});
+            setNavIndex(fixed);
+          } else {
+            setNavIndex(raw);
+          }
         }
       } catch {}
     };
@@ -330,16 +346,26 @@ function CastedWorkout({ session, pairCode }) {
   const totalBlocks = blocks.length;
   const activeBlockIdx = totalBlocks > 0 ? Math.min(navIndex, totalBlocks - 1) : 0;
   const blockRefs = useRef([]);
+  // Let the poll loop read the current count without re-subscribing.
+  totalBlocksRef.current = totalBlocks;
 
-  // Scroll the active block (section) into the center of the TV when the
-  // phone advances nav_index. block:'center' keeps neighboring blocks peeking
-  // at the top and bottom so the user can preview what's coming.
+  // Scroll the active block (section) into the center of the TV whenever
+  // the phone advances nav_index. We compute the target scrollTop manually
+  // (instead of scrollIntoView({block:'center'})) because TV browsers
+  // sometimes bail out when the element is already partially visible —
+  // that was causing block 1 to only show its bottom edge and block 2 to
+  // never actually move to the center.
   useEffect(() => {
     if (playingExercise || !program) return;
     const node = blockRefs.current[activeBlockIdx];
-    if (node && typeof node.scrollIntoView === 'function') {
-      node.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    }
+    if (!node) return;
+    const rect = node.getBoundingClientRect();
+    const absoluteTop = rect.top + window.scrollY;
+    const viewH = window.innerHeight;
+    const docMax = Math.max(0, document.documentElement.scrollHeight - viewH);
+    const desired = absoluteTop - (viewH - rect.height) / 2;
+    const target = Math.max(0, Math.min(docMax, desired));
+    window.scrollTo({ top: target, behavior: 'smooth' });
   }, [activeBlockIdx, playingExercise, program]);
 
   if (err) return <div style={s.pairWrap}><div style={s.hint}>{err}</div></div>;
@@ -350,7 +376,11 @@ function CastedWorkout({ session, pairCode }) {
       <div style={s.wkWrap}>
         <div style={s.wkHeader}>
           <div style={s.wkTitle}>{program.name || program.programName || 'Your Workout'}</div>
-          <div style={s.wkMeta}>Week {wk} · Day {day}{session.user_name ? ` · ${session.user_name}` : ''}</div>
+          <div style={s.wkMeta}>
+            Week {wk} · Day {day}
+            {totalBlocks > 0 ? ` · Section ${activeBlockIdx + 1} of ${totalBlocks}` : ''}
+            {session.user_name ? ` · ${session.user_name}` : ''}
+          </div>
         </div>
         {blocks.length === 0 && <div style={s.hint}>No exercises found for this day.</div>}
         {blocks.map((block, bi) => {
