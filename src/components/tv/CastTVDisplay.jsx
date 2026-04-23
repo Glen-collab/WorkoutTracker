@@ -145,11 +145,20 @@ function formatValue(value, unit, fallback) {
   if (/[a-zA-Z]/.test(str)) return str;
   return `${str} ${unit || fallback}`;
 }
+// Rowing / running / ski erg in the builder usually don't set distanceUnit
+// explicitly — the tracker falls back to 'm' for Conditioning blocks. Use
+// the same heuristic DailyTonnage.jsx does: a big number (>=100) without a
+// unit is meters, anything smaller is miles. Prevents "400 mi" showing on
+// the TV when the builder said "400 m".
+function distanceFallback(raw) {
+  const n = parseFloat(raw);
+  return Number.isFinite(n) && n >= 100 ? 'm' : 'mi';
+}
 function formatSetsReps(ex) {
   const sets = typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 0);
   const reps = ex.reps || (Array.isArray(ex.sets) && ex.sets[0]?.reps) || '';
   const duration = formatValue(ex.duration, ex.durationUnit, 'min');
-  const distance = formatValue(ex.distance, ex.distanceUnit, 'mi');
+  const distance = formatValue(ex.distance, ex.distanceUnit, distanceFallback(ex.distance));
   const qualifier = ex.qualifier || '';
   let detail = '';
   if (reps) detail = sets > 0 ? `${sets} × ${reps}` : `× ${reps}`;

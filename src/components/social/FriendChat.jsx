@@ -210,11 +210,15 @@ export default function FriendChat() {
         onClick={() => setOpen(true)}
         style={s.bubble}
       >
-        {/* White chat-bubble glyph sitting inside the glass dome */}
+        {/* White chat-bubble glyph with a thin dark stroke so it stays
+            visible on bright backgrounds where the fill would vanish. */}
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <path
             d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8A2.5 2.5 0 0 1 17.5 16H12l-4.2 3.5a.6.6 0 0 1-1-.46V16H6.5A2.5 2.5 0 0 1 4 13.5v-8Z"
             fill="#fff"
+            stroke="#1a1a2e"
+            strokeWidth="1.3"
+            strokeLinejoin="round"
           />
         </svg>
         {unread > 0 && (
