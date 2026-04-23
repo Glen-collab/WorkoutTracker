@@ -102,6 +102,15 @@ function WelcomeOverlay({ onDismiss }) {
 }
 
 export default function AccessScreen({ onLoadProgram }) {
+  // Whenever the user lands back on Access (logout / relogin / new tab),
+  // drop any lingering cast session from sessionStorage so the pill
+  // doesn't auto-reappear on the next program screen. A re-login is a
+  // clean slate — if they still want to cast, they re-pair a fresh code.
+  useEffect(() => {
+    try { sessionStorage.removeItem('bsa_cast_pair'); } catch {}
+    try { window.dispatchEvent(new CustomEvent('bsa:cast-change', { detail: null })); } catch {}
+  }, []);
+
   // Check if user has saved credentials - skip straight to returning user form
   const savedCreds = (() => {
     try {

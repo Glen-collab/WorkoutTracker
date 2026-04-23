@@ -97,6 +97,11 @@ export default function CastButton({
           week: currentWeek || 1,
           day: currentDay || 1,
           main_maxes: maxes || {},
+          // Send the full program the phone is currently using. This lets
+          // the TV read `allWorkouts[wk-day]` directly and bypass the PHP
+          // side, which otherwise returns the server's "current day" —
+          // not necessarily the day the user is casting.
+          program_data: program || undefined,
         }),
       });
       const d = await r.json();
