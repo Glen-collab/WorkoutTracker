@@ -549,12 +549,12 @@ export default function TVStatic() {
           )}
         </div>
       )}
-      {/* Header bar */}
+      {/* Header bar — logo is removed from the persistent header (it only
+          appears during the 15-minute brand flash takeover). Gym name stays
+          on the title but at a smaller size, so the workout info wins the
+          real estate and the name still reads. */}
       <div style={s.topBar}>
         <div style={s.topBarLeft}>
-          {brand?.logo_data && (
-            <img src={brand.logo_data} alt="" style={s.brandLogo} />
-          )}
           <h1 style={s.programTitle}>
             {brand?.gym_name ? `${brand.gym_name} — ` : ''}{program?.name || 'Workout'}
           </h1>
@@ -715,7 +715,7 @@ const s = {
     marginBottom: '8px', flexShrink: 0,
   },
   topBarLeft: { display: 'flex', alignItems: 'center', gap: '16px' },
-  programTitle: { fontSize: 'clamp(24px, 3vw, 56px)', fontWeight: '800', margin: 0, color: '#fff' },
+  programTitle: { fontSize: 'clamp(16px, 1.8vw, 32px)', fontWeight: '700', margin: 0, color: '#fff', letterSpacing: '0.2px' },
   userBadge: {
     background: 'rgba(102,126,234,0.3)', border: '1px solid rgba(102,126,234,0.5)',
     borderRadius: '22px', padding: '6px 18px', fontSize: 'clamp(15px, 1.5vw, 26px)',
@@ -757,7 +757,7 @@ const s = {
   },
   dayHeader: {
     background: 'var(--brand-gradient, linear-gradient(135deg, #667eea, #764ba2))',
-    padding: '12px 18px', fontSize: 'clamp(20px, 2vw, 36px)', fontWeight: '800',
+    padding: '6px 14px', fontSize: 'clamp(14px, 1.4vw, 24px)', fontWeight: '700',
     color: '#fff', textAlign: 'center', flexShrink: 0, letterSpacing: '0.3px',
   },
   // Coach logo next to program title
