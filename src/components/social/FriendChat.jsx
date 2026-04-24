@@ -249,6 +249,9 @@ export default function FriendChat() {
               <p style={{ fontSize: '14px', lineHeight: '1.5', color: '#333', marginTop: '12px' }}>
                 Open your email. Tap the big <strong>Sign In</strong> button. You're done.
               </p>
+              <p style={{ fontSize: '13px', lineHeight: '1.45', color: '#b45309', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: '8px', padding: '8px 10px', marginTop: '10px' }}>
+                <strong>Don't see it?</strong> Check your spam or junk folder — the link sometimes lands there.
+              </p>
               <p style={{ ...s.muted, fontSize: '12px', marginTop: '10px' }}>
                 Link works for 10 minutes. Open it on this same phone.
               </p>
