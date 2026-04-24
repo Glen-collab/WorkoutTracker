@@ -362,24 +362,37 @@ export default function App() {
           setCustomReason('');
         }
 
-        // Load previous week workout for recommendations
+        // Load previous week workout for recommendations + carryover.
+        // Preference order: backend savedWorkout → local history cache.
+        // Local cache handles the case where a user entered weights but
+        // never tapped "Log Workout" — the carry-over should still work
+        // from what the tracker auto-saved.
         const curWeek = requestedWeek || result.data.userPosition?.currentWeek || 1;
+        const curDay = requestedDay || result.data.userPosition?.currentDay || 1;
         if (curWeek > 1) {
+          let prevWorkout = null;
           try {
             const prevResult = await api.loadProgram({
               email: u.email,
               code: u.accessCode,
               requested_week: curWeek - 1,
-              requested_day: requestedDay || result.data.userPosition?.currentDay || 1,
+              requested_day: curDay,
             });
             if (prevResult.success && prevResult.data && prevResult.data.savedWorkout) {
-              setPreviousWeekWorkout(prevResult.data.savedWorkout);
-            } else {
-              setPreviousWeekWorkout(null);
+              prevWorkout = prevResult.data.savedWorkout;
             }
-          } catch {
-            setPreviousWeekWorkout(null);
+          } catch { /* fall through to local fallback */ }
+
+          if (!prevWorkout) {
+            try {
+              const histKey = `gwt_history_${u.accessCode}_${u.email}`;
+              const history = JSON.parse(localStorage.getItem(histKey) || '{}');
+              const entry = history[`w${curWeek - 1}d${curDay}`] || history[`${curWeek - 1}-${curDay}`];
+              if (entry?.data) prevWorkout = { data: entry.data, date: entry.logged_at };
+            } catch { /* no local history available */ }
           }
+
+          setPreviousWeekWorkout(prevWorkout);
         } else {
           setPreviousWeekWorkout(null);
         }

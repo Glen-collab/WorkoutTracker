@@ -317,6 +317,7 @@ export default function ProgramView({
             userName={userName}
             savedBlockData={savedWorkout?.data?.blocks?.[blockIndex]}
             previousWeekBlock={previousWeekWorkout?.data?.blocks?.[blockIndex]}
+            previousWeekWorkout={previousWeekWorkout}
             trackingData={trackingData}
             onUpdateTracking={onUpdateTracking}
             onMarkComplete={() => {}}

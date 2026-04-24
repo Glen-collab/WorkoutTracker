@@ -114,13 +114,27 @@ function getCircuitConfigText(block) {
   return name;
 }
 
+// Previous-week exercise lookup by NAME across all blocks. Programs often
+// add a warmup block or reorder exercises from week to week, which breaks
+// any positional index lookup (the user would see blank or wrong-exercise
+// carryover). Searching by name survives reorderings completely.
+function findPrevExByName(previousWeekWorkout, name) {
+  if (!previousWeekWorkout?.data?.blocks || !name) return null;
+  for (const b of previousWeekWorkout.data.blocks) {
+    const hit = (b.exercises || []).find(ex => ex?.name === name);
+    if (hit) return hit;
+  }
+  return null;
+}
+
 export default function BlockCard({
   block,
   blockIndex,
   maxes,
   userName,
   savedBlockData,
-  previousWeekBlock,
+  previousWeekBlock,      // same-index block (still passed for legacy fallback)
+  previousWeekWorkout,    // full prev-week workout for name-based search
   trackingData,
   onUpdateTracking,
   onMarkComplete,
@@ -163,26 +177,31 @@ export default function BlockCard({
 
           {block.notes && <div style={s.notesCard}>{block.notes}</div>}
 
-          {block.exercises?.map((exercise, exIndex) => (
-            <ExerciseCard
-              key={exIndex}
-              exercise={exercise}
-              blockIndex={blockIndex}
-              exIndex={exIndex}
-              blockType={block.type}
-              maxes={maxes}
-              userName={userName}
-              savedExerciseData={savedBlockData?.exercises?.[exIndex]}
-              previousRecommendation={
-                previousWeekBlock?.exercises?.[exIndex]?.recommendation
-              }
-              previousExerciseData={previousWeekBlock?.exercises?.[exIndex]}
-              trackingData={trackingData}
-              onUpdateTracking={onUpdateTracking}
-              onMarkComplete={onMarkComplete}
-              onSetRecommendation={onSetRecommendation}
-            />
-          ))}
+          {block.exercises?.map((exercise, exIndex) => {
+            // Name-match first (survives block/exercise reordering between
+            // weeks), fall back to same-index in the same-index block.
+            const prevByName = findPrevExByName(previousWeekWorkout, exercise?.name);
+            const prevByIndex = previousWeekBlock?.exercises?.[exIndex];
+            const prev = prevByName || prevByIndex || null;
+            return (
+              <ExerciseCard
+                key={exIndex}
+                exercise={exercise}
+                blockIndex={blockIndex}
+                exIndex={exIndex}
+                blockType={block.type}
+                maxes={maxes}
+                userName={userName}
+                savedExerciseData={savedBlockData?.exercises?.[exIndex]}
+                previousRecommendation={prev?.recommendation}
+                previousExerciseData={prev}
+                trackingData={trackingData}
+                onUpdateTracking={onUpdateTracking}
+                onMarkComplete={onMarkComplete}
+                onSetRecommendation={onSetRecommendation}
+              />
+            );
+          })}
 
           <div style={s.clientNotesLabel}>Notes for this block:</div>
           <textarea
