@@ -375,8 +375,20 @@ export default function CastTVDisplay() {
 
 // ── Loads the program and renders today's workout full-screen ──
 function CastedWorkout({ session, pairCode }) {
+  // All state up top — otherwise the brand-flash useEffect below hits
+  // a temporal-dead-zone ReferenceError when its dep array evaluates
+  // `layout` and `brand` before their const bindings are initialized.
+  // (Symptom: white screen on first /cast render. Cost: a few hours. Pain.)
   const [program, setProgram] = useState(null);
   const [err, setErr] = useState(null);
+  const [playingExercise, setPlayingExercise] = useState(null);
+  const [layout, setLayoutState] = useState(session.layout || 'one_day');
+  const [brand, setBrand] = useState(session.brand || null);
+  const [showLogoFlash, setShowLogoFlash] = useState(false);
+  const lastNavUpdatedRef = useRef(null);
+  const scrollerRef = useRef(null);       // one_day scroller
+  const leftColRef  = useRef(null);       // two_day left column
+  const rightColRef = useRef(null);       // two_day right column
 
   useEffect(() => {
     // Fast path: paint the pushed program_data immediately so the TV doesn't
@@ -444,14 +456,6 @@ function CastedWorkout({ session, pairCode }) {
   }, [layout, brand?.logo_data, brand?.gym_name]);
 
   // Poll every 1s for nav events + playing_exercise + layout (phone-as-remote).
-  const [playingExercise, setPlayingExercise] = useState(null);
-  const [layout, setLayoutState] = useState(session.layout || 'one_day');
-  const [brand, setBrand] = useState(session.brand || null);
-  const [showLogoFlash, setShowLogoFlash] = useState(false);
-  const lastNavUpdatedRef = useRef(null);
-  const scrollerRef = useRef(null);       // one_day scroller
-  const leftColRef  = useRef(null);       // two_day left column
-  const rightColRef = useRef(null);       // two_day right column
   useEffect(() => {
     if (!program || !pairCode) return;
     let cancelled = false;
