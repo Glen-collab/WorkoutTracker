@@ -63,6 +63,7 @@ const s = {
     height: '100vh', width: '100vw', overflow: 'hidden',
     background: '#0f0c29', color: '#fff',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+    cursor: 'none',
   },
   wkScroller: {
     height: '100vh', overflowY: 'auto', overflowX: 'hidden',
@@ -79,6 +80,7 @@ const s = {
     background: '#0f0c29', color: '#fff',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
     display: 'flex', flexDirection: 'column', overflow: 'hidden',
+    cursor: 'none',
   },
   twoDayHeader: {
     padding: '8px 18px',

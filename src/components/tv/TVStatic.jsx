@@ -720,6 +720,7 @@ const s = {
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     display: 'flex', flexDirection: 'column',
     padding: '8px 16px', boxSizing: 'border-box', overflow: 'hidden',
+    cursor: 'none',  // hide labwc's mouse pointer on the gym TV — TV viewers don't have a mouse
   },
 
   // Top bar
@@ -779,12 +780,16 @@ const s = {
     borderRadius: '6px',
   },
 
-  // Full-screen brand takeover (fires every 15 min for 3s)
+  // Full-screen brand takeover (fires every 15 min for 3s).
+  // pointerEvents:'none' so even if React state gets stuck (Pi Zero 2 W
+  // has been observed to delay setTimeout callbacks under load), the
+  // invisible-after-animation overlay never blocks the workout below it.
   brandFlash: {
     position: 'fixed', inset: 0, zIndex: 9999,
     display: 'flex', flexDirection: 'column',
     alignItems: 'center', justifyContent: 'center', gap: '36px',
     animation: 'bsa-brand-flash 3s ease-in-out forwards',
+    pointerEvents: 'none',
   },
   brandFlashLogo: {
     maxWidth: '60vw', maxHeight: '60vh', objectFit: 'contain',
