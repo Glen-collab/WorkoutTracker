@@ -442,7 +442,20 @@ export default function TVStatic() {
         const serverLayout = data?.device?.layout || 'two_day';
         setLayout((prev) => (prev === serverLayout ? prev : serverLayout));
         // Pick up coach branding (logo / colors / gym name)
-        if (data?.brand) setBrand(data.brand);
+        // Only re-set brand when something actually changed. Without this
+        // we allocate a fresh ~113KB logo_data string on every poll (every
+        // minute) which thrashes the heap on Pi Zero 2 W and triggers
+        // Chromium internal restarts.
+        if (data?.brand) {
+          setBrand((prev) => {
+            const same = prev
+              && prev.primary === data.brand.primary
+              && prev.accent === data.brand.accent
+              && prev.gym_name === data.brand.gym_name
+              && prev.logo_data === data.brand.logo_data;
+            return same ? prev : data.brand;
+          });
+        }
         const serverCode = data?.active?.access_code;
         // If coach has no active program, show nothing / idle screen
         if (!serverCode) {
