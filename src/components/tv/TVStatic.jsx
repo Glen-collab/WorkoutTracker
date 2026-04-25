@@ -191,15 +191,21 @@ export default function TVStatic() {
   // Full-screen brand takeover that fires every 15 min for 3s.
   // Doubles as burn-in mitigation (rearranges bright/dark pixels on schedule)
   // and reinforces the gym's identity for anyone walking by.
+  // Brand flash disabled on /tv/static: the Pi Zero 2 W can't afford the
+  // memory churn from animating a 60vw inline base64 logo, and the timing
+  // collided with Chromium's auto-restart cycle. Re-enable on Pi 4 by
+  // flipping FLASH_ENABLED back to true.
+  const FLASH_ENABLED = false;
   const [showLogoFlash, setShowLogoFlash] = useState(false);
   useEffect(() => {
+    if (!FLASH_ENABLED) return;
     if (!program) return;
     const hasContent = !!(brand?.logo_data || brand?.gym_name);
     if (!hasContent) return;
 
     const FLASH_DURATION_MS = 3_000;
-    const FLASH_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
-    const FIRST_FLASH_DELAY_MS = 30_000;      // first flash 30s after load
+    const FLASH_INTERVAL_MS = 15 * 60 * 1000;
+    const FIRST_FLASH_DELAY_MS = 30_000;
 
     const triggerFlash = () => {
       setShowLogoFlash(true);
@@ -442,18 +448,22 @@ export default function TVStatic() {
         const serverLayout = data?.device?.layout || 'two_day';
         setLayout((prev) => (prev === serverLayout ? prev : serverLayout));
         // Pick up coach branding (logo / colors / gym name)
-        // Only re-set brand when something actually changed. Without this
-        // we allocate a fresh ~113KB logo_data string on every poll (every
-        // minute) which thrashes the heap on Pi Zero 2 W and triggers
-        // Chromium internal restarts.
+        // Only keep brand fields we actually render here (gym name + colors).
+        // Drop logo_data — TVStatic no longer paints a logo (flash disabled,
+        // top bar already dropped), so holding the 113KB blob in React state
+        // is pure memory cost on the Pi Zero 2 W.
         if (data?.brand) {
+          const next = {
+            primary:  data.brand.primary  || null,
+            accent:   data.brand.accent   || null,
+            gym_name: data.brand.gym_name || null,
+          };
           setBrand((prev) => {
             const same = prev
-              && prev.primary === data.brand.primary
-              && prev.accent === data.brand.accent
-              && prev.gym_name === data.brand.gym_name
-              && prev.logo_data === data.brand.logo_data;
-            return same ? prev : data.brand;
+              && prev.primary  === next.primary
+              && prev.accent   === next.accent
+              && prev.gym_name === next.gym_name;
+            return same ? prev : next;
           });
         }
         const serverCode = data?.active?.access_code;
