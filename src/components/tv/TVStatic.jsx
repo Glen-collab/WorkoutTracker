@@ -363,12 +363,22 @@ export default function TVStatic() {
   useEffect(() => {
     const onKey = (e) => {
       if (!program) return;
-      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+      if (e.key === 'ArrowRight') {
         e.preventDefault();
         e.shiftKey ? navigateWeek(1) : navigateDays(1);
-      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+      } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
         e.shiftKey ? navigateWeek(-1) : navigateDays(-1);
+      } else if (e.key === 'PageDown') {
+        // Dedicated week-forward — no shift required. Lets a single
+        // Flirc-mapped remote button (no modifier capability needed)
+        // jump a week.
+        e.preventDefault();
+        navigateWeek(1);
+      } else if (e.key === 'PageUp') {
+        // Dedicated week-back — see PageDown comment above.
+        e.preventDefault();
+        navigateWeek(-1);
       }
     };
     window.addEventListener('keydown', onKey);
