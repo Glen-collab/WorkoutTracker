@@ -572,12 +572,15 @@ export default function TVStatic() {
           )}
         </div>
       )}
-      {/* Header bar — logo is removed from the persistent header (it only
-          appears during the 15-minute brand flash takeover). Gym name stays
-          on the title but at a smaller size, so the workout info wins the
-          real estate and the name still reads. */}
+      {/* Header bar — small persistent coach logo + gym name on the title.
+          Was temporarily dropped on the Pi Zero 2 W to free real estate
+          for the workout text and reduce render churn. Pi 4 has plenty
+          of headroom; the logo is back. */}
       <div style={s.topBar}>
         <div style={s.topBarLeft}>
+          {brand?.logo_data && (
+            <img src={brand.logo_data} alt="" style={s.brandLogo} />
+          )}
           <h1 style={s.programTitle}>
             {brand?.gym_name ? `${brand.gym_name} — ` : ''}{program?.name || 'Workout'}
           </h1>
