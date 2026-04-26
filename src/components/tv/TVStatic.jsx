@@ -331,7 +331,10 @@ export default function TVStatic() {
 
     if (newStart > dpw) { newStart = 1; newWeek++; }
     if (newStart < 1) { newWeek--; newStart = Math.max(1, dpw - 1); }
-    if (newWeek < 1 || newWeek > tw) return;
+    // Hit the start of the program → clamp to Week 1 Day 1 (don't disappear).
+    if (newWeek < 1) { newWeek = 1; newStart = 1; }
+    // Past the end of the program → stay where we are.
+    if (newWeek > tw) return;
 
     setCurrentWeek(newWeek);
     setStartDay(newStart);
