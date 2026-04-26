@@ -191,11 +191,10 @@ export default function TVStatic() {
   // Full-screen brand takeover that fires every 15 min for 3s.
   // Doubles as burn-in mitigation (rearranges bright/dark pixels on schedule)
   // and reinforces the gym's identity for anyone walking by.
-  // Brand flash disabled on /tv/static: the Pi Zero 2 W can't afford the
-  // memory churn from animating a 60vw inline base64 logo, and the timing
-  // collided with Chromium's auto-restart cycle. Re-enable on Pi 4 by
-  // flipping FLASH_ENABLED back to true.
-  const FLASH_ENABLED = false;
+  // Was temporarily disabled on the Pi Zero 2 W due to memory pressure
+  // (couldn't afford the 60vw inline base64 logo animation). Re-enabled
+  // for Pi 4+ which has plenty of headroom.
+  const FLASH_ENABLED = true;
   const [showLogoFlash, setShowLogoFlash] = useState(false);
   useEffect(() => {
     if (!FLASH_ENABLED) return;
@@ -448,21 +447,22 @@ export default function TVStatic() {
         const serverLayout = data?.device?.layout || 'two_day';
         setLayout((prev) => (prev === serverLayout ? prev : serverLayout));
         // Pick up coach branding (logo / colors / gym name)
-        // Only keep brand fields we actually render here (gym name + colors).
-        // Drop logo_data — TVStatic no longer paints a logo (flash disabled,
-        // top bar already dropped), so holding the 113KB blob in React state
-        // is pure memory cost on the Pi Zero 2 W.
+        // logo_data is the base64 logo blob — needed for the 15-min brand
+        // flash takeover. Was previously dropped on the Pi Zero 2 W to save
+        // memory; the Pi 4 holds it without breaking a sweat.
         if (data?.brand) {
           const next = {
-            primary:  data.brand.primary  || null,
-            accent:   data.brand.accent   || null,
-            gym_name: data.brand.gym_name || null,
+            primary:   data.brand.primary   || null,
+            accent:    data.brand.accent    || null,
+            gym_name:  data.brand.gym_name  || null,
+            logo_data: data.brand.logo_data || null,
           };
           setBrand((prev) => {
             const same = prev
-              && prev.primary  === next.primary
-              && prev.accent   === next.accent
-              && prev.gym_name === next.gym_name;
+              && prev.primary   === next.primary
+              && prev.accent    === next.accent
+              && prev.gym_name  === next.gym_name
+              && prev.logo_data === next.logo_data;
             return same ? prev : next;
           });
         }
