@@ -232,7 +232,41 @@ const TREE = {
   }
 };
 
-const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, screen: currentScreen, onLoadTravel }, ref) => {
+// Build a compact text summary of the day's workout so the LLM can answer
+// "what am I doing today?" without the user having to type it.
+function summarizeWorkout(program, week, day) {
+  if (!program?.weeks) return null;
+  const w = program.weeks[(week ?? 1) - 1];
+  const d = w?.days?.[(day ?? 1) - 1];
+  if (!d?.blocks?.length) return null;
+
+  const lines = [];
+  lines.push(`Week ${week}, Day ${day}${d.name ? ` — ${d.name}` : ''}`);
+
+  for (const block of d.blocks) {
+    if (!block?.exercises?.length) continue;
+    const blockLabel = (block.type || 'block').replace(/_/g, ' ');
+    lines.push(`\n${blockLabel.toUpperCase()}:`);
+    for (const ex of block.exercises) {
+      if (!ex?.name) continue;
+      let setsCount;
+      if (typeof ex.sets === 'number') setsCount = ex.sets;
+      else if (Array.isArray(ex.sets))  setsCount = ex.sets.length;
+      else                              setsCount = ex.sets;
+
+      const spec =
+        ex.duration ? ex.duration
+        : (setsCount && ex.reps) ? `${setsCount}x${ex.reps}`
+        : (setsCount ? `${setsCount} sets` : '');
+      const pct = ex.percentage ? ` @ ${ex.percentage}%` : '';
+      const qual = ex.qualifier ? ` (${ex.qualifier})` : '';
+      lines.push(`  - ${ex.name}${spec ? ' ' + spec : ''}${pct}${qual}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, screen: currentScreen, onLoadTravel, program, currentWeek, currentDay }, ref) => {
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const isOpen = isControlled ? controlledOpen : internalOpen;
@@ -365,16 +399,18 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
     setInputText('');
 
     try {
+      const workoutSummary = summarizeWorkout(program, currentWeek, currentDay);
+
       const res = await fetch(`${CHAT_API_BASE}/api/embed-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: trimmed,
-          history: llmHistoryRef.current.slice(-12),  // last ~6 turns
+          history: llmHistoryRef.current.slice(-12),
           context: {
             source: 'workout_tracker',
             user_first_name: name,
-            // No gender/age intake on the tracker — endpoint defaults to Glen.
+            workout_summary: workoutSummary || undefined
           }
         })
       });
@@ -428,7 +464,7 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
     } finally {
       setIsAsking(false);
     }
-  }, [isAsking, name, CHAT_API_BASE]);
+  }, [isAsking, name, CHAT_API_BASE, program, currentWeek, currentDay]);
 
   useImperativeHandle(ref, () => ({
     getConversationSummary: () => ({
