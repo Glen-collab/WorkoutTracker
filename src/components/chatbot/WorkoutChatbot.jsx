@@ -242,9 +242,19 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
   const [topicsVisited, setTopicsVisited] = useState([]);
   const [activeVideo, setActiveVideo] = useState(null);
   const [scrollToIndex, setScrollToIndex] = useState(null);
+  // Free-text "Ask Glen or Ali" mode — proxies to bsa-chatbot's /api/embed-chat
+  const [inputText, setInputText] = useState('');
+  const [isAsking, setIsAsking] = useState(false);
+  // Conversation history sent to the LLM (free-text turns only).
+  const llmHistoryRef = useRef([]);
   const messagesEndRef = useRef(null);
   const scrollTargetRef = useRef(null);
   const initialized = useRef(false);
+
+  // Configurable so the WordPress wrapper can override if needed.
+  const CHAT_API_BASE =
+    (typeof window !== 'undefined' && window.gwtConfig?.chatApiBase) ||
+    'https://chat.bestrongagain.com';
 
   const name = (userName || 'there').split(' ')[0];
 
@@ -332,6 +342,93 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
         });
     }
   }, [formatMessage, onLoadTravel]);
+
+  // ---------------------------------------------------------------
+  // Free-text "Ask Glen or Ali anything" — proxy to bsa-chatbot
+  // ---------------------------------------------------------------
+  const askCoach = useCallback(async (text) => {
+    const trimmed = text.trim();
+    if (!trimmed || isAsking) return;
+
+    const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // Optimistically render the user's message + a typing placeholder
+    setMessages((prev) => {
+      setScrollToIndex(prev.length);
+      return [
+        ...prev,
+        { text: trimmed, isBot: false, timestamp: now },
+        { text: '…', isBot: true, timestamp: now, isTyping: true }
+      ];
+    });
+    setIsAsking(true);
+    setInputText('');
+
+    try {
+      const res = await fetch(`${CHAT_API_BASE}/api/embed-chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: trimmed,
+          history: llmHistoryRef.current.slice(-12),  // last ~6 turns
+          context: {
+            source: 'workout_tracker',
+            user_first_name: name,
+            // No gender/age intake on the tracker — endpoint defaults to Glen.
+          }
+        })
+      });
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        throw new Error(errText || `${res.status} ${res.statusText}`);
+      }
+
+      const data = await res.json();
+      const replyText = data.response || '(no response)';
+      const coach = data.coach || 'Glen';
+
+      // Append to the LLM history that we send back next turn for continuity
+      llmHistoryRef.current.push(
+        { role: 'user',      content: trimmed },
+        { role: 'assistant', content: replyText }
+      );
+
+      // Replace the typing placeholder with the actual response
+      setMessages((prev) => {
+        const out = [...prev];
+        for (let i = out.length - 1; i >= 0; i--) {
+          if (out[i].isTyping) {
+            out[i] = {
+              text: replyText,
+              isBot: true,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              coach
+            };
+            break;
+          }
+        }
+        return out;
+      });
+    } catch (err) {
+      setMessages((prev) => {
+        const out = [...prev];
+        for (let i = out.length - 1; i >= 0; i--) {
+          if (out[i].isTyping) {
+            out[i] = {
+              text: "I couldn't reach the coaches right now. Try one of the buttons above, or ask again in a minute.",
+              isBot: true,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            break;
+          }
+        }
+        return out;
+      });
+    } finally {
+      setIsAsking(false);
+    }
+  }, [isAsking, name, CHAT_API_BASE]);
 
   useImperativeHandle(ref, () => ({
     getConversationSummary: () => ({
@@ -462,15 +559,33 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
                 animation: 'fadeIn 0.3s ease-out',
               }}
             >
+              {msg.isBot && msg.coach && (
+                <div style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: 0.5,
+                  textTransform: 'uppercase',
+                  color: msg.coach === 'Ali' ? '#c9356b' : '#5a4a8f',
+                  marginBottom: 3,
+                  paddingLeft: 4,
+                }}>
+                  Coach {msg.coach}
+                </div>
+              )}
               <div style={{
                 padding: '10px 14px',
                 borderRadius: msg.isBot ? '14px 14px 14px 4px' : '14px 14px 4px 14px',
                 background: msg.isBot
-                  ? 'linear-gradient(135deg, #f0ecfc 0%, #e8e4f8 100%)'
+                  ? (msg.coach
+                      ? 'linear-gradient(135deg, #fff5e6 0%, #ffe9c9 100%)'
+                      : 'linear-gradient(135deg, #f0ecfc 0%, #e8e4f8 100%)')
                   : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 color: msg.isBot ? '#333' : '#fff',
                 fontSize: 13,
                 lineHeight: 1.5,
+                whiteSpace: 'pre-wrap',
+                fontStyle: msg.isTyping ? 'italic' : 'normal',
+                opacity: msg.isTyping ? 0.7 : 1,
               }}>
                 {msg.isBot && msg.text.includes('<') ? (
                   <div dangerouslySetInnerHTML={{ __html: msg.text }} />
@@ -580,6 +695,53 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
               {opt.label}
             </button>
           ))}
+        </div>
+
+        {/* Free-text "Ask Glen or Ali" — proxies to bsa-chatbot */}
+        <div style={{
+          padding: '8px 10px 10px',
+          borderTop: '1px solid #eee',
+          background: '#fafafa',
+          display: 'flex',
+          gap: 6,
+          flexShrink: 0,
+        }}>
+          <input
+            type="text"
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') askCoach(inputText); }}
+            placeholder="Ask Coach Glen or Ali anything…"
+            disabled={isAsking}
+            style={{
+              flex: 1,
+              padding: '8px 12px',
+              borderRadius: 18,
+              border: '1px solid #d1d1d6',
+              fontSize: 13,
+              outline: 'none',
+              fontFamily: 'inherit',
+              background: '#fff',
+            }}
+          />
+          <button
+            onClick={() => askCoach(inputText)}
+            disabled={isAsking || !inputText.trim()}
+            style={{
+              padding: '8px 14px',
+              borderRadius: 18,
+              border: 'none',
+              background: (isAsking || !inputText.trim())
+                ? '#ccc'
+                : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: '#fff',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: (isAsking || !inputText.trim()) ? 'default' : 'pointer',
+            }}
+          >
+            {isAsking ? '…' : 'Ask'}
+          </button>
         </div>
       </div>
     </>
