@@ -233,20 +233,29 @@ const TREE = {
 };
 
 // Build a compact text summary of the day's workout so the LLM can answer
-// "what am I doing today?" without the user having to type it.
+// "what am I doing today?" without the user having to type it. The program
+// loads per-day from the API — program.blocks IS the currently-loaded day's
+// workout (week/day are just position trackers).
 function summarizeWorkout(program, week, day) {
-  if (!program?.weeks) return null;
-  const w = program.weeks[(week ?? 1) - 1];
-  const d = w?.days?.[(day ?? 1) - 1];
-  if (!d?.blocks?.length) return null;
+  const blocks = program?.blocks;
+  if (!Array.isArray(blocks) || blocks.length === 0) return null;
 
   const lines = [];
-  lines.push(`Week ${week}, Day ${day}${d.name ? ` — ${d.name}` : ''}`);
+  const header = [`Week ${week ?? 1}, Day ${day ?? 1}`];
+  if (program?.name)            header.push(program.name);
+  else if (program?.workoutName) header.push(program.workoutName);
+  else if (program?.dayName)     header.push(program.dayName);
+  lines.push(header.join(' — '));
 
-  for (const block of d.blocks) {
+  for (const block of blocks) {
     if (!block?.exercises?.length) continue;
-    const blockLabel = (block.type || 'block').replace(/_/g, ' ');
-    lines.push(`\n${blockLabel.toUpperCase()}:`);
+    const blockLabel = (block.type || 'block').replace(/[_-]/g, ' ');
+    const extras = [];
+    if (block.circuitType) extras.push(block.circuitType.toUpperCase());
+    if (block.timeLimit)   extras.push(`${block.timeLimit} min`);
+    const blockHead = blockLabel.toUpperCase() + (extras.length ? ` (${extras.join(', ')})` : '');
+    lines.push(`\n${blockHead}:`);
+
     for (const ex of block.exercises) {
       if (!ex?.name) continue;
       let setsCount;
@@ -256,14 +265,15 @@ function summarizeWorkout(program, week, day) {
 
       const spec =
         ex.duration ? ex.duration
+        : ex.distance ? ex.distance
         : (setsCount && ex.reps) ? `${setsCount}x${ex.reps}`
         : (setsCount ? `${setsCount} sets` : '');
-      const pct = ex.percentage ? ` @ ${ex.percentage}%` : '';
-      const qual = ex.qualifier ? ` (${ex.qualifier})` : '';
+      const pct  = ex.percentage ? ` @ ${ex.percentage}%` : '';
+      const qual = ex.qualifier  ? ` (${ex.qualifier})`   : '';
       lines.push(`  - ${ex.name}${spec ? ' ' + spec : ''}${pct}${qual}`);
     }
   }
-  return lines.join('\n');
+  return lines.length > 1 ? lines.join('\n') : null;
 }
 
 const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, screen: currentScreen, onLoadTravel, program, currentWeek, currentDay }, ref) => {
