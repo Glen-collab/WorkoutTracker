@@ -761,7 +761,18 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') askCoach(inputText); }}
-            placeholder="Ask Coach Glen or Ali anything…"
+            placeholder={(() => {
+              const cc = program?.coachConfig;
+              const primary = cc?.coach_voice_name?.trim();
+              const secondary = cc?.secondary_coach_name?.trim();
+              if (primary) {
+                if (cc.single_coach === false && secondary) {
+                  return `Ask Coach ${primary} or ${secondary} anything…`;
+                }
+                return `Ask Coach ${primary} anything…`;
+              }
+              return 'Ask Coach Glen or Ali anything…';
+            })()}
             disabled={isAsking}
             style={{
               flex: 1,
