@@ -281,6 +281,18 @@ export default function App() {
             }
           }
         } catch { /* fall back to bundled videos silently */ }
+
+        // Fetch the coach's chatbot voice config so the tracker chatbot
+        // speaks as THEIR coach (white-label). Falls back to default Glen
+        // voice silently if there's no coach_id or the fetch fails.
+        if (prog.coachId) {
+          try {
+            const apiBase = window.gwtConfig?.platformApiBase || 'https://app.bestrongagain.com/api';
+            const r = await fetch(`${apiBase}/coaches/chatbot-config/${prog.coachId}`);
+            if (r.ok) prog.coachConfig = await r.json();
+          } catch { /* default voice */ }
+        }
+
         setProgram(prog);
 
         if (result.data.userPosition) {
