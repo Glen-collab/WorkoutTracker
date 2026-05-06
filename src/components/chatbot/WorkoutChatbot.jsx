@@ -411,6 +411,7 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
     try {
       const workoutSummary = summarizeWorkout(program, currentWeek, currentDay);
       const coachConfig    = program?.coachConfig || undefined;
+      const programName    = program?.name || program?.program_name || undefined;
 
       const res = await fetch(`${CHAT_API_BASE}/api/embed-chat`, {
         method: 'POST',
@@ -422,6 +423,7 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
             source: 'workout_tracker',
             user_first_name: name,
             workout_summary: workoutSummary || undefined,
+            program_name: programName,
             coach_config: coachConfig
           }
         })
