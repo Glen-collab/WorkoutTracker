@@ -14,15 +14,15 @@ const TREE = {
     ]
   },
   access_help: {
-    message: "It's simple! 1) If you're new, enter your name, email, and access code from your trainer. 2) If you're returning, just enter your email and code. 3) Optionally enter your 1RM values so your trainer can calculate percentages for you.",
+    message: "It's simple! 1) If you're new, enter your name, email, and the access code your coach gave you. 2) If you're returning, just enter your email and code. 3) Optionally enter your 1RM values so your coach can calculate percentages for you.",
     options: [
-      { label: "What's an access code?", next: "no_code" },
+      { label: "I don't have an access code", next: "no_code" },
       { label: "What are 1RM values?", next: "one_rm_help" },
       { label: "Thanks!", next: "access_entry" }
     ]
   },
   no_code: {
-    message: "Your access code is a unique code your trainer gives you after building your program. It looks like XXXXX-XXXXX. If you don't have one, ask your trainer to create a program for you in the Workout Builder!",
+    message: "No problem! Your coach will give you an access code once they build your program. In the meantime, want to test-drive the app? Use code FREE with any email and you'll load a free bodyweight starter workout — no equipment needed. Coach Glen and Ali will help you out as you go!",
     options: [
       { label: "Got it, thanks!", next: "access_entry" }
     ]
