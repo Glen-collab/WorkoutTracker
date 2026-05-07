@@ -22,7 +22,7 @@ const TREE = {
     ]
   },
   no_code: {
-    message: "No problem! Your coach will give you an access code once they build your program. In the meantime, want to test-drive the app? Use code FREE with any email and you'll load a free bodyweight starter workout — no equipment needed. Coach Glen and Ali will help you out as you go!",
+    message: "No problem! Your coach will give you a 4-digit access code once they build your program. In the meantime, want to test-drive the app? Use code 1234 with any email and you'll load a free bodyweight starter workout — no equipment needed. Coach Glen and Ali will help you out as you go!",
     options: [
       { label: "Got it, thanks!", next: "access_entry" }
     ]
