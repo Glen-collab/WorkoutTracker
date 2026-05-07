@@ -771,7 +771,7 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
                 }
                 return `Ask Coach ${primary} anything…`;
               }
-              return 'Ask Coach Glen or Ali anything…';
+              return 'Ask your Coach anything…';
             })()}
             disabled={isAsking}
             style={{
