@@ -497,6 +497,17 @@ export default function TVStatic() {
         // Keep layout in sync with what the coach picked on their dashboard
         const serverLayout = data?.device?.layout || 'two_day';
         setLayout((prev) => (prev === serverLayout ? prev : serverLayout));
+        // Phone-as-remote: adopt whatever week / start_day the coach set
+        // from the GymTV dashboard scrollers. Only updates local state when
+        // the server values differ — guards against bouncing the view if a
+        // user is mid-tap on the TV's keyboard/gamepad.
+        const v = data?.device?.view;
+        if (v && Number.isInteger(v.week) && v.week >= 1) {
+          setCurrentWeek((prev) => (prev === v.week ? prev : v.week));
+        }
+        if (v && Number.isInteger(v.start_day) && v.start_day >= 1) {
+          setStartDay((prev) => (prev === v.start_day ? prev : v.start_day));
+        }
         // Pick up coach branding (logo / colors / gym name)
         // logo_data is the base64 logo blob — needed for the 15-min brand
         // flash takeover. Was previously dropped on the Pi Zero 2 W to save
