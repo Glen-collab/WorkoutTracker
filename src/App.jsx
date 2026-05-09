@@ -248,6 +248,25 @@ export default function App() {
     const u = directData?.user || userRef.current;
     const m = directData?.maxes || maxesRef.current;
     const p = directData?.profile || profileRef.current;
+    // "View Workout" deep links from the GymTV remote-control page set
+    // ?week=N&day=M so the tracker jumps straight to that point. One-shot:
+    // strip the params after consuming so navigating between days doesn't
+    // keep yanking the user back to the original deep-linked position.
+    if (requestedWeek === undefined && requestedDay === undefined && typeof window !== 'undefined') {
+      const usp = new URLSearchParams(window.location.search);
+      const urlWeek = parseInt(usp.get('week'));
+      const urlDay  = parseInt(usp.get('day'));
+      if (Number.isFinite(urlWeek) && urlWeek > 0) requestedWeek = urlWeek;
+      if (Number.isFinite(urlDay)  && urlDay  > 0) requestedDay  = urlDay;
+      if (requestedWeek || requestedDay) {
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('week');
+          url.searchParams.delete('day');
+          window.history.replaceState({}, '', url.toString());
+        } catch { /* noop */ }
+      }
+    }
     try {
       const params = {
         email: u.email,
