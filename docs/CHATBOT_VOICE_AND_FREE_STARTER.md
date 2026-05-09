@@ -123,3 +123,13 @@ PY"
 |---------------------------------------------------------|---------------------------------------------------------------------|
 | `src/components/chatbot/WorkoutChatbot.jsx`             | Dynamic placeholder, dialog tree (`access_help`, `no_code` nodes)   |
 | `src/App.jsx`                                           | Fetches `coachConfig` from `/api/coaches/chatbot-config/:coachId` and attaches to `program` before setting it |
+
+---
+
+## Related docs
+
+- **[`react-trainer-dashboard/docs/AI_COACH_SUMMARY.md`](../../react-trainer-dashboard/docs/AI_COACH_SUMMARY.md)** — same coach-voice resolution. Both this tracker's chatbot and the dashboard's AI summaries call `GET /api/coaches/chatbot-config/<coach_id>` and forward `coach_config` into `bsa-chatbot`'s `/api/embed-chat`. Keep them in sync if the schema changes.
+- **[`bsa-coach-platform/docs/SMART_IMPORT.md`](../../bsa-coach-platform/docs/SMART_IMPORT.md)** — many programs the tracker loads were built via Smart Import. The starter program at code 1234 was hand-rolled (not Smart-Imported) but uses the same exercise manifest.
+- **[`bsa-coach-platform/docs/GYM_ENTITY.md`](../../bsa-coach-platform/docs/GYM_ENTITY.md)** — coach transfer flips the chatbot voice for affected clients on their next program load (`coachConfig` re-resolves to the new coach).
+- **[`bsa-coach-platform/docs/VIDEO_OVERRIDE_SYSTEM.md`](../../bsa-coach-platform/docs/VIDEO_OVERRIDE_SYSTEM.md)** — explains how `/api/media/tracker-overrides` decides which exercise videos this tracker shows, including the gym pool layer.
+- **[`bsa-coach-platform/docs/ARCHITECTURE.md`](../../bsa-coach-platform/docs/ARCHITECTURE.md)** — full BSA ecosystem map.
