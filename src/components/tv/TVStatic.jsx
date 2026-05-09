@@ -388,6 +388,44 @@ export default function TVStatic() {
     return () => window.removeEventListener('keydown', onKey);
   }, [program, navigateWeek, navigateDays]);
 
+  // USB gamepad navigation — any standard USB pad (NES/SNES retro USB,
+  // Xbox/PS-style, generic D-pad) drives the same nav as the keyboard
+  // arrows. Polls 60Hz via rAF and edge-detects so a held button doesn't
+  // spam navigate calls. Standard mapping covers >95% of modern USB pads;
+  // for non-standard pads we fall back to axes.
+  //   D-pad Left/Right  = prev/next 2 days
+  //   D-pad Up/Down     = prev/next week
+  useEffect(() => {
+    if (!program) return;
+    let rafId = 0;
+    const prev = new Map(); // gamepad index -> {l,r,u,d}
+    const AXIS_THRESHOLD = 0.5;
+
+    const tick = () => {
+      const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+      for (const gp of pads) {
+        if (!gp) continue;
+        // Standard layout: button 14=Left, 15=Right, 12=Up, 13=Down.
+        // Non-standard pads typically expose D-pad as axes 0 (X) / 1 (Y).
+        const std = gp.mapping === 'standard';
+        const left  = std ? !!gp.buttons[14]?.pressed : (gp.axes[0] ?? 0) < -AXIS_THRESHOLD;
+        const right = std ? !!gp.buttons[15]?.pressed : (gp.axes[0] ?? 0) >  AXIS_THRESHOLD;
+        const up    = std ? !!gp.buttons[12]?.pressed : (gp.axes[1] ?? 0) < -AXIS_THRESHOLD;
+        const down  = std ? !!gp.buttons[13]?.pressed : (gp.axes[1] ?? 0) >  AXIS_THRESHOLD;
+
+        const last = prev.get(gp.index) || { l: false, r: false, u: false, d: false };
+        if (left  && !last.l) navigateDays(-1);
+        if (right && !last.r) navigateDays(1);
+        if (up    && !last.u) navigateWeek(-1);
+        if (down  && !last.d) navigateWeek(1);
+        prev.set(gp.index, { l: left, r: right, u: up, d: down });
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [program, navigateWeek, navigateDays]);
+
   // Auto-load workout from URL param ?code=XXXX (Pi boots with a fixed code)
   // OR ?pi=<coach_user_id> (Pi boots tied to a coach — page polls the coach's
   // "active program" and switches when they change it from their Gym TV page).
