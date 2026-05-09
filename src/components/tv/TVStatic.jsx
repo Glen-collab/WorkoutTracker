@@ -498,51 +498,16 @@ export default function TVStatic() {
         const serverLayout = data?.device?.layout || 'two_day';
         setLayout((prev) => (prev === serverLayout ? prev : serverLayout));
         // Phone-as-remote: adopt whatever week / start_day the coach set
-        // from the GymTV dashboard scrollers. Only updates local state +
-        // fetches new blocks when the server values differ from what's
-        // already showing.
+        // from the GymTV dashboard scrollers. The block-fetch happens in
+        // a separate effect that watches currentWeek+startDay+program+code,
+        // so we just need to set state here — the fetcher handles loading
+        // missing days regardless of how the position changed.
         const v = data?.device?.view;
-        if (
-          v && Number.isInteger(v.week) && v.week >= 1
-          && Number.isInteger(v.start_day) && v.start_day >= 1
-          && (v.week !== currentWeek || v.start_day !== startDay)
-        ) {
-          setCurrentWeek(v.week);
-          setStartDay(v.start_day);
-          // Lazy-load blocks for the target position. handleLoad only
-          // pre-fetches days 1-2; jumping to day 3+ via the remote means
-          // those keys aren't in allBlocks yet → "No workout data" until
-          // we fetch them. Mirrors the pattern in navigateDays().
-          const dpw = data?.program?.daysPerWeek
-            || data?.active?.days_per_week
-            || 6;
-          const targetDays = [v.start_day];
-          if (v.start_day + 1 <= dpw) targetDays.push(v.start_day + 1);
-          const missing = targetDays.filter((d) => !allBlocks[`${v.week}-${d}`]);
-          if (missing.length > 0) {
-            const codeForFetch = code || data?.active?.access_code;
-            if (codeForFetch) {
-              Promise.all(missing.map((d) =>
-                fetch(API_BASE + 'load-program.php', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    code: codeForFetch,
-                    email: 'tv-display@bestrongagain.com',
-                    requested_week: v.week,
-                    requested_day: d,
-                  }),
-                }).then((r) => r.json()).then((dat) => ({ d, blocks: dat?.data?.program?.blocks })).catch(() => null)
-              )).then((results) => {
-                if (cancelled) return;
-                const next = {};
-                results.forEach((r) => { if (r?.blocks) next[`${v.week}-${r.d}`] = r.blocks; });
-                if (Object.keys(next).length) {
-                  setAllBlocks((prev) => ({ ...prev, ...next }));
-                }
-              });
-            }
-          }
+        if (v && Number.isInteger(v.week) && v.week >= 1) {
+          setCurrentWeek((prev) => (prev === v.week ? prev : v.week));
+        }
+        if (v && Number.isInteger(v.start_day) && v.start_day >= 1) {
+          setStartDay((prev) => (prev === v.start_day ? prev : v.start_day));
         }
         // Pick up coach branding (logo / colors / gym name)
         // logo_data is the base64 logo blob — needed for the 15-min brand
@@ -589,6 +554,43 @@ export default function TVStatic() {
     const iv = setInterval(checkConfig, 60_000);
     return () => { cancelled = true; clearInterval(iv); };
   }, [program, handleLoad, code]);
+
+  // Whenever the visible position (week + startDay) changes, make sure the
+  // corresponding block keys are in allBlocks. handleLoad only pre-fetches
+  // days 1-2; navigateDays/navigateWeek fetch on user interaction; this
+  // effect handles all OTHER position changes — phone-remote view-sync,
+  // future deep-link routes, anything that just calls setCurrentWeek/
+  // setStartDay without a side fetch. Idempotent: skips if blocks are
+  // already loaded.
+  useEffect(() => {
+    if (!program || !code) return;
+    const dpw = program?.daysPerWeek || 6;
+    const targetDays = [startDay];
+    if (startDay + 1 <= dpw) targetDays.push(startDay + 1);
+    const missing = targetDays.filter((d) => !allBlocks[`${currentWeek}-${d}`]);
+    if (missing.length === 0) return;
+    let cancelled = false;
+    Promise.all(missing.map((d) =>
+      fetch(API_BASE + 'load-program.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code,
+          email: 'tv-display@bestrongagain.com',
+          requested_week: currentWeek,
+          requested_day: d,
+        }),
+      }).then((r) => r.json()).then((dat) => ({ d, blocks: dat?.data?.program?.blocks })).catch(() => null)
+    )).then((results) => {
+      if (cancelled) return;
+      const next = {};
+      results.forEach((r) => { if (r?.blocks) next[`${currentWeek}-${r.d}`] = r.blocks; });
+      if (Object.keys(next).length) {
+        setAllBlocks((prev) => ({ ...prev, ...next }));
+      }
+    });
+    return () => { cancelled = true; };
+  }, [currentWeek, startDay, program, code, allBlocks]);
 
   if (!program) {
     // If we're in Pi-controlled mode (?pi=), show an idle screen instead of the
