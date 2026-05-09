@@ -184,6 +184,12 @@ export default function TVStatic() {
   // TV layout: 'two_day' (default), 'wod' (single fullwidth), 'wod_scaled' (Rx + Scaled)
   const [layout, setLayout] = useState('two_day');
 
+  // Per-device display mode (workout vs youth-leaderboard scoreboard).
+  // When 'leaderboard', this Pi renders an iframe of
+  // leaderboard.bestrongagain.com/tv pre-locked to the chosen metric/gender/group;
+  // every other Pi at the gym stays on its workout view independently.
+  const [display, setDisplay] = useState({ mode: 'workout', metric_id: null, gender: null, group: null });
+
   // Coach branding — gym_name, logo_data (base64), primary + accent hex colors.
   // Fetched from /tv-config; falls back to BSA defaults when any field is null.
   const [brand, setBrand] = useState(null);
@@ -497,6 +503,23 @@ export default function TVStatic() {
         // Keep layout in sync with what the coach picked on their dashboard
         const serverLayout = data?.device?.layout || 'two_day';
         setLayout((prev) => (prev === serverLayout ? prev : serverLayout));
+        // Display-mode toggle (workout vs leaderboard scoreboard).
+        const disp = data?.device?.display;
+        if (disp && (disp.mode === 'workout' || disp.mode === 'leaderboard')) {
+          setDisplay((prev) => {
+            const same = prev
+              && prev.mode      === disp.mode
+              && prev.metric_id === (disp.metric_id ?? null)
+              && prev.gender    === (disp.gender ?? null)
+              && prev.group     === (disp.group ?? null);
+            return same ? prev : {
+              mode: disp.mode,
+              metric_id: disp.metric_id ?? null,
+              gender:    disp.gender ?? null,
+              group:     disp.group ?? null,
+            };
+          });
+        }
         // Phone-as-remote: adopt whatever week / start_day the coach set
         // from the GymTV dashboard scrollers. The block-fetch happens in
         // a separate effect that watches currentWeek+startDay+program+code,
@@ -591,6 +614,30 @@ export default function TVStatic() {
     });
     return () => { cancelled = true; };
   }, [currentWeek, startDay, program, code, allBlocks]);
+
+  // Leaderboard scoreboard mode — coach flipped this Pi to the youth-
+  // leaderboard scoreboard via the GymTV remote control. Drop in a
+  // fullscreen iframe of leaderboard.bestrongagain.com/tv with the
+  // chosen metric/gender/group locked in. When mode flips back to
+  // 'workout', the iframe is unmounted and the existing workout view
+  // takes over again. No navigation of Chromium itself, so the kiosk
+  // respawn loop / agent / poll all keep working unchanged.
+  if (display.mode === 'leaderboard') {
+    const lbParams = new URLSearchParams();
+    if (display.metric_id) lbParams.set('metric_id', display.metric_id);
+    if (display.gender)    lbParams.set('gender',    display.gender);
+    if (display.group)     lbParams.set('group',     display.group);
+    if (display.metric_id) lbParams.set('rotate',    'off'); // lock when coach pinned a metric
+    const lbUrl = `https://leaderboard.bestrongagain.com/tv${lbParams.toString() ? '?' + lbParams.toString() : ''}`;
+    return (
+      <iframe
+        src={lbUrl}
+        title="BSA Leaderboard"
+        style={{ position: 'fixed', inset: 0, width: '100vw', height: '100vh', border: 0, background: '#000' }}
+        allow="autoplay; fullscreen"
+      />
+    );
+  }
 
   if (!program) {
     // If we're in Pi-controlled mode (?pi=), show an idle screen instead of the
