@@ -2,6 +2,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import useTrackerState from './hooks/useTrackerState';
 import useTrackerAPI from './hooks/useTrackerAPI';
 import AccessScreen from './components/access/AccessScreen';
+import KioskPickerScreen from './components/access/KioskPickerScreen';
 import ConsentScreen from './components/consent/ConsentScreen';
 import QuestionnaireScreen from './components/consent/QuestionnaireScreen';
 import ProgramView from './components/program/ProgramView';
@@ -27,6 +28,12 @@ const isStaticTV = window.location.pathname === '/tv/static';
 const isKioskMode = window.location.pathname === '/kiosk';
 const isCastMode = window.location.pathname === '/cast';
 const isMagicMode = window.location.pathname === '/magic';
+// Kiosk-station mode: a tablet at the gym where multiple members log into
+// the same workout in sequence. Triggered by ?kiosk=1 — replaces the access
+// screen with a member-picker dropdown, skips consent/questionnaire (the
+// coach handles those at signup), and after a workout is logged returns to
+// the picker for the next member instead of saving credentials anywhere.
+const isKioskStation = new URLSearchParams(window.location.search).get('kiosk') === '1';
 
 const WS_BASE = 'wss://app.bestrongagain.com/ws/';
 const tvRoomId = new URLSearchParams(window.location.search).get('tv');
@@ -654,13 +661,17 @@ export default function App() {
     };
     setUser(userData);
 
-    // Save credentials to localStorage for quick login next time
-    try {
-      localStorage.setItem('gwt_saved_credentials', JSON.stringify({
-        email: formData.email,
-        code: formData.code,
-      }));
-    } catch { /* ignore */ }
+    // Save credentials to localStorage for quick login next time — but NEVER
+    // in kiosk-station mode, since the tablet is shared by multiple members
+    // who'd each see the previous user's saved creds otherwise.
+    if (!isKioskStation) {
+      try {
+        localStorage.setItem('gwt_saved_credentials', JSON.stringify({
+          email: formData.email,
+          code: formData.code,
+        }));
+      } catch { /* ignore */ }
+    }
 
     const newMaxes = {
       bench: formData.benchMax || 0,
@@ -679,13 +690,24 @@ export default function App() {
       });
     }
 
-    if (isReturningUser) {
-      // Skip consent, go straight to loading
-      // Pass data directly to avoid race condition with refs not yet synced
+    if (isReturningUser || isKioskStation) {
+      // Skip consent, go straight to loading. Kiosk-station also bypasses
+      // consent — the gym's coach handles consent at member signup, not on
+      // the tablet for every workout.
       const profileData = (formData.height || formData.weight || formData.age || formData.gender)
         ? { gender: formData.gender || '', height: formData.height || '', weight: formData.weight || '', age: formData.age || '' }
         : profileRef.current;
-      handleLoadProgramFromAPI(undefined, undefined, { user: userData, maxes: newMaxes, profile: profileData });
+      // Pull week/day from URL in kiosk-station mode so the loaded program
+      // jumps directly to the workout the TV is showing.
+      let stationWeek, stationDay;
+      if (isKioskStation) {
+        const usp = new URLSearchParams(window.location.search);
+        const w = parseInt(usp.get('week'));
+        const d = parseInt(usp.get('day'));
+        if (Number.isFinite(w) && w > 0) stationWeek = w;
+        if (Number.isFinite(d) && d > 0) stationDay = d;
+      }
+      handleLoadProgramFromAPI(stationWeek, stationDay, { user: userData, maxes: newMaxes, profile: profileData });
     } else {
       setScreen('consent');
     }
@@ -1102,7 +1124,9 @@ export default function App() {
   return (
     <div style={containerStyle}>
       {screen === 'access' && (
-        <AccessScreen onLoadProgram={handleLoadProgram} />
+        isKioskStation
+          ? <KioskPickerScreen onPick={handleLoadProgram} />
+          : <AccessScreen onLoadProgram={handleLoadProgram} />
       )}
       {screen === 'consent' && (
         <ConsentScreen
@@ -1225,6 +1249,16 @@ export default function App() {
         isOpen={showCongratsModal}
         onClose={() => {
           setShowCongratsModal(false);
+          // Kiosk-station tablet: bounce back to the member picker so the
+          // next person can log into the same workout. Skip weekly-summary /
+          // game flow — those are progression features that belong to a
+          // single user's tracker, not a shared tablet.
+          if (isKioskStation) {
+            setTrackingData({});
+            setRecommendations({});
+            logout();
+            return;
+          }
           // If last day of week, show weekly summary before game prompt
           if (isLastDayOfWeek) {
             setShowWeeklySummary(true);
