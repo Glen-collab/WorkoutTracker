@@ -254,17 +254,20 @@ export default function ExerciseCard({
   // Also apply exercise defaults for any missing fields (safety net)
   const normalizedEx = (() => {
     const ex = applyExerciseDefaults({ ...exercise });
-    if (Array.isArray(ex.sets) && ex.sets.length > 0 && typeof ex.sets[0] === 'object' && ex.sets[0]?.percentage != null) {
-      // Builder format: sets are objects with percentage/reps
-      ex.percentages = ex.sets.map(s => s.percentage);
-      ex.repsPerSet = ex.sets.map(s => s.reps);
-      // Preserve drop/strip set data
-      ex.dropPercentages = ex.sets.map(s => s.dropPercentage);
-      ex.dropRepsPerSet = ex.sets.map(s => s.dropReps);
-      ex.stripPercentages = ex.sets.map(s => s.stripPercentage);
-      ex.stripRepsPerSet = ex.sets.map(s => s.stripReps);
-      ex.isPercentageBased = true;
-      // Keep sets count as number
+    if (Array.isArray(ex.sets) && ex.sets.length > 0 && typeof ex.sets[0] === 'object') {
+      // Builder format: sets are objects per set. Could be percentage-driven
+      // (1RM-based) or bodyweight/manual-weight (just reps per set). Either
+      // way we flatten into repsPerSet and a numeric sets count so the rest
+      // of the renderer doesn't have to know about the array shape.
+      ex.repsPerSet = ex.sets.map(s => s?.reps);
+      if (ex.sets[0]?.percentage != null) {
+        ex.percentages = ex.sets.map(s => s.percentage);
+        ex.dropPercentages = ex.sets.map(s => s.dropPercentage);
+        ex.dropRepsPerSet = ex.sets.map(s => s.dropReps);
+        ex.stripPercentages = ex.sets.map(s => s.stripPercentage);
+        ex.stripRepsPerSet = ex.sets.map(s => s.stripReps);
+        ex.isPercentageBased = true;
+      }
       ex.setsCount = ex.sets.length;
       ex.sets = ex.sets.length;
     }
