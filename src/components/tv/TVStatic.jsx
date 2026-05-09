@@ -498,15 +498,51 @@ export default function TVStatic() {
         const serverLayout = data?.device?.layout || 'two_day';
         setLayout((prev) => (prev === serverLayout ? prev : serverLayout));
         // Phone-as-remote: adopt whatever week / start_day the coach set
-        // from the GymTV dashboard scrollers. Only updates local state when
-        // the server values differ — guards against bouncing the view if a
-        // user is mid-tap on the TV's keyboard/gamepad.
+        // from the GymTV dashboard scrollers. Only updates local state +
+        // fetches new blocks when the server values differ from what's
+        // already showing.
         const v = data?.device?.view;
-        if (v && Number.isInteger(v.week) && v.week >= 1) {
-          setCurrentWeek((prev) => (prev === v.week ? prev : v.week));
-        }
-        if (v && Number.isInteger(v.start_day) && v.start_day >= 1) {
-          setStartDay((prev) => (prev === v.start_day ? prev : v.start_day));
+        if (
+          v && Number.isInteger(v.week) && v.week >= 1
+          && Number.isInteger(v.start_day) && v.start_day >= 1
+          && (v.week !== currentWeek || v.start_day !== startDay)
+        ) {
+          setCurrentWeek(v.week);
+          setStartDay(v.start_day);
+          // Lazy-load blocks for the target position. handleLoad only
+          // pre-fetches days 1-2; jumping to day 3+ via the remote means
+          // those keys aren't in allBlocks yet → "No workout data" until
+          // we fetch them. Mirrors the pattern in navigateDays().
+          const dpw = data?.program?.daysPerWeek
+            || data?.active?.days_per_week
+            || 6;
+          const targetDays = [v.start_day];
+          if (v.start_day + 1 <= dpw) targetDays.push(v.start_day + 1);
+          const missing = targetDays.filter((d) => !allBlocks[`${v.week}-${d}`]);
+          if (missing.length > 0) {
+            const codeForFetch = code || data?.active?.access_code;
+            if (codeForFetch) {
+              Promise.all(missing.map((d) =>
+                fetch(API_BASE + 'load-program.php', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    code: codeForFetch,
+                    email: 'tv-display@bestrongagain.com',
+                    requested_week: v.week,
+                    requested_day: d,
+                  }),
+                }).then((r) => r.json()).then((dat) => ({ d, blocks: dat?.data?.program?.blocks })).catch(() => null)
+              )).then((results) => {
+                if (cancelled) return;
+                const next = {};
+                results.forEach((r) => { if (r?.blocks) next[`${v.week}-${r.d}`] = r.blocks; });
+                if (Object.keys(next).length) {
+                  setAllBlocks((prev) => ({ ...prev, ...next }));
+                }
+              });
+            }
+          }
         }
         // Pick up coach branding (logo / colors / gym name)
         // logo_data is the base64 logo blob — needed for the 15-min brand
