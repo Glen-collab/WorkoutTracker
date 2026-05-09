@@ -808,7 +808,7 @@ export default function ExerciseCard({
     return (
       <>
         <div style={s.targetText}>
-          {sets} sets x {ex.reps || '?'} reps
+          {sets} sets x {ex.reps || ex.repsPerSet?.[0] || '?'} reps
         </div>
         {ex.weight && <div style={s.detailRow}>Weight: {ex.weight}{ex.qualifier ? ` ${ex.qualifier}` : ''}</div>}
         {Array.from({ length: sets }).map((_, si) => {
@@ -1119,10 +1119,14 @@ export default function ExerciseCard({
 
   // Warmup/Cooldown/Mobility/Core: foam rolling, stretches, bird dogs, crunches - editable inputs
   const renderWarmup = () => {
-    const hasSets = ex.sets && (typeof ex.sets === 'number' ? ex.sets > 0 : true);
-    const hasReps = ex.reps;
+    // Some exercises (Inchworm, etc.) ship with ex.sets as an object — use
+    // the normalized number for any string interpolation. ex.reps may also
+    // be null with the real value living in ex.repsPerSet[0] (matches TV).
+    const setsCount = typeof ex.sets === 'number' ? ex.sets : (ex.setsCount || parseInt(ex.sets) || 1);
+    const repsValue = ex.reps || ex.repsPerSet?.[0];
+    const hasSets = !!ex.sets || !!ex.setsCount;
+    const hasReps = !!repsValue;
     const hasDuration = ex.duration;
-    const setsCount = typeof ex.sets === 'number' ? ex.sets : 1;
     const dUnit = getUnitLabel(ex.durationUnit, 'sec');
 
     return (
@@ -1148,7 +1152,7 @@ export default function ExerciseCard({
                 <span style={{ fontSize: '13px', color: '#666' }}>Reps:</span>
                 <input
                   type="number"
-                  placeholder={String(ex.reps).replace(/[^\d]/g, '') || '10'}
+                  placeholder={String(repsValue).replace(/[^\d]/g, '') || '10'}
                   value={getTrack(0, 'reps') || ''}
                   onChange={(e) => onUpdateTracking(blockIndex, exIndex, 0, 'reps', e.target.value)}
                   style={{ width: '50px', padding: '6px 8px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', textAlign: 'center', ...lockStyle }}
@@ -1164,7 +1168,7 @@ export default function ExerciseCard({
             )}
           </div>
           <div style={{ fontSize: '12px', color: '#999' }}>
-            Target: {ex.sets ? `${ex.sets} sets` : ''} {ex.reps ? `× ${ex.reps}` : ''} {hasDuration && !hasReps ? `× ${formatWithUnit(ex.duration, dUnit)}` : ''}
+            Target: {hasSets ? `${setsCount} sets` : ''} {hasReps ? `× ${repsValue}` : ''} {hasDuration && !hasReps ? `× ${formatWithUnit(ex.duration, dUnit)}` : ''}
           </div>
         </div>
         {ex.notes && <div style={s.notesCard}>{ex.notes}</div>}
