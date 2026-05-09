@@ -321,12 +321,18 @@ export default function App() {
 
         setProgram(prog);
 
+        // Resolve the position to land at: explicitly-requested week/day
+        // wins (URL deep links, kiosk-station "view this exact day on the
+        // TV"); otherwise fall back to the user's saved position; finally
+        // default to 1/1 for a fresh program. The previous code only
+        // applied this when no week/day was requested, which silently
+        // ignored ?week=&day= URL params for users with a saved position.
+        const finalWeek = requestedWeek || result.data.userPosition?.currentWeek || 1;
+        const finalDay  = requestedDay  || result.data.userPosition?.currentDay  || 1;
+        setCurrentWeek(finalWeek);
+        setCurrentDay(finalDay);
+
         if (result.data.userPosition) {
-          // Only set position from DB on initial load (no explicit requested day)
-          if (!requestedWeek && !requestedDay) {
-            setCurrentWeek(result.data.userPosition.currentWeek || 1);
-            setCurrentDay(result.data.userPosition.currentDay || 1);
-          }
           // Auto-fill 1RM from database if user didn't provide them
           const pos = result.data.userPosition;
           setMaxes(prev => ({
@@ -1178,8 +1184,10 @@ export default function App() {
         />
       )}
 
-      {/* Floating chatbot on access and program screens */}
-      {(screen === 'access' || screen === 'program') && (
+      {/* Floating chatbot on access and program screens — but NOT in
+          kiosk-station mode where the tablet is shared and a chatbot
+          tied to the previous member would feel like a privacy leak. */}
+      {!isKioskStation && (screen === 'access' || screen === 'program') && (
         <WorkoutChatbot
           ref={chatbotRef}
           userName={user?.name || 'there'}
@@ -1190,8 +1198,9 @@ export default function App() {
           currentDay={currentDay}
         />
       )}
-      {/* Friends chat only inside the workout — not the login screen */}
-      {screen === 'program' && (
+      {/* Friends chat only inside the workout — not the login screen.
+          Hidden in kiosk-station for the same shared-device privacy reason. */}
+      {!isKioskStation && screen === 'program' && (
         <>
           <FriendChat />
           <CastStatusPillConnector />
