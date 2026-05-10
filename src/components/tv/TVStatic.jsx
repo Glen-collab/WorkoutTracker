@@ -629,7 +629,10 @@ export default function TVStatic() {
     // to "show everyone" instead of defaulting to BOYS.
     if (display.gender)    lbParams.set('gender',    display.gender === 'A' ? 'all' : display.gender);
     if (display.group)     lbParams.set('group',     display.group);
-    if (display.metric_id) lbParams.set('rotate',    'off'); // lock when coach pinned a metric
+    // Only freeze rotation when BOTH metric and gender are locked. With a
+    // locked metric but auto-gender, TVMode still flips Boys↔Girls every
+    // cycle so the coach sees both at the chosen metric.
+    if (display.metric_id && display.gender) lbParams.set('rotate', 'off');
     const lbUrl = `https://leaderboard.bestrongagain.com/tv${lbParams.toString() ? '?' + lbParams.toString() : ''}`;
     return (
       <iframe
