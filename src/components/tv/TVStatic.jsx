@@ -625,7 +625,9 @@ export default function TVStatic() {
   if (display.mode === 'leaderboard') {
     const lbParams = new URLSearchParams();
     if (display.metric_id) lbParams.set('metric_id', display.metric_id);
-    if (display.gender)    lbParams.set('gender',    display.gender);
+    // gender: 'M' / 'F' / 'A' (= all). Pass 'all' through so TVMode locks
+    // to "show everyone" instead of defaulting to BOYS.
+    if (display.gender)    lbParams.set('gender',    display.gender === 'A' ? 'all' : display.gender);
     if (display.group)     lbParams.set('group',     display.group);
     if (display.metric_id) lbParams.set('rotate',    'off'); // lock when coach pinned a metric
     const lbUrl = `https://leaderboard.bestrongagain.com/tv${lbParams.toString() ? '?' + lbParams.toString() : ''}`;
