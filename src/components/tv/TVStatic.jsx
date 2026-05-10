@@ -646,15 +646,37 @@ export default function TVStatic() {
         }
         // If already showing this code, nothing to do
         if (code === serverCode) return;
-        // Code changed — load the new program
+        // RACE GUARD: if the URL has its own ?code= (tablet mode, dashboard
+        // "View Workout" deep link), the fixed-code load above is the
+        // authoritative loader for this session. Don't ALSO fire a
+        // pi-controlled load on the first poll — that race causes a
+        // visible flash from userPosition's 1/1 default to the URL's
+        // week/day. Once the fixed-code path completes, `code` becomes
+        // truthy and the effect re-runs with a fresh closure; subsequent
+        // polls behave normally (handle "coach swapped programs" etc).
+        const usp = new URLSearchParams(window.location.search);
+        if (usp.get('code') && !code) return;
+        // Code changed — load the new program. Pass through the device's
+        // view state if available so the load lands directly on the
+        // displayed week/day instead of userPosition's saved default.
+        const reqW = data?.device?.view?.week;
+        const reqD = data?.device?.view?.start_day;
+        const loadBody = { code: serverCode, email: 'tv-display@bestrongagain.com' };
+        if (Number.isFinite(reqW) && reqW > 0) loadBody.requested_week = reqW;
+        if (Number.isFinite(reqD) && reqD > 0) loadBody.requested_day  = reqD;
         const res = await fetch(API_BASE + 'load-program.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: serverCode, email: 'tv-display@bestrongagain.com' }),
+          body: JSON.stringify(loadBody),
         });
         const d = await res.json();
         if (d.success && d.data?.program && !cancelled) {
-          handleLoad({ code: serverCode, data: d.data });
+          handleLoad({
+            code: serverCode,
+            data: d.data,
+            requestedWeek: Number.isFinite(reqW) && reqW > 0 ? reqW : undefined,
+            requestedDay:  Number.isFinite(reqD) && reqD > 0 ? reqD : undefined,
+          });
         }
       } catch { /* network hiccup — try again next tick */ }
     };
