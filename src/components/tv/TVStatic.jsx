@@ -832,22 +832,25 @@ export default function TVStatic() {
         }
       `}</style>
 
-      {/* Tablet mode: floating "Back to Remote" button so a coach can return
-          to the dashboard's RemoteControl page after browsing the workout.
-          Only renders when ?from= was passed by the dashboard's
-          "View Workout" button (same-host allow-listed). */}
+      {/* Tablet mode: dedicated row above the workout so the "Back to
+          Remote" button doesn't overlap the QR/title/nav buttons on
+          phone-width screens. Sits below the page edge with breathing
+          room and doesn't compete with the header on smaller viewports. */}
       {tabletMode && safeFromUrl && (
-        <button
-          onClick={() => { window.location.href = safeFromUrl; }}
-          style={{
-            position: 'fixed', top: 12, left: 12, zIndex: 100,
-            background: 'rgba(15,23,42,0.85)', color: '#fff',
-            border: '1px solid rgba(255,255,255,0.2)',
-            padding: '10px 16px', borderRadius: '10px',
-            fontSize: '15px', fontWeight: 600, cursor: 'pointer',
-            backdropFilter: 'blur(6px)',
-          }}
-        >← Back to Remote</button>
+        <div style={{
+          padding: '12px 14px 0', display: 'flex', alignItems: 'center',
+        }}>
+          <button
+            onClick={() => { window.location.href = safeFromUrl; }}
+            style={{
+              background: 'rgba(15,23,42,0.85)', color: '#fff',
+              border: '1px solid rgba(255,255,255,0.2)',
+              padding: '10px 16px', borderRadius: '10px',
+              fontSize: '15px', fontWeight: 600, cursor: 'pointer',
+              backdropFilter: 'blur(6px)',
+            }}
+          >← Back to Remote</button>
+        </div>
       )}
 
       {/* Tablet mode: fullscreen video overlay. Tap a play ▶ button on any
