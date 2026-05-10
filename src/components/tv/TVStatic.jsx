@@ -101,7 +101,7 @@ function StaticCodeEntry({ onLoad }) {
 // fontScale > 1 zooms everything (text, spacing, icons) proportionally — used for
 // WOD Only mode where we have more horizontal real estate and bigger is better.
 // scrollRef lets the parent scroll this column independently via remote keys.
-function DayColumn({ blocks, dayLabel, userName, maxes, fontScale = 1, scrollRef = null }) {
+function DayColumn({ blocks, dayLabel, userName, maxes, fontScale = 1, scrollRef = null, tabletMode = false, onPlayVideo = null }) {
   const columnStyle = fontScale !== 1
     ? { ...s.dayColumn, zoom: fontScale }   // Chromium-native zoom; scales the whole subtree
     : s.dayColumn;
@@ -123,17 +123,45 @@ function DayColumn({ blocks, dayLabel, userName, maxes, fontScale = 1, scrollRef
     const typeName = getBlockTypeName(block.type);
 
     if (isInline) {
-      // Compact inline row
-      const exList = (block.exercises || []).map(ex => {
-        const f = formatExercise(ex);
-        return f.detail ? `${f.name} ${f.detail}` : f.name;
-      }).join(', ');
-      rows.push(
-        <div key={`${bi}-inline`} style={s.sectionRow}>
-          <span style={s.sectionLabel}>{getBlockIcon(block.type)} {typeName}:</span>
-          <span style={s.sectionText}>{exList}</span>
-        </div>
-      );
+      // Compact inline row — in tablet mode each exercise gets a small
+      // tap target so members can pull up a demo video on the fly.
+      if (tabletMode) {
+        rows.push(
+          <div key={`${bi}-inline`} style={s.sectionRow}>
+            <span style={s.sectionLabel}>{getBlockIcon(block.type)} {typeName}:</span>
+            <span style={s.sectionText}>
+              {(block.exercises || []).map((ex, ei) => {
+                const f = formatExercise(ex);
+                return (
+                  <span key={ei} style={{ marginRight: '8px', whiteSpace: 'nowrap' }}>
+                    {ex.youtube && onPlayVideo && (
+                      <button
+                        onClick={() => onPlayVideo(ex.youtube, ex.name)}
+                        style={s.videoBtn}
+                        aria-label={`Play ${ex.name} video`}
+                      >▶</button>
+                    )}
+                    {f.detail ? `${f.name} ${f.detail}` : f.name}
+                    {ei < (block.exercises.length - 1) ? ',' : ''}
+                  </span>
+                );
+              })}
+            </span>
+          </div>
+        );
+      } else {
+        // TV-mode plain text join (original behavior, no buttons).
+        const exList = (block.exercises || []).map(ex => {
+          const f = formatExercise(ex);
+          return f.detail ? `${f.name} ${f.detail}` : f.name;
+        }).join(', ');
+        rows.push(
+          <div key={`${bi}-inline`} style={s.sectionRow}>
+            <span style={s.sectionLabel}>{getBlockIcon(block.type)} {typeName}:</span>
+            <span style={s.sectionText}>{exList}</span>
+          </div>
+        );
+      }
     } else {
       // Thin divider between blocks (skip before first block — dayHeader separates it)
       if (bi > 0) {
@@ -150,12 +178,22 @@ function DayColumn({ blocks, dayLabel, userName, maxes, fontScale = 1, scrollRef
         );
       }
 
-      // Exercise rows
+      // Exercise rows — tablet mode adds a play button next to the name
+      // when the exercise has a video; tap → fullscreen video overlay.
       (block.exercises || []).forEach((exercise, ei) => {
         const f = formatExercise(exercise);
         rows.push(
           <div key={`${bi}-${ei}`} style={s.exerciseRow}>
-            <span style={s.exName}>{f.name}</span>
+            <span style={s.exName}>
+              {tabletMode && exercise.youtube && onPlayVideo && (
+                <button
+                  onClick={() => onPlayVideo(exercise.youtube, exercise.name)}
+                  style={s.videoBtn}
+                  aria-label={`Play ${exercise.name} video`}
+                >▶</button>
+              )}
+              {f.name}
+            </span>
             <span style={s.exDetail}>{f.detail}</span>
           </div>
         );
@@ -172,7 +210,29 @@ function DayColumn({ blocks, dayLabel, userName, maxes, fontScale = 1, scrollRef
 }
 
 // ── Main Static TV ──
+// Tablet mode (?tablet=1): same workout view as the gym TV but with tap
+// targets on each exercise to play its demo video, plus a "← Back" button
+// that returns to wherever ?from= points (typically the dashboard's
+// RemoteControl page). No input boxes, no member identity — pure
+// browse + watch surface.
 export default function TVStatic() {
+  // URL-flag-driven modes. Computed once at module-render — these don't
+  // change during a session, only on page navigation.
+  const tabletMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tablet') === '1';
+  const fromUrl = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('from') : null;
+  // Same-host allow-list to prevent open-redirect via ?from=https://evil.com.
+  const safeFromUrl = useMemo(() => {
+    if (!fromUrl) return null;
+    try {
+      const u = new URL(fromUrl);
+      const allowed = ['app.bestrongagain.com', 'leaderboard.bestrongagain.com', 'bestrongagain.netlify.app'];
+      return allowed.includes(u.hostname) ? u.toString() : null;
+    } catch { return null; }
+  }, [fromUrl]);
+  // Fullscreen video overlay — pops when a tablet user taps an exercise's
+  // play button, dismissed by tapping the close X or anywhere outside.
+  const [playingVideo, setPlayingVideo] = useState(null); // { url, name } | null
+
   const [program, setProgram] = useState(null);
   const [userName, setUserName] = useState('');
   const [currentWeek, setCurrentWeek] = useState(1);
@@ -716,6 +776,65 @@ export default function TVStatic() {
           100% { opacity: 0; transform: scale(1.02); }
         }
       `}</style>
+
+      {/* Tablet mode: floating "Back to Remote" button so a coach can return
+          to the dashboard's RemoteControl page after browsing the workout.
+          Only renders when ?from= was passed by the dashboard's
+          "View Workout" button (same-host allow-listed). */}
+      {tabletMode && safeFromUrl && (
+        <button
+          onClick={() => { window.location.href = safeFromUrl; }}
+          style={{
+            position: 'fixed', top: 12, left: 12, zIndex: 100,
+            background: 'rgba(15,23,42,0.85)', color: '#fff',
+            border: '1px solid rgba(255,255,255,0.2)',
+            padding: '10px 16px', borderRadius: '10px',
+            fontSize: '15px', fontWeight: 600, cursor: 'pointer',
+            backdropFilter: 'blur(6px)',
+          }}
+        >← Back to Remote</button>
+      )}
+
+      {/* Tablet mode: fullscreen video overlay. Tap a play ▶ button on any
+          exercise → iframe pops over the workout. Tap close to dismiss. */}
+      {tabletMode && playingVideo && (
+        <div
+          onClick={() => setPlayingVideo(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 200,
+            background: 'rgba(0,0,0,0.92)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '20px',
+          }}
+        >
+          <button
+            onClick={() => setPlayingVideo(null)}
+            style={{
+              position: 'absolute', top: 16, right: 16,
+              width: 44, height: 44, borderRadius: '50%',
+              background: 'rgba(255,255,255,0.15)', color: '#fff',
+              border: 'none', fontSize: '20px', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+            aria-label="Close video"
+          >✕</button>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: '1000px', aspectRatio: '16 / 9' }}
+          >
+            <div style={{ color: '#fff', fontSize: '18px', fontWeight: 700, marginBottom: '12px', textAlign: 'center' }}>
+              {playingVideo.name}
+            </div>
+            <iframe
+              src={playingVideo.url}
+              title={playingVideo.name}
+              style={{ width: '100%', height: '100%', border: 0, borderRadius: '12px', background: '#000' }}
+              allow="autoplay; fullscreen; encrypted-media"
+              allowFullScreen
+            />
+          </div>
+        </div>
+      )}
       {/* Brand takeover every 15 min — burn-in protection + identity reinforcement */}
       {showLogoFlash && (
         <div style={{ ...s.brandFlash, background: brandGradient }}>
@@ -765,6 +884,8 @@ export default function TVStatic() {
               maxes={maxes}
               fontScale={1.3}
               scrollRef={leftColRef}
+              tabletMode={tabletMode}
+              onPlayVideo={(url, name) => setPlayingVideo({ url, name })}
             />
           </div>
         ) : layout === 'wod_scaled' ? (
@@ -776,6 +897,8 @@ export default function TVStatic() {
               userName={userName}
               maxes={maxes}
               scrollRef={leftColRef}
+              tabletMode={tabletMode}
+              onPlayVideo={(url, name) => setPlayingVideo({ url, name })}
             />
             {blocks2 !== null && (
               <DayColumn
@@ -784,6 +907,8 @@ export default function TVStatic() {
                 userName={userName}
                 maxes={maxes}
                 scrollRef={rightColRef}
+                tabletMode={tabletMode}
+                onPlayVideo={(url, name) => setPlayingVideo({ url, name })}
               />
             )}
           </>
@@ -796,6 +921,8 @@ export default function TVStatic() {
               userName={userName}
               maxes={maxes}
               scrollRef={leftColRef}
+              tabletMode={tabletMode}
+              onPlayVideo={(url, name) => setPlayingVideo({ url, name })}
             />
             {blocks2 !== null && (
               <DayColumn
@@ -804,6 +931,8 @@ export default function TVStatic() {
                 userName={userName}
                 maxes={maxes}
                 scrollRef={rightColRef}
+                tabletMode={tabletMode}
+                onPlayVideo={(url, name) => setPlayingVideo({ url, name })}
               />
             )}
           </>
@@ -1016,6 +1145,17 @@ const s = {
     minHeight: 'clamp(36px, 2.7vw, 56px)', flexShrink: 0,
   },
   exName: { color: '#fff', fontWeight: '500', flex: 1 },
+  // Tablet-mode play button next to each exercise that has a demo video.
+  // Big enough for fingers (28px target) but visually quiet.
+  videoBtn: {
+    background: 'rgba(245,158,11,0.85)', color: '#1a1a2e',
+    border: 'none', borderRadius: '50%',
+    width: '28px', height: '28px',
+    fontSize: '12px', fontWeight: 800,
+    marginRight: '8px', cursor: 'pointer',
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    verticalAlign: 'middle',
+  },
   exDetail: {
     color: 'rgba(255,255,255,0.7)', fontWeight: '700', marginLeft: '8px',
     whiteSpace: 'nowrap', textAlign: 'right',
