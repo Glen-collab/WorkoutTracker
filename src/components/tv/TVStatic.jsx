@@ -312,12 +312,18 @@ export default function TVStatic() {
   }, []);
 
   const handleLoad = useCallback(async (info) => {
-    const { data } = info;
+    const { data, requestedWeek, requestedDay } = info;
     setCode(info.code);
     setProgram(data.program);
     setUserName(data.program?.userName || '');
-    setCurrentWeek(data.userPosition?.currentWeek || 1);
-    setStartDay(data.userPosition?.currentDay || 1);
+    // Position the view: explicit URL request wins (avoids the flash from
+    // landing on userPosition's 1/1 then snapping to 4/5 a beat later
+    // when the polling view-sync catches up); otherwise use the saved
+    // userPosition; finally default to 1/1.
+    const initialWeek = requestedWeek || data.userPosition?.currentWeek || 1;
+    const initialDay  = requestedDay  || data.userPosition?.currentDay  || 1;
+    setCurrentWeek(initialWeek);
+    setStartDay(initialDay);
     setMaxes({
       bench: parseFloat(data.userPosition?.oneRmBench) || 0,
       squat: parseFloat(data.userPosition?.oneRmSquat) || 0,
@@ -326,8 +332,12 @@ export default function TVStatic() {
     });
 
     // Load day 1 blocks from the initial response
-    const week = data.userPosition?.currentWeek || 1;
-    const day = data.userPosition?.currentDay || 1;
+    // Use the same initial position we just set state to. When the caller
+    // passed requestedWeek/Day, data.program.blocks is already that day's
+    // content (load-program.php honored requested_week/day), so we key
+    // allBlocks by [requestedWeek-requestedDay], not by userPosition.
+    const week = initialWeek;
+    const day = initialDay;
     const blocks1 = data.program?.blocks || [];
     const newAllBlocks = { [`${week}-${day}`]: blocks1 };
 
@@ -501,18 +511,32 @@ export default function TVStatic() {
     const piId = (params.get('pi') || '').trim();
     const coachCode = (params.get('coach') || '').trim().toUpperCase();
 
-    // Fixed-code mode (legacy): load once.
+    // Fixed-code mode (legacy): load once. URL params ?week= and ?day=
+    // are passed through so the tablet view (opened from the dashboard's
+    // Remote Control) lands directly on the right week+day instead of
+    // flashing through Week 1 Day 1 first while the polling effect
+    // catches up.
     if (!program && /^\d{4}$/.test(urlCode)) {
+      const reqWeek = parseInt(params.get('week'), 10);
+      const reqDay  = parseInt(params.get('day'),  10);
       (async () => {
         try {
+          const body = { code: urlCode, email: 'tv-display@bestrongagain.com' };
+          if (Number.isFinite(reqWeek) && reqWeek > 0) body.requested_week = reqWeek;
+          if (Number.isFinite(reqDay)  && reqDay  > 0) body.requested_day  = reqDay;
           const res = await fetch(API_BASE + 'load-program.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code: urlCode, email: 'tv-display@bestrongagain.com' }),
+            body: JSON.stringify(body),
           });
           const data = await res.json();
           if (data.success && data.data?.program) {
-            handleLoad({ code: urlCode, data: data.data });
+            handleLoad({
+              code: urlCode,
+              data: data.data,
+              requestedWeek: Number.isFinite(reqWeek) && reqWeek > 0 ? reqWeek : undefined,
+              requestedDay:  Number.isFinite(reqDay)  && reqDay  > 0 ? reqDay  : undefined,
+            });
           } else {
             setAutoLoadError(`Access code ${urlCode} not found`);
           }
