@@ -29,7 +29,7 @@ export const VIDEO_LIBRARY = {
   "Foam Roll Lats": "https://iframe.videodelivery.net/60195c8bdf6f3b2aac10dd73ef79376f",
   "Foam Roll IT Band": "",
   "Foam Roll Quads": "https://iframe.videodelivery.net/1f6822f3fb1fbd73fba6521bd344bcb0",
-  "Foam Roll Glutes": "https://iframe.videodelivery.net/8c3eea5bad9281fcc026c8d5d9e35cdf",
+  "Foam Roll Glutes": "https://iframe.videodelivery.net/0b79937f2ed74a455d62be32d24c578b",
   "Foam Roll Groin": "https://iframe.videodelivery.net/84121021ff6994f987d6075354f26030",
 
   // Thera Cane
