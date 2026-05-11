@@ -200,10 +200,14 @@ const EXERCISE_DEFAULTS = {
 };
 
 
-// Case-insensitive lookup
+// Case-insensitive + whitespace-insensitive lookup. So "Ski Erg",
+// "SkiErg", "ski erg", and "SKIERG" all map to the same defaults.
+// Trainers in the builder spell things slightly differently across
+// programs; we shouldn't lose unit defaults over a missing space.
+const normalize = (s) => String(s || '').toLowerCase().replace(/\s+/g, '');
 const LOOKUP = {};
 for (const [name, defaults] of Object.entries(EXERCISE_DEFAULTS)) {
-  LOOKUP[name.toLowerCase()] = defaults;
+  LOOKUP[normalize(name)] = defaults;
 }
 
 /**
@@ -212,7 +216,7 @@ for (const [name, defaults] of Object.entries(EXERCISE_DEFAULTS)) {
  */
 export function getExerciseDefaults(exerciseName) {
   if (!exerciseName) return {};
-  return LOOKUP[exerciseName.toLowerCase()] || {};
+  return LOOKUP[normalize(exerciseName)] || {};
 }
 
 /**

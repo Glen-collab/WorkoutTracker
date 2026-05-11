@@ -9,7 +9,13 @@ function formatValueWithUnit(value, unit, fallback) {
   if (value === null || value === undefined || value === '') return '';
   const s = String(value).trim();
   if (/[a-zA-Z]/.test(s)) return s;
-  return `${s} ${unit || fallback}`;
+  // Only apply the fallback unit when the trainer specifically expected one
+  // (durations default to 'min', etc.). Distance is a minefield — defaulting
+  // to 'mi' wrongly stamped "500 mi" on SkiErg meters and Stair Sprint reps.
+  // Trust the explicit unit if set; otherwise just render the bare number.
+  if (unit) return `${s} ${unit}`;
+  if (fallback) return `${s} ${fallback}`;
+  return s;
 }
 import { QRCodeSVG } from 'qrcode.react';
 import { getBlockTypeName, getBlockIcon, get1RM, calculateWeight } from '../../utils/trackerHelpers';
@@ -26,7 +32,10 @@ function formatExercise(exercise) {
     || (Array.isArray(ex.sets) && ex.sets.length > 0 && typeof ex.sets[0] === 'object' ? (ex.sets[0].reps || ex.sets[0].targetReps || '') : '')
     || '';
   const duration = formatValueWithUnit(ex.duration, ex.durationUnit, 'min');
-  const distance = formatValueWithUnit(ex.distance, ex.distanceUnit, 'mi');
+  // No 'mi' fallback — too many gym exercises (SkiErg meters, stair-sprint
+  // reps) had a bare distance number and got falsely stamped with miles.
+  // Honor the explicit distanceUnit if set; otherwise render the bare number.
+  const distance = formatValueWithUnit(ex.distance, ex.distanceUnit, '');
   const qualifier = ex.qualifier || '';
 
   let detail = '';
