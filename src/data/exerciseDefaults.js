@@ -6,20 +6,23 @@
 
 const EXERCISE_DEFAULTS = {
   // === CARDIO MACHINES ===
+  // Indoor ergs all measure distance in meters by default. distanceUnit
+  // is the safety-net unit — if a trainer enters just a number for
+  // distance, the TV renders "1000 m" instead of "1000" or worse "1000 mi".
   'Rowing Machine': { distance: '1000', distanceUnit: 'm' },
   'Ski Erg': { distance: '1000', distanceUnit: 'm' },
-  'Assault Bike': { calories: '15' },
+  'Assault Bike': { calories: '15', distanceUnit: 'm' },
   'Treadmill Walk or Jog': { distance: '3', distanceUnit: 'mi' },
   'Treadmill Incline Walk': { distance: '2', distanceUnit: 'mi', notes: 'Incline 10-15%' },
   'Stationary Bike': { duration: '15', durationUnit: 'min' },
-  'Elliptical': { duration: '15', durationUnit: 'min' },
-  'Echo Bike': { calories: '15' },
-  'Spin Bike': { duration: '15', durationUnit: 'min' },
+  'Elliptical': { duration: '15', durationUnit: 'min', distanceUnit: 'm' },
+  'Echo Bike': { calories: '15', distanceUnit: 'm' },
+  'Spin Bike': { duration: '15', durationUnit: 'min', distanceUnit: 'm' },
   'Stair Climber': { duration: '15', durationUnit: 'min' },
   'StairMaster': { duration: '15', durationUnit: 'min' },
   'VersaClimber': { duration: '10', durationUnit: 'min' },
   "Jacob's Ladder": { duration: '10', durationUnit: 'min' },
-  'Concept2 BikeErg': { duration: '10', durationUnit: 'min' },
+  'Concept2 BikeErg': { duration: '10', durationUnit: 'min', distanceUnit: 'm' },
 
   // === CARRIES ===
   'Farmers Carry': { setsCount: '4', weight: '70', distance: '40', distanceUnit: 'yd' },
@@ -86,7 +89,7 @@ const EXERCISE_DEFAULTS = {
   'Cone Weave': { setsCount: '3' },
 
   // === SPRINTS ===
-  'Stair Sprint Intervals': { setsCount: '4', rest: '60s' },
+  'Stair Sprint Intervals': { setsCount: '4', rest: '60s', distanceUnit: 'm' },
   'Shuttle Sprint + Push-Ups': { setsCount: '4', distance: '20', distanceUnit: 'yd', rest: '60s' },
   'Bear Crawl + Sprint': { setsCount: '3', distance: '20', distanceUnit: 'yd', rest: '60s' },
   'Jog': { distance: '200', distanceUnit: 'yd' },
