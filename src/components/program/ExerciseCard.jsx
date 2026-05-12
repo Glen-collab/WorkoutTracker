@@ -486,7 +486,7 @@ export default function ExerciseCard({
               )}
             </div>
             <div style={{ fontSize: '12px', color: '#999' }}>
-              Target: {fnSets} sets {fnHasReps ? `× ${ex.reps}${ex.qualifier ? ' ' + ex.qualifier : ''}` : ''} {fnHasDuration && !fnHasReps ? `× ${formatWithUnit(ex.duration, fnDurationUnit)}` : ''}
+              Target: {fnSets} sets {fnHasReps ? `× ${ex.reps}${ex.qualifier ? ' ' + ex.qualifier : ''}` : ''} {fnHasDuration && !fnHasReps ? `× ${formatWithUnit(ex.duration, fnDurationUnit)}` : ''}{ex.calories ? ` × ${ex.calories} cal` : ''}
             </div>
           </div>
           {ex.notes && <div style={s.notesCard}>{ex.notes}</div>}
@@ -1171,7 +1171,7 @@ export default function ExerciseCard({
             )}
           </div>
           <div style={{ fontSize: '12px', color: '#999' }}>
-            Target: {hasSets ? `${setsCount} sets` : ''} {hasReps ? `× ${repsValue}` : ''} {hasDuration && !hasReps ? `× ${formatWithUnit(ex.duration, dUnit)}` : ''}
+            Target: {hasSets ? `${setsCount} sets` : ''} {hasReps ? `× ${repsValue}` : ''} {hasDuration && !hasReps ? `× ${formatWithUnit(ex.duration, dUnit)}` : ''}{ex.calories ? ` × ${ex.calories} cal` : ''}
           </div>
         </div>
         {ex.notes && <div style={s.notesCard}>{ex.notes}</div>}

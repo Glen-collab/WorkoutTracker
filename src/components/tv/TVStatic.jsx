@@ -36,6 +36,12 @@ function formatExercise(exercise) {
   // reps) had a bare distance number and got falsely stamped with miles.
   // Honor the explicit distanceUnit if set; otherwise render the bare number.
   const distance = formatValueWithUnit(ex.distance, ex.distanceUnit, '');
+  // Calories — trainer-set target on cardio-style exercises (Assault Bike,
+  // Echo Bike, Concept2 BikeErg). Rendered as "20 cal" or "3x 20 cal".
+  // Future: client-logged calories burned per session feeds leaderboard
+  // "calories per minute" metric.
+  const caloriesRaw = ex.calories != null && ex.calories !== '' ? String(ex.calories).trim() : '';
+  const calories = caloriesRaw ? (/[a-zA-Z]/.test(caloriesRaw) ? caloriesRaw : `${caloriesRaw} cal`) : '';
   const qualifier = ex.qualifier || '';
 
   let detail = '';
@@ -43,6 +49,8 @@ function formatExercise(exercise) {
   else if (reps) detail = `x${reps}`;
   else if (sets > 0 && duration) detail = `${sets}x ${duration}`;
   else if (duration) detail = duration;
+  else if (sets > 0 && calories) detail = `${sets}x ${calories}`;
+  else if (calories) detail = calories;
   else if (distance) detail = distance;
 
   if (qualifier && detail) detail += ` ${qualifier}`;
