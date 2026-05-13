@@ -12,6 +12,7 @@ const EXERCISE_DEFAULTS = {
   'Rowing Machine': { distance: '1000', distanceUnit: 'm' },
   'Ski Erg': { distance: '1000', distanceUnit: 'm' },
   'Assault Bike': { calories: '15', distanceUnit: 'm' },
+  'Treadmill': { duration: '20', durationUnit: 'min' },
   'Treadmill Walk or Jog': { distance: '3', distanceUnit: 'mi' },
   'Treadmill Incline Walk': { distance: '2', distanceUnit: 'mi', notes: 'Incline 10-15%' },
   'Stationary Bike': { duration: '15', durationUnit: 'min' },
@@ -225,12 +226,29 @@ export function getExerciseDefaults(exerciseName) {
 /**
  * Merge defaults into an exercise object — only fills in fields that are
  * empty/undefined. Never overwrites what the trainer already set.
+ *
+ * Also re-interprets a unit-less `distance` value as `duration` minutes
+ * for time-based cardio machines (those whose defaults say durationUnit
+ * is 'min'). Coaches commonly type "20" into Treadmill meaning minutes;
+ * without this we render "20 mi" which is nonsense.
  */
 export function applyExerciseDefaults(exercise) {
   const defaults = getExerciseDefaults(exercise.name);
   if (!defaults || Object.keys(defaults).length === 0) return exercise;
 
   const merged = { ...exercise };
+
+  if (
+    defaults.durationUnit === 'min' &&
+    merged.distance && !merged.distanceUnit &&
+    !merged.duration &&
+    !/[a-zA-Z]/.test(String(merged.distance))
+  ) {
+    merged.duration = merged.distance;
+    merged.durationUnit = 'min';
+    merged.distance = '';
+  }
+
   for (const [key, val] of Object.entries(defaults)) {
     if (!merged[key] && merged[key] !== 0) {
       merged[key] = val;
