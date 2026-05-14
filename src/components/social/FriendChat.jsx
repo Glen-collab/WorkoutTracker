@@ -23,6 +23,24 @@ function authFetch(path, opts = {}) {
   });
 }
 
+// Render a person's display name from whatever the backend has. Some
+// users register via magic-link with only an email; we stored the
+// email's local-part as first_name as a fallback, which renders weirdly
+// (e.g. "carterctomich"). Capitalize sensibly so the row reads cleanly
+// without losing identifying info.
+function displayName(user) {
+  if (!user) return '';
+  const first = String(user.first_name || '').trim();
+  const last  = String(user.last_name  || '').trim();
+  const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
+  const both = [cap(first), cap(last)].filter(Boolean).join(' ');
+  if (both) return both;
+  // No proper name on file — use the email's local part.
+  const email = String(user.email || '').trim();
+  if (email.includes('@')) return cap(email.split('@')[0]);
+  return email || 'Friend';
+}
+
 function timeAgo(dateStr) {
   if (!dateStr) return '';
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -37,7 +55,11 @@ export default function FriendChat() {
   const [me, setMe] = useState(() => {
     try { return JSON.parse(localStorage.getItem('bsa_user') || 'null'); } catch { return null; }
   });
-  const [consented, setConsented] = useState(false);
+  // Tri-state: null = haven't checked yet, false = needs to consent,
+  // true = consented. Initial false caused a brief flash of the
+  // "One last thing" consent screen on every chat-open before the
+  // status fetch resolved. null hides both screens until known.
+  const [consented, setConsented] = useState(null);
   const [unread, setUnread] = useState(0);
   const [friends, setFriends] = useState([]);
   const [incoming, setIncoming] = useState([]);
@@ -313,6 +335,13 @@ export default function FriendChat() {
             </>
           )}
         </div>
+      ) : consented === null ? (
+        // Consent fetch still in flight on first open. Show a neutral
+        // placeholder so the consent screen doesn't flash before we
+        // know whether the user has already accepted.
+        <div style={{ ...s.panelBody, ...s.muted, textAlign: 'center', padding: '24px 12px' }}>
+          Loading...
+        </div>
       ) : !consented ? (
         <div style={s.panelBody}>
           <div style={{ fontSize: '16px', fontWeight: 700, color: '#1a1a2e', marginBottom: '8px' }}>
@@ -329,7 +358,7 @@ export default function FriendChat() {
         <>
           <div style={s.threadHeader}>
             <button onClick={() => { setActiveFriend(null); setMessages([]); }} style={s.backBtn}>←</button>
-            <div style={{ fontWeight: 700 }}>{activeFriend.first_name} {activeFriend.last_name}</div>
+            <div style={{ fontWeight: 700 }}>{displayName(activeFriend)}</div>
           </div>
           <div style={s.thread} ref={scrollRef}>
             {messages.length === 0 ? (
@@ -374,7 +403,7 @@ export default function FriendChat() {
               {incoming.map((f) => (
                 <div key={f.friendship_id} style={s.friendRow}>
                   <div>
-                    <div style={{ fontSize: '14px', fontWeight: 600 }}>{f.first_name} {f.last_name}</div>
+                    <div style={{ fontSize: '14px', fontWeight: 600 }}>{displayName(f)}</div>
                     <div style={{ fontSize: '11px', color: '#888' }}>{f.email}</div>
                   </div>
                   <div>
@@ -418,7 +447,7 @@ export default function FriendChat() {
                   fontSize: '12px', fontWeight: 700, marginRight: '10px', flexShrink: 0,
                 }}>{initials}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '14px', fontWeight: 600 }}>{u.first_name} {u.last_name}</div>
+                  <div style={{ fontSize: '14px', fontWeight: 600 }}>{displayName(u)}</div>
                 </div>
                 {isFriends   && <span style={{ ...s.smallBtn, background: '#e5e7eb', color: '#374151', cursor: 'default' }}>Friends</span>}
                 {isRequested && <span style={{ ...s.smallBtn, background: '#e5e7eb', color: '#888',    cursor: 'default' }}>Requested</span>}
@@ -469,7 +498,7 @@ export default function FriendChat() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '6px' }}>
-                            <span style={{ fontSize: '14px', fontWeight: 600, color: '#1a1a2e' }}>{f.first_name} {f.last_name}</span>
+                            <span style={{ fontSize: '14px', fontWeight: 600, color: '#1a1a2e' }}>{displayName(f)}</span>
                             {lm && lm.sent_at && (
                               <span style={{ fontSize: '11px', color: '#888', flexShrink: 0 }}>{timeAgo(lm.sent_at)}</span>
                             )}
