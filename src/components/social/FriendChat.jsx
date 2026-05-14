@@ -112,6 +112,20 @@ export default function FriendChat() {
     return () => { document.body.style.overflow = prev; };
   }, [open]);
 
+  // Rehydrate `me` when the tracker auto-writes bsa_token + bsa_user
+  // to localStorage after load-program. Forces a re-render so hasToken
+  // flips true and the chat skips its email/magic-link sign-in screen.
+  useEffect(() => {
+    const handler = () => {
+      try {
+        const u = JSON.parse(localStorage.getItem('bsa_user') || 'null');
+        setMe(u);
+      } catch { /* corrupt entry — ignore */ }
+    };
+    window.addEventListener('bsa-auth-changed', handler);
+    return () => window.removeEventListener('bsa-auth-changed', handler);
+  }, []);
+
   // On open or re-open, check consent + load friends
   useEffect(() => {
     if (!open || !hasToken) return;

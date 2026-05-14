@@ -293,6 +293,21 @@ export default function App() {
 
       const result = await api.loadProgram(params);
 
+      // Auto-login the chat: the backend issues a JWT for this email
+      // alongside the program payload so FriendChat skips the email/
+      // magic-link sign-in. Glen's rule — if they signed up for the
+      // program, they're trusted enough to message their coach.
+      if (result?.data?.bsa_token && result?.data?.bsa_user) {
+        try {
+          localStorage.setItem('bsa_token', result.data.bsa_token);
+          localStorage.setItem('bsa_user',  JSON.stringify(result.data.bsa_user));
+          // FriendChat reads localStorage on mount only — same-tab
+          // writes don't fire native 'storage' events, so we dispatch
+          // a custom one for it to rehydrate.
+          window.dispatchEvent(new Event('bsa-auth-changed'));
+        } catch { /* localStorage may be unavailable in private/incognito */ }
+      }
+
       if (result.success && result.data && result.data.program) {
         const prog = result.data.program;
         // Apply coach / featured_global video overrides before rendering
