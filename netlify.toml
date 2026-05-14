@@ -13,3 +13,25 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Never cache the service worker or its registration script — Safari
+# was holding onto stale sw.js for hours, which left the tab pinned to
+# the previous build's JS even after a deploy. With no-cache, every
+# tab visit re-fetches the SW; new revisions install + skipWaiting
+# immediately.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/registerSW.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+# index.html must also be fresh each time so the bootstrap script
+# (which manages SW updates) reflects the latest build's logic.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"

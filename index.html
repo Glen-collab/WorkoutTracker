@@ -19,32 +19,48 @@
 
     <title>Workout Tracker</title>
     <script>
-      // Force service worker update on every page load
-      // On /tv paths: unregister old SWs and clear caches to guarantee fresh code
+      // ── Service Worker management ─────────────────────────────
+      // BUILD_VERSION is bumped on every deploy where we want clients to
+      // get fresh assets immediately (e.g. CSS/JSX changes that the SW's
+      // existing revision tracking missed). When localStorage's stored
+      // version differs from this, we unregister the SW + clear caches
+      // once, then reload. Subsequent loads use the new SW normally.
+      var BUILD_VERSION = '2026-05-14-c';
       if ('serviceWorker' in navigator) {
         var isTvPath = window.location.pathname.startsWith('/tv');
+        var stored = '';
+        try { stored = localStorage.getItem('bsa_sw_build') || ''; } catch (e) {}
+        var needsBust = isTvPath || stored !== BUILD_VERSION;
 
-        if (isTvPath) {
-          // Nuclear option for /tv: unregister all SWs and clear caches
-          // This guarantees /tv always loads fresh from the network
-          navigator.serviceWorker.getRegistrations().then(function(registrations) {
-            registrations.forEach(function(reg) { reg.unregister(); });
+        if (needsBust) {
+          // Nuclear option: unregister all SWs + clear all caches.
+          // Used unconditionally on /tv, and once per build elsewhere.
+          // Safari was caching sw.js for hours; this guarantees a fresh
+          // bundle on the next reload.
+          try { localStorage.setItem('bsa_sw_build', BUILD_VERSION); } catch (e) {}
+          Promise.all([
+            navigator.serviceWorker.getRegistrations().then(function(rs) {
+              return Promise.all(rs.map(function(r) { return r.unregister(); }));
+            }),
+            'caches' in window
+              ? caches.keys().then(function(names) {
+                  return Promise.all(names.map(function(n) { return caches.delete(n); }));
+                })
+              : Promise.resolve()
+          ]).then(function() {
+            // Only reload outside /tv (which doesn't need a reload — the
+            // /tv flow is single-shot and already fetched fresh assets).
+            if (!isTvPath) window.location.reload();
           });
-          if ('caches' in window) {
-            caches.keys().then(function(names) {
-              names.forEach(function(name) { caches.delete(name); });
-            });
-          }
         } else {
-          // Normal paths: trigger SW update check and activate waiting SW immediately
+          // Steady-state: ping for new SW updates; activate any waiting
+          // worker immediately; reload once when the controller swaps.
           navigator.serviceWorker.getRegistrations().then(function(registrations) {
             registrations.forEach(function(reg) {
               reg.update();
-              // If there's a waiting worker, tell it to activate now
               if (reg.waiting) {
                 reg.waiting.postMessage({ type: 'SKIP_WAITING' });
               }
-              // Listen for new workers that finish installing
               reg.addEventListener('updatefound', function() {
                 var newWorker = reg.installing;
                 if (newWorker) {
@@ -57,7 +73,6 @@
               });
             });
           });
-          // Reload when the new SW takes control
           var refreshing = false;
           navigator.serviceWorker.addEventListener('controllerchange', function() {
             if (!refreshing) {
