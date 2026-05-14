@@ -43,8 +43,23 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         navigateFallbackDenylist: [/^\/tv/],
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,woff,woff2}'],
+        // Exclude HTML from the precache so the SW always goes to
+        // network for index.html. Was: '**/*.{js,css,html,...}'.
+        // With HTML precached, Safari held onto stale index.html for
+        // hours after a deploy — even with Cache-Control headers.
+        globPatterns: ['**/*.{js,css,svg,png,ico,woff,woff2}'],
         runtimeCaching: [
+          {
+            // Always try network first for HTML navigations, fall
+            // back to the offline page only on real failure.
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'html-cache',
+              networkTimeoutSeconds: 3,
+              expiration: { maxEntries: 4, maxAgeSeconds: 60 * 60 * 24 },
+            },
+          },
           {
             urlPattern: /\/tracker\.js$/,
             handler: 'NetworkFirst',
