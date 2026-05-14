@@ -102,6 +102,16 @@ export default function FriendChat() {
     return () => clearInterval(pollRef.current);
   }, [pollUnread]);
 
+  // Lock body scroll while the chat is open so iOS doesn't bleed touch
+  // events through the panel and scroll the workout tracker page
+  // underneath. Restored to previous overflow value on close/unmount.
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+
   // On open or re-open, check consent + load friends
   useEffect(() => {
     if (!open || !hasToken) return;
@@ -287,7 +297,18 @@ export default function FriendChat() {
   return (
     <div style={s.panel}>
       <div style={s.panelHeader}>
-        <div style={{ fontWeight: 700 }}>Messages</div>
+        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <div style={{ fontWeight: 700 }}>Messages</div>
+          {me && (
+            // Surface the logged-in chat account so it's clear WHO this
+            // inbox belongs to. The tracker page and the chat use
+            // different auth (access code vs JWT) — Glen viewing Steve's
+            // workout but messaging as Glen wouldn't otherwise know.
+            <div style={{ fontSize: '11px', opacity: 0.7, marginTop: '1px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              as {displayName(me)}
+            </div>
+          )}
+        </div>
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
           {hasToken && consented && !activeFriend && (
             <button
@@ -378,15 +399,26 @@ export default function FriendChat() {
               <div style={{ ...s.muted, textAlign: 'center', padding: '20px' }}>Say something 💪</div>
             ) : messages.map((m) => {
               const mine = me && m.from_user_id === me.id;
+              const isBlast = !!m.is_broadcast;
               return (
                 <div key={m.id} style={{ display: 'flex', justifyContent: mine ? 'flex-end' : 'flex-start', marginBottom: '6px' }}>
                   <div style={{
                     ...s.bubble_msg,
-                    background: mine ? 'linear-gradient(135deg, #B37602, #8a5b00)' : '#f0f0f0',
+                    // iMessage blue for sent messages; gray for received.
+                    // A coach-blast received from someone else gets a small
+                    // "Coach" badge above the bubble so the recipient sees
+                    // it's a tribe-wide message, not a personal DM.
+                    background: mine ? 'linear-gradient(135deg, #0a84ff, #0066cc)' : '#f0f0f0',
                     color: mine ? '#fff' : '#222',
                     borderBottomRightRadius: mine ? '4px' : '14px',
                     borderBottomLeftRadius: mine ? '14px' : '4px',
                   }}>
+                    {isBlast && !mine && (
+                      <div style={{
+                        fontSize: '10px', fontWeight: 800, letterSpacing: '0.5px',
+                        textTransform: 'uppercase', color: '#0a84ff', marginBottom: '4px',
+                      }}>📣 Coach</div>
+                    )}
                     {m.body}
                     <div style={{ fontSize: '9px', opacity: 0.7, marginTop: '3px', textAlign: 'right' }}>{timeAgo(m.sent_at)}</div>
                   </div>
@@ -450,8 +482,12 @@ export default function FriendChat() {
                   // wrote what — Instagram/Facebook DM-inbox convention.
                   // Broadcast tag flags coach-blast messages so the recipient
                   // knows it wasn't a direct DM aimed at them personally.
+                  // Sender prefix in the inbox row: "You: ..." for outbound,
+                  // "Coach: ..." for received coach-blast broadcasts (so the
+                  // recipient sees who's talking without opening the thread),
+                  // bare preview otherwise.
                   const previewText = lm
-                    ? `${lm.from_me ? 'You: ' : ''}${lm.is_broadcast && !lm.from_me ? '📢 ' : ''}${lm.preview}`
+                    ? `${lm.from_me ? 'You: ' : (lm.is_broadcast ? 'Coach: ' : '')}${lm.preview}`
                     : f.email;
                   return (
                     <button key={f.id} onClick={() => setActiveFriend(f)} style={s.friendBtn}>
