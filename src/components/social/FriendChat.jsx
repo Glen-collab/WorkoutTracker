@@ -58,12 +58,15 @@ export default function FriendChat() {
 
   const hasToken = !!localStorage.getItem('bsa_token');
 
-  // Poll unread count globally when logged in
+  // Poll unread count globally when logged in. Badge totals unread DMs
+  // + pending incoming friend requests so a new friend request also
+  // pings the bubble. Backend returns { unread, pending_requests, total };
+  // we use total (fall back to unread for older backend deploys).
   const pollUnread = useCallback(async () => {
     if (!hasToken) { setUnread(0); return; }
     try {
       const r = await authFetch('/social/messages/unread-count');
-      setUnread(r.unread || 0);
+      setUnread(r.total != null ? r.total : (r.unread || 0));
     } catch { /* offline or invalid token — silent */ }
   }, [hasToken]);
 
@@ -213,6 +216,9 @@ export default function FriendChat() {
       const f = await authFetch('/social/friends/list');
       setFriends(f.friends || []);
       setIncoming(f.incoming || []);
+      // Pending-request count just dropped — refresh the bubble badge
+      // now rather than waiting up to 30s for the next poll cycle.
+      pollUnread();
     } catch (e) { alert(e.message); }
   };
 
