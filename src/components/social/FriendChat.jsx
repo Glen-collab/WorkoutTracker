@@ -48,8 +48,10 @@ export default function FriendChat() {
   const [authError, setAuthError] = useState(null);
   const [magicSent, setMagicSent] = useState(false);
   const [magicSending, setMagicSending] = useState(false);
-  const [addEmail, setAddEmail] = useState('');
-  const [addStatus, setAddStatus] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [pendingByUserId, setPendingByUserId] = useState({}); // userId -> 'sending'|'done'|null
   const pollRef = useRef(null);
   const threadPollRef = useRef(null);
   const scrollRef = useRef(null);
@@ -165,19 +167,41 @@ export default function FriendChat() {
     } catch (e) { alert(e.message); }
   };
 
-  const addFriend = async () => {
-    const email = addEmail.trim().toLowerCase();
-    if (!email.includes('@')) { setAddStatus({ ok: false, msg: 'Enter a valid email' }); return; }
+  // Debounced typeahead — fires after the user stops typing for 250ms.
+  // Min 2 chars to avoid spamming the API with single-letter searches.
+  useEffect(() => {
+    if (!open || !hasToken || !consented) return;
+    const q = searchQuery.trim();
+    if (q.length < 2) { setSearchResults([]); return; }
+    const handle = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const r = await authFetch(`/social/friends/search-by-name?q=${encodeURIComponent(q)}`);
+        setSearchResults(r.matches || []);
+      } catch { setSearchResults([]); }
+      finally { setSearching(false); }
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [searchQuery, open, hasToken, consented]);
+
+  // Send a request to a user found via search. We optimistically flip
+  // the card to "Requested" so the user gets instant feedback without a
+  // round-trip to /friends/list.
+  const sendRequest = async (user) => {
+    setPendingByUserId((m) => ({ ...m, [user.id]: 'sending' }));
     try {
       await authFetch('/social/friends/request', {
         method: 'POST',
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ user_id: user.id }),
       });
-      setAddStatus({ ok: true, msg: `Request sent to ${email}` });
-      setAddEmail('');
-      const f = await authFetch('/social/friends/list');
-      setFriends(f.friends || []);
-    } catch (e) { setAddStatus({ ok: false, msg: e.message }); }
+      setSearchResults((arr) => arr.map((r) =>
+        r.id === user.id ? { ...r, friendship_status: 'pending', waiting_on_you: false } : r
+      ));
+      setPendingByUserId((m) => ({ ...m, [user.id]: 'done' }));
+    } catch (e) {
+      alert(e.message);
+      setPendingByUserId((m) => { const { [user.id]: _, ...rest } = m; return rest; });
+    }
   };
 
   const respond = async (friendship_id, action) => {
@@ -356,17 +380,58 @@ export default function FriendChat() {
             </div>
           )}
 
-          <div style={s.sectionLabel}>Step 2 — Add a friend</div>
-          <p style={{ fontSize: '13px', color: '#555', margin: '2px 0 8px', lineHeight: 1.4 }}>
-            Type <strong>your friend's</strong> email. They'll get a message. They say yes or no.
-          </p>
-          <div style={{ display: 'flex', gap: '6px', marginBottom: '4px' }}>
-            <input style={{ ...s.input, margin: 0 }} type="email" placeholder="your friend's email" value={addEmail} onChange={(e) => setAddEmail(e.target.value)} />
-            <button onClick={addFriend} style={s.primaryBtn_sm}>Send</button>
-          </div>
-          {addStatus && (
-            <div style={{ fontSize: '12px', color: addStatus.ok ? '#16a34a' : '#991b1b', marginBottom: '12px' }}>{addStatus.msg}</div>
+          <div style={s.sectionLabel}>Add a friend</div>
+          <input
+            style={{ ...s.input, margin: '0 0 6px' }}
+            type="search"
+            placeholder="Search by name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            autoComplete="off"
+          />
+          {searching && (
+            <div style={{ ...s.muted, fontSize: '12px', padding: '4px 2px' }}>Searching...</div>
           )}
+          {searchQuery.trim().length >= 2 && !searching && searchResults.length === 0 && (
+            <div style={{ ...s.muted, fontSize: '12px', padding: '6px 2px' }}>No one found.</div>
+          )}
+          {searchResults.map((u) => {
+            const status = u.friendship_status;
+            const isFriends   = status === 'accepted';
+            const isRequested = status === 'pending' && !u.waiting_on_you;
+            const isIncoming  = status === 'pending' &&  u.waiting_on_you;
+            const isBlocked   = status === 'blocked';
+            const initials = `${(u.first_name || '?')[0]}${(u.last_name || '')[0] || ''}`.toUpperCase();
+            const hue = (String(u.id).split('').reduce((a, c) => a + c.charCodeAt(0), 0) * 37) % 360;
+            return (
+              <div key={u.id} style={s.friendRow}>
+                <span style={{
+                  width: '32px', height: '32px', borderRadius: '50%',
+                  background: `hsl(${hue}, 55%, 55%)`, color: '#fff',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '12px', fontWeight: 700, marginRight: '10px', flexShrink: 0,
+                }}>{initials}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600 }}>{u.first_name} {u.last_name}</div>
+                </div>
+                {isFriends   && <span style={{ ...s.smallBtn, background: '#e5e7eb', color: '#374151', cursor: 'default' }}>Friends</span>}
+                {isRequested && <span style={{ ...s.smallBtn, background: '#e5e7eb', color: '#888',    cursor: 'default' }}>Requested</span>}
+                {isIncoming  && (
+                  <button onClick={() => respond(u.friendship_id, 'accept')} style={{ ...s.smallBtn, background: '#16a34a', color: '#fff' }}>Accept</button>
+                )}
+                {isBlocked   && <span style={{ ...s.smallBtn, background: '#fee2e2', color: '#991b1b', cursor: 'default' }}>Blocked</span>}
+                {!status && (
+                  <button
+                    onClick={() => sendRequest(u)}
+                    disabled={pendingByUserId[u.id] === 'sending'}
+                    style={{ ...s.primaryBtn_sm }}
+                  >
+                    {pendingByUserId[u.id] === 'sending' ? '...' : 'Add'}
+                  </button>
+                )}
+              </div>
+            );
+          })}
 
           <div style={{ ...s.sectionLabel, marginTop: '12px' }}>Your friends ({friends.length})</div>
           {friends.length === 0 ? (
