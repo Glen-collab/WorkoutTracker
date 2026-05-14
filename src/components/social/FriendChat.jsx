@@ -455,19 +455,42 @@ export default function FriendChat() {
                   <div style={{ ...s.muted, textAlign: 'center', padding: '16px 0' }}>No friends yet. Add one above 👆</div>
                 ) : visibleFriends.length === 0 ? (
                   <div style={{ ...s.muted, textAlign: 'center', padding: '12px 0', fontSize: '12px' }}>None of your friends match "{searchQuery}".</div>
-                ) : visibleFriends.map((f) => (
-                  <button key={f.id} onClick={() => setActiveFriend(f)} style={s.friendBtn}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#1a1a2e' }}>{f.first_name} {f.last_name}</div>
-                  <div style={{ fontSize: '11px', color: '#888' }}>{f.email}</div>
-                </div>
-                {f.unread > 0 && (
-                  <span style={s.unreadChip}>{f.unread}</span>
-                )}
-              </div>
-            </button>
-                ))}
+                ) : visibleFriends.map((f) => {
+                  const lm = f.last_message;
+                  // "You: ..." prefix for outbound messages so it's clear who
+                  // wrote what — Instagram/Facebook DM-inbox convention.
+                  // Broadcast tag flags coach-blast messages so the recipient
+                  // knows it wasn't a direct DM aimed at them personally.
+                  const previewText = lm
+                    ? `${lm.from_me ? 'You: ' : ''}${lm.is_broadcast && !lm.from_me ? '📢 ' : ''}${lm.preview}`
+                    : f.email;
+                  return (
+                    <button key={f.id} onClick={() => setActiveFriend(f)} style={s.friendBtn}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '6px' }}>
+                            <span style={{ fontSize: '14px', fontWeight: 600, color: '#1a1a2e' }}>{f.first_name} {f.last_name}</span>
+                            {lm && lm.sent_at && (
+                              <span style={{ fontSize: '11px', color: '#888', flexShrink: 0 }}>{timeAgo(lm.sent_at)}</span>
+                            )}
+                          </div>
+                          <div style={{
+                            fontSize: '12px',
+                            color: f.unread > 0 ? '#1a1a2e' : '#888',
+                            fontWeight: f.unread > 0 ? 600 : 400,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            marginTop: '2px',
+                          }}>{previewText}</div>
+                        </div>
+                        {f.unread > 0 && (
+                          <span style={s.unreadChip}>{f.unread}</span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </>
             );
           })()}
