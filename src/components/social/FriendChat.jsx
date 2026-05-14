@@ -61,7 +61,11 @@ export default function FriendChat() {
   // status fetch resolved. null hides both screens until known.
   const [consented, setConsented] = useState(null);
   const [unread, setUnread] = useState(0);
-  const [friends, setFriends] = useState([]);
+  // Tri-state: null = not yet fetched (don't show empty state),
+  // [] = fetched, no friends, array = loaded list. Avoids the brief
+  // flash of "No friends yet" before /friends/list resolves.
+  const [friends, setFriends] = useState(null);
+  const [findOpen, setFindOpen] = useState(false);
   const [incoming, setIncoming] = useState([]);
   const [activeFriend, setActiveFriend] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -283,8 +287,17 @@ export default function FriendChat() {
   return (
     <div style={s.panel}>
       <div style={s.panelHeader}>
-        <div style={{ fontWeight: 700 }}>Friends</div>
-        <button onClick={() => { setOpen(false); setActiveFriend(null); }} style={s.closeBtn}>✕</button>
+        <div style={{ fontWeight: 700 }}>Messages</div>
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+          {hasToken && consented && !activeFriend && (
+            <button
+              onClick={() => { setFindOpen(true); setSearchQuery(''); setSearchResults([]); }}
+              style={s.findBtn}
+              aria-label="Find friends"
+            >+ Find</button>
+          )}
+          <button onClick={() => { setOpen(false); setActiveFriend(null); setFindOpen(false); }} style={s.closeBtn}>✕</button>
+        </div>
       </div>
 
       {!hasToken ? (
@@ -415,76 +428,23 @@ export default function FriendChat() {
             </div>
           )}
 
-          <div style={s.sectionLabel}>Add a friend</div>
-          <input
-            style={{ ...s.input, margin: '0 0 6px' }}
-            type="search"
-            placeholder="Search by name..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            autoComplete="off"
-          />
-          {searching && (
-            <div style={{ ...s.muted, fontSize: '12px', padding: '4px 2px' }}>Searching...</div>
-          )}
-          {searchQuery.trim().length >= 2 && !searching && searchResults.length === 0 && (
-            <div style={{ ...s.muted, fontSize: '12px', padding: '6px 2px' }}>No one found.</div>
-          )}
-          {searchResults.map((u) => {
-            const status = u.friendship_status;
-            const isFriends   = status === 'accepted';
-            const isRequested = status === 'pending' && !u.waiting_on_you;
-            const isIncoming  = status === 'pending' &&  u.waiting_on_you;
-            const isBlocked   = status === 'blocked';
-            const initials = `${(u.first_name || '?')[0]}${(u.last_name || '')[0] || ''}`.toUpperCase();
-            const hue = (String(u.id).split('').reduce((a, c) => a + c.charCodeAt(0), 0) * 37) % 360;
-            return (
-              <div key={u.id} style={s.friendRow}>
-                <span style={{
-                  width: '32px', height: '32px', borderRadius: '50%',
-                  background: `hsl(${hue}, 55%, 55%)`, color: '#fff',
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '12px', fontWeight: 700, marginRight: '10px', flexShrink: 0,
-                }}>{initials}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '14px', fontWeight: 600 }}>{displayName(u)}</div>
-                </div>
-                {isFriends   && <span style={{ ...s.smallBtn, background: '#e5e7eb', color: '#374151', cursor: 'default' }}>Friends</span>}
-                {isRequested && <span style={{ ...s.smallBtn, background: '#e5e7eb', color: '#888',    cursor: 'default' }}>Requested</span>}
-                {isIncoming  && (
-                  <button onClick={() => respond(u.friendship_id, 'accept')} style={{ ...s.smallBtn, background: '#16a34a', color: '#fff' }}>Accept</button>
-                )}
-                {isBlocked   && <span style={{ ...s.smallBtn, background: '#fee2e2', color: '#991b1b', cursor: 'default' }}>Blocked</span>}
-                {!status && (
-                  <button
-                    onClick={() => sendRequest(u)}
-                    disabled={pendingByUserId[u.id] === 'sending'}
-                    style={{ ...s.primaryBtn_sm }}
-                  >
-                    {pendingByUserId[u.id] === 'sending' ? '...' : 'Add'}
-                  </button>
-                )}
-              </div>
-            );
-          })}
+          {/* Add-a-friend now lives in the Find Friends modal triggered
+              from the panel header (+ Find). Keeps this view focused on
+              conversations — message-board style. */}
 
-          {(() => {
-            const q = searchQuery.trim().toLowerCase();
-            const visibleFriends = q
-              ? friends.filter((f) =>
-                  `${f.first_name || ''} ${f.last_name || ''}`.toLowerCase().includes(q)
-                  || (f.email || '').toLowerCase().includes(q))
-              : friends;
+          {friends === null ? (
+            // Still loading — don't flash an empty-state row before the
+            // /friends/list fetch comes back.
+            <div style={{ ...s.muted, textAlign: 'center', padding: '20px 0', fontSize: '13px' }}>Loading...</div>
+          ) : (() => {
             return (
               <>
                 <div style={{ ...s.sectionLabel, marginTop: '12px' }}>
-                  Your friends ({q ? `${visibleFriends.length} of ${friends.length}` : friends.length})
+                  Messages ({friends.length})
                 </div>
                 {friends.length === 0 ? (
-                  <div style={{ ...s.muted, textAlign: 'center', padding: '16px 0' }}>No friends yet. Add one above 👆</div>
-                ) : visibleFriends.length === 0 ? (
-                  <div style={{ ...s.muted, textAlign: 'center', padding: '12px 0', fontSize: '12px' }}>None of your friends match "{searchQuery}".</div>
-                ) : visibleFriends.map((f) => {
+                  <div style={{ ...s.muted, textAlign: 'center', padding: '16px 0' }}>No conversations yet. Tap <strong>+ Find</strong> above 👆</div>
+                ) : friends.map((f) => {
                   const lm = f.last_message;
                   // "You: ..." prefix for outbound messages so it's clear who
                   // wrote what — Instagram/Facebook DM-inbox convention.
@@ -526,6 +486,85 @@ export default function FriendChat() {
 
           <div style={{ marginTop: '14px', textAlign: 'center' }}>
             <button onClick={logout} style={{ ...s.smallBtn, background: 'transparent', color: '#888' }}>Sign out</button>
+          </div>
+        </div>
+      )}
+
+      {/* Find Friends modal — pops over the message board when the
+          coach taps "+ Find" in the header. Search by name typeahead;
+          tap Add on a card to send a request. Close returns you to
+          the conversation list with state intact. */}
+      {findOpen && (
+        <div style={s.findModal}>
+          <div style={s.findModalHeader}>
+            <button
+              onClick={() => { setFindOpen(false); setSearchQuery(''); setSearchResults([]); }}
+              style={s.backBtn}
+              aria-label="Back to messages"
+            >←</button>
+            <div style={{ fontWeight: 700 }}>Find Friends</div>
+            <button
+              onClick={() => { setFindOpen(false); setSearchQuery(''); setSearchResults([]); }}
+              style={{ ...s.closeBtn, color: '#666' }}
+              aria-label="Close"
+            >✕</button>
+          </div>
+          <div style={s.panelBody}>
+            <input
+              autoFocus
+              style={{ ...s.input, margin: '0 0 8px' }}
+              type="search"
+              placeholder="Search by name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              autoComplete="off"
+            />
+            {searching && (
+              <div style={{ ...s.muted, fontSize: '12px', padding: '6px 2px' }}>Searching...</div>
+            )}
+            {searchQuery.trim().length < 2 && !searching && (
+              <div style={{ ...s.muted, fontSize: '12px', padding: '6px 2px' }}>Type at least two letters of a name.</div>
+            )}
+            {searchQuery.trim().length >= 2 && !searching && searchResults.length === 0 && (
+              <div style={{ ...s.muted, fontSize: '12px', padding: '6px 2px' }}>No one found.</div>
+            )}
+            {searchResults.map((u) => {
+              const status = u.friendship_status;
+              const isFriends   = status === 'accepted';
+              const isRequested = status === 'pending' && !u.waiting_on_you;
+              const isIncoming  = status === 'pending' &&  u.waiting_on_you;
+              const isBlocked   = status === 'blocked';
+              const initials = `${(u.first_name || '?')[0]}${(u.last_name || '')[0] || ''}`.toUpperCase();
+              const hue = (String(u.id).split('').reduce((a, c) => a + c.charCodeAt(0), 0) * 37) % 360;
+              return (
+                <div key={u.id} style={s.friendRow}>
+                  <span style={{
+                    width: '32px', height: '32px', borderRadius: '50%',
+                    background: `hsl(${hue}, 55%, 55%)`, color: '#fff',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '12px', fontWeight: 700, marginRight: '10px', flexShrink: 0,
+                  }}>{initials}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '14px', fontWeight: 600 }}>{displayName(u)}</div>
+                  </div>
+                  {isFriends   && <span style={{ ...s.smallBtn, background: '#e5e7eb', color: '#374151', cursor: 'default' }}>Friends</span>}
+                  {isRequested && <span style={{ ...s.smallBtn, background: '#e5e7eb', color: '#888',    cursor: 'default' }}>Requested</span>}
+                  {isIncoming  && (
+                    <button onClick={() => respond(u.friendship_id, 'accept')} style={{ ...s.smallBtn, background: '#16a34a', color: '#fff' }}>Accept</button>
+                  )}
+                  {isBlocked   && <span style={{ ...s.smallBtn, background: '#fee2e2', color: '#991b1b', cursor: 'default' }}>Blocked</span>}
+                  {!status && (
+                    <button
+                      onClick={() => sendRequest(u)}
+                      disabled={pendingByUserId[u.id] === 'sending'}
+                      style={{ ...s.primaryBtn_sm }}
+                    >
+                      {pendingByUserId[u.id] === 'sending' ? '...' : 'Add'}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -574,6 +613,33 @@ const s = {
     color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
   },
   closeBtn: { background: 'none', border: 'none', color: '#fff', fontSize: '18px', cursor: 'pointer' },
+  // + Find pill in the message-board header. Stands out against the
+  // dark gradient without competing with the close X.
+  findBtn: {
+    background: 'rgba(255,255,255,0.18)', color: '#fff',
+    border: '1px solid rgba(255,255,255,0.3)',
+    fontSize: '12px', fontWeight: 700,
+    padding: '5px 10px', borderRadius: '999px', cursor: 'pointer',
+  },
+  // Find Friends modal. Absolute-overlays the panel body so it pops
+  // over the conversation list without unmounting it. Closing returns
+  // the user to their messages with state intact.
+  findModal: {
+    position: 'absolute', inset: 0,
+    background: '#fff',
+    display: 'flex', flexDirection: 'column',
+    zIndex: 5,
+    borderRadius: 'inherit',
+    overflow: 'hidden',
+  },
+  // Light header so the gray back arrow + dark title contrast — matches
+  // the thread view's header so users feel they're in the same app.
+  findModalHeader: {
+    padding: '10px 14px', borderBottom: '1px solid #f0f0f0',
+    background: '#fff', color: '#1a1a2e',
+    display: 'flex', alignItems: 'center', gap: '10px',
+    justifyContent: 'space-between',
+  },
   panelBody: { padding: '14px 16px', flex: 1, overflow: 'auto' },
   muted: { fontSize: '13px', color: '#666', marginBottom: '8px' },
   input: {
