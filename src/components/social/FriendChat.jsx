@@ -439,11 +439,24 @@ export default function FriendChat() {
             );
           })}
 
-          <div style={{ ...s.sectionLabel, marginTop: '12px' }}>Your friends ({friends.length})</div>
-          {friends.length === 0 ? (
-            <div style={{ ...s.muted, textAlign: 'center', padding: '16px 0' }}>No friends yet. Add one above 👆</div>
-          ) : friends.map((f) => (
-            <button key={f.id} onClick={() => setActiveFriend(f)} style={s.friendBtn}>
+          {(() => {
+            const q = searchQuery.trim().toLowerCase();
+            const visibleFriends = q
+              ? friends.filter((f) =>
+                  `${f.first_name || ''} ${f.last_name || ''}`.toLowerCase().includes(q)
+                  || (f.email || '').toLowerCase().includes(q))
+              : friends;
+            return (
+              <>
+                <div style={{ ...s.sectionLabel, marginTop: '12px' }}>
+                  Your friends ({q ? `${visibleFriends.length} of ${friends.length}` : friends.length})
+                </div>
+                {friends.length === 0 ? (
+                  <div style={{ ...s.muted, textAlign: 'center', padding: '16px 0' }}>No friends yet. Add one above 👆</div>
+                ) : visibleFriends.length === 0 ? (
+                  <div style={{ ...s.muted, textAlign: 'center', padding: '12px 0', fontSize: '12px' }}>None of your friends match "{searchQuery}".</div>
+                ) : visibleFriends.map((f) => (
+                  <button key={f.id} onClick={() => setActiveFriend(f)} style={s.friendBtn}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontSize: '14px', fontWeight: 600, color: '#1a1a2e' }}>{f.first_name} {f.last_name}</div>
@@ -454,7 +467,10 @@ export default function FriendChat() {
                 )}
               </div>
             </button>
-          ))}
+                ))}
+              </>
+            );
+          })()}
 
           <div style={{ marginTop: '14px', textAlign: 'center' }}>
             <button onClick={logout} style={{ ...s.smallBtn, background: 'transparent', color: '#888' }}>Sign out</button>
