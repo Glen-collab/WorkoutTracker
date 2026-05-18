@@ -78,6 +78,10 @@ export default function FriendChat() {
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [pendingByUserId, setPendingByUserId] = useState({}); // userId -> 'sending'|'done'|null
+  // Sneak-peek stats — light tonnage/calorie summary for the active friend.
+  const [statsOpen,    setStatsOpen]    = useState(false);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [stats,        setStats]        = useState(null);
   const pollRef = useRef(null);
   const threadPollRef = useRef(null);
   const scrollRef = useRef(null);
@@ -172,6 +176,32 @@ export default function FriendChat() {
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages.length]);
+
+  // Reset stats peek state whenever the active friend changes
+  useEffect(() => {
+    setStatsOpen(false);
+    setStats(null);
+    setStatsLoading(false);
+  }, [activeFriend?.id]);
+
+  const loadFriendStats = useCallback(async (friendId) => {
+    if (!friendId) return;
+    setStatsLoading(true);
+    try {
+      const r = await authFetch(`/social/friend-stats/${friendId}`);
+      setStats(r);
+    } catch {
+      setStats({ error: true });
+    } finally {
+      setStatsLoading(false);
+    }
+  }, []);
+
+  const toggleStats = useCallback(() => {
+    if (!activeFriend) return;
+    if (!statsOpen && !stats) loadFriendStats(activeFriend.id);
+    setStatsOpen((x) => !x);
+  }, [activeFriend, statsOpen, stats, loadFriendStats]);
 
   const handleMagicLink = async (e) => {
     e.preventDefault();
@@ -406,8 +436,28 @@ export default function FriendChat() {
         <>
           <div style={s.threadHeader}>
             <button onClick={() => { setActiveFriend(null); setMessages([]); }} style={s.backBtn}>←</button>
-            <div style={{ fontWeight: 700 }}>{displayName(activeFriend)}</div>
+            <div style={{ fontWeight: 700, flex: 1 }}>{displayName(activeFriend)}</div>
+            <button
+              onClick={toggleStats}
+              title="Sneak peek their numbers"
+              style={{
+                background: statsOpen ? '#0a84ff' : 'rgba(10,132,255,0.1)',
+                color: statsOpen ? '#fff' : '#0a84ff',
+                border: 'none', borderRadius: '10px',
+                padding: '6px 10px', fontSize: '13px', fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              👀
+            </button>
           </div>
+          {statsOpen && (
+            <FriendStatsPeek
+              stats={stats}
+              loading={statsLoading}
+              firstName={(activeFriend?.first_name || displayName(activeFriend) || 'them').split(' ')[0]}
+            />
+          )}
           <div style={s.thread} ref={scrollRef}>
             {messages.length === 0 ? (
               <div style={{ ...s.muted, textAlign: 'center', padding: '20px' }}>Say something 💪</div>
@@ -756,3 +806,59 @@ const s = {
   },
   link: { color: '#B37602', textDecoration: 'underline' },
 };
+
+
+// Inline sneak-peek of a friend's training volume. Lightweight social signal
+// ("is my friend out-working me this week?") — tonnage + calories + cardio
+// for TODAY and the last 7 days. Privacy: only accepted-friends can see it
+// (enforced server-side by /api/social/friend-stats).
+function FriendStatsPeek({ stats, loading, firstName }) {
+  const wrapStyle = {
+    margin: '0 12px 8px',
+    padding: '10px 12px',
+    background: 'linear-gradient(135deg, #f0f7ff, #e8f1fe)',
+    border: '1px solid #d0e3f7',
+    borderRadius: '12px',
+    fontSize: '12px',
+    color: '#1a1a2e',
+  };
+  if (loading) {
+    return <div style={{ ...wrapStyle, color: '#888' }}>Loading {firstName}'s numbers…</div>;
+  }
+  if (!stats || stats.error) {
+    return <div style={{ ...wrapStyle, color: '#888' }}>Couldn't load stats right now.</div>;
+  }
+
+  const row = (label, s) => {
+    const hasAny = s.sessions || s.tonnage || s.calories || s.cardio_min;
+    if (!hasAny) {
+      return (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '2px 0' }}>
+          <span style={{ fontWeight: 700, color: '#0a84ff', minWidth: 64 }}>{label}</span>
+          <span style={{ color: '#888' }}>nothing logged yet</span>
+        </div>
+      );
+    }
+    const bits = [];
+    if (s.sessions)   bits.push(`${s.sessions} session${s.sessions === 1 ? '' : 's'}`);
+    if (s.tonnage)    bits.push(`🏋️ ${s.tonnage.toLocaleString()} lbs`);
+    if (s.calories)   bits.push(`🔥 ${s.calories.toLocaleString()} cal`);
+    if (s.cardio_min) bits.push(`⏱️ ${s.cardio_min} min`);
+    return (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '2px 0', gap: '8px', flexWrap: 'wrap' }}>
+        <span style={{ fontWeight: 700, color: '#0a84ff', minWidth: 64 }}>{label}</span>
+        <span style={{ textAlign: 'right' }}>{bits.join(' · ')}</span>
+      </div>
+    );
+  };
+
+  return (
+    <div style={wrapStyle}>
+      <div style={{ fontSize: '10px', fontWeight: 800, color: '#0a84ff', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: '4px' }}>
+        👀 Sneak peek
+      </div>
+      {row('Today', stats.today)}
+      {row('This week', stats.week)}
+    </div>
+  );
+}
