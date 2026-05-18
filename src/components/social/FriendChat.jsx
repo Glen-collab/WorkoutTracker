@@ -597,7 +597,19 @@ export default function FriendChat() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '14px', fontWeight: 600 }}>{displayName(u)}</div>
                   </div>
-                  {isFriends   && <span style={{ ...s.smallBtn, background: '#e5e7eb', color: '#374151', cursor: 'default' }}>Friends</span>}
+                  {isFriends && (
+                    <button
+                      onClick={() => {
+                        setActiveFriend(u);
+                        setFindOpen(false);
+                        setSearchQuery('');
+                        setSearchResults([]);
+                      }}
+                      style={{ ...s.primaryBtn_sm }}
+                    >
+                      💬 Message
+                    </button>
+                  )}
                   {isRequested && <span style={{ ...s.smallBtn, background: '#e5e7eb', color: '#888',    cursor: 'default' }}>Requested</span>}
                   {isIncoming  && (
                     <button onClick={() => respond(u.friendship_id, 'accept')} style={{ ...s.smallBtn, background: '#16a34a', color: '#fff' }}>Accept</button>
