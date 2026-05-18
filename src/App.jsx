@@ -1211,6 +1211,8 @@ export default function App() {
           program={program}
           currentWeek={currentWeek}
           currentDay={currentDay}
+          accessCode={user?.accessCode}
+          userEmail={user?.email}
         />
       )}
       {/* Friends chat only inside the workout — not the login screen.

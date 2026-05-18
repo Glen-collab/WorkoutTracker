@@ -276,7 +276,84 @@ function summarizeWorkout(program, week, day) {
   return lines.length > 1 ? lines.join('\n') : null;
 }
 
-const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, screen: currentScreen, onLoadTravel, program, currentWeek, currentDay }, ref) => {
+// Parse a bot reply for [[VIDEO: <uid> | <name>]] markers and split into
+// renderable segments. The chatbot backend emits these when it suggests an
+// exercise alternative from Glen's library — we replace them with an inline
+// Cloudflare iframe so the user sees the demo without leaving the chat.
+const VIDEO_MARKER_RE = /\[\[VIDEO:\s*([a-f0-9]{20,})\s*\|\s*([^\]]+?)\s*\]\]/gi;
+
+function parseBotTextSegments(text) {
+  if (!text) return [];
+  const segments = [];
+  let lastIdx = 0;
+  let match;
+  VIDEO_MARKER_RE.lastIndex = 0;
+  while ((match = VIDEO_MARKER_RE.exec(text)) !== null) {
+    if (match.index > lastIdx) {
+      segments.push({ kind: 'text', value: text.slice(lastIdx, match.index) });
+    }
+    segments.push({ kind: 'video', uid: match[1], name: match[2].trim() });
+    lastIdx = match.index + match[0].length;
+  }
+  if (lastIdx < text.length) {
+    segments.push({ kind: 'text', value: text.slice(lastIdx) });
+  }
+  return segments;
+}
+
+// Read the localStorage workout history and condense the last N entries into
+// a compact summary so the LLM can answer "how's my training been?" and
+// "what notes did I leave last week?" without per-exercise data — which
+// isn't in localStorage. For exercise-level lookups (Phase 2), the chatbot
+// backend has a tool.
+function summarizeRecentWorkouts(accessCode, email, maxEntries = 8) {
+  if (!accessCode || !email) return null;
+  let raw;
+  try {
+    raw = window.localStorage.getItem(`gwt_history_${accessCode}_${email}`);
+  } catch { return null; }
+  if (!raw) return null;
+  let history;
+  try { history = JSON.parse(raw); } catch { return null; }
+  if (!history || typeof history !== 'object') return null;
+
+  const entries = Object.entries(history)
+    .map(([dayLabel, entry]) => {
+      const t = entry?.logged_at ? new Date(entry.logged_at).getTime() : 0;
+      return { dayLabel, ts: t, vs: entry?.volume_stats || {}, data: entry?.data || {} };
+    })
+    .filter((e) => e.ts > 0)
+    .sort((a, b) => b.ts - a.ts)
+    .slice(0, maxEntries);
+
+  if (!entries.length) return null;
+
+  const lines = ['Recent training (most recent first):'];
+  for (const e of entries) {
+    const d = new Date(e.ts);
+    const dateStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    const bits = [];
+    if (e.vs.tonnage)        bits.push(`${Math.round(e.vs.tonnage).toLocaleString()} lbs`);
+    if (e.vs.est_calories)   bits.push(`${Math.round(e.vs.est_calories)} cal`);
+    if (e.vs.cardio_minutes) bits.push(`${e.vs.cardio_minutes} min cardio`);
+    if (e.vs.core_crunches)  bits.push(`${e.vs.core_crunches} core reps`);
+
+    lines.push(`  - ${dateStr} (${e.dayLabel}): ${bits.join(' · ') || 'logged'}`);
+
+    // Pluck any block notes (`block-notes-0`, etc.) — high-signal context the
+    // client left for the trainer/themselves.
+    const notes = [];
+    for (const [k, v] of Object.entries(e.data || {})) {
+      if (k.startsWith('block-notes-') && typeof v === 'string' && v.trim()) {
+        notes.push(v.trim());
+      }
+    }
+    if (notes.length) lines.push(`      note: "${notes.join(' / ').slice(0, 180)}"`);
+  }
+  return lines.join('\n');
+}
+
+const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, screen: currentScreen, onLoadTravel, program, currentWeek, currentDay, accessCode, userEmail }, ref) => {
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const isOpen = isControlled ? controlledOpen : internalOpen;
@@ -410,6 +487,7 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
 
     try {
       const workoutSummary = summarizeWorkout(program, currentWeek, currentDay);
+      const recentWorkouts = summarizeRecentWorkouts(accessCode, userEmail);
       const coachConfig    = program?.coachConfig || undefined;
       const programName    = program?.name || program?.program_name || undefined;
 
@@ -423,6 +501,7 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
             source: 'workout_tracker',
             user_first_name: name,
             workout_summary: workoutSummary || undefined,
+            recent_workouts: recentWorkouts || undefined,
             program_name: programName,
             coach_config: coachConfig
           }
@@ -478,7 +557,7 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
     } finally {
       setIsAsking(false);
     }
-  }, [isAsking, name, CHAT_API_BASE, program, currentWeek, currentDay]);
+  }, [isAsking, name, CHAT_API_BASE, program, currentWeek, currentDay, accessCode, userEmail]);
 
   useImperativeHandle(ref, () => ({
     getConversationSummary: () => ({
@@ -637,7 +716,28 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
                 fontStyle: msg.isTyping ? 'italic' : 'normal',
                 opacity: msg.isTyping ? 0.7 : 1,
               }}>
-                {msg.isBot && msg.text.includes('<') ? (
+                {msg.isBot && msg.text.includes('[[VIDEO:') ? (
+                  parseBotTextSegments(msg.text).map((seg, si) =>
+                    seg.kind === 'video' ? (
+                      <div key={si} style={{ margin: '6px 0' }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: '#667eea', marginBottom: 4 }}>
+                          {seg.name}
+                        </div>
+                        <div style={{ position: 'relative', paddingTop: '56.25%', borderRadius: 8, overflow: 'hidden', background: '#000' }}>
+                          <iframe
+                            src={`https://iframe.videodelivery.net/${seg.uid}`}
+                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0 }}
+                            allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+                            allowFullScreen
+                            title={seg.name}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <span key={si}>{seg.value}</span>
+                    )
+                  )
+                ) : msg.isBot && msg.text.includes('<') ? (
                   <div dangerouslySetInnerHTML={{ __html: msg.text }} />
                 ) : (
                   msg.text
