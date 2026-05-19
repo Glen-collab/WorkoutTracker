@@ -182,6 +182,8 @@ export default function ProgramView({
   travelDay,
   travelTotalDays,
   onExitTravelMode,
+  todayWeight,
+  onChangeTodayWeight,
 }) {
   const blocks = program?.blocks || [];
   const [showProfileEdit, setShowProfileEdit] = useState(false);
@@ -305,6 +307,48 @@ export default function ProgramView({
           <div style={s.savedMsg}>
             {'\uD83D\uDCCA'} Viewing previously logged workout from{' '}
             {savedWorkout.date || 'unknown date'}
+          </div>
+        )}
+
+        {!savedWorkout && onChangeTodayWeight && (
+          <div style={{
+            background: 'rgba(255,255,255,0.06)',
+            border: '1px solid rgba(255,255,255,0.18)',
+            borderRadius: '12px',
+            padding: '10px 14px',
+            marginBottom: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            color: '#fff',
+          }}>
+            <span style={{ fontSize: '18px' }}>\u2696\uFE0F</span>
+            <label style={{ flex: 1, fontSize: '13px', opacity: 0.85 }}>
+              Today's weight (optional)
+            </label>
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.1"
+              min="50"
+              max="700"
+              placeholder="lbs"
+              value={todayWeight || ''}
+              onChange={(e) => onChangeTodayWeight(e.target.value)}
+              style={{
+                width: '80px',
+                padding: '6px 8px',
+                borderRadius: '8px',
+                border: '1px solid rgba(255,255,255,0.25)',
+                background: 'rgba(0,0,0,0.25)',
+                color: '#fff',
+                fontSize: '14px',
+                fontWeight: 600,
+                textAlign: 'right',
+                outline: 'none',
+              }}
+            />
+            <span style={{ fontSize: '12px', opacity: 0.6 }}>lbs</span>
           </div>
         )}
 

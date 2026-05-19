@@ -88,6 +88,9 @@ export default function App() {
 
   // Tracking data keyed by "blockIndex-exIndex-setIndex-field"
   const [trackingData, setTrackingData] = useState({});
+  // Optional bodyweight at workout time — feeds workout_logs.body_weight_lbs
+  // when the user logs the workout. Per-workout, resets after log.
+  const [todayWeight, setTodayWeight] = useState('');
 
   // Pain areas for questionnaire
   const [painAreas, setPainAreas] = useState([]);
@@ -1040,6 +1043,7 @@ export default function App() {
           one_rm_clean: maxes.clean || null,
           chatbot_data: chatbotData,
           volume_stats: volumeStats,
+          body_weight_lbs: todayWeight ? parseFloat(todayWeight) || null : null,
         };
 
         // Add travel fields if in travel mode
@@ -1054,6 +1058,8 @@ export default function App() {
       }
 
       if (result.success) {
+        // Reset the per-workout weight input so the next day starts blank.
+        setTodayWeight('');
         // Save exercise history to localStorage
         const historyKey = `gwt_history_${user.accessCode}_${user.email}`;
         try {
@@ -1196,6 +1202,8 @@ export default function App() {
           travelDay={travelDay}
           travelTotalDays={travelTotalDays}
           onExitTravelMode={handleExitTravelMode}
+          todayWeight={todayWeight}
+          onChangeTodayWeight={setTodayWeight}
         />
       )}
 
