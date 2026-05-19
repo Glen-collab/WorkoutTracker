@@ -1044,6 +1044,16 @@ export default function App() {
           chatbot_data: chatbotData,
           volume_stats: volumeStats,
           body_weight_lbs: todayWeight ? parseFloat(todayWeight) || null : null,
+          // User's LOCAL calendar date — fixes "trained at 11pm CT but it
+          // shows up as next day" because server CURRENT_DATE is UTC.
+          // Format: YYYY-MM-DD in the browser's timezone.
+          workout_date: (() => {
+            const d = new Date();
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+          })(),
         };
 
         // Add travel fields if in travel mode
@@ -1129,7 +1139,7 @@ export default function App() {
     } catch (err) {
       console.error('Failed to log workout:', err);
     }
-  }, [currentWeek, currentDay, program, trackingData, recommendations, api, user, daysPerWeek, totalWeeks, maxes, profile, cumulativeWeeks, travelMode, travelEquipment, travelDay, travelTotalDays, handleTravelNavigate, setCurrentWeek, setCurrentDay, setRecommendations, handleLoadProgramFromAPI]);
+  }, [currentWeek, currentDay, program, trackingData, recommendations, api, user, daysPerWeek, totalWeeks, maxes, profile, cumulativeWeeks, travelMode, travelEquipment, travelDay, travelTotalDays, handleTravelNavigate, setCurrentWeek, setCurrentDay, setRecommendations, handleLoadProgramFromAPI, todayWeight]);
 
   const handleSubmitCompletion = useCallback(async (completionData) => {
     try {
