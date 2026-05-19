@@ -322,7 +322,7 @@ export default function ProgramView({
             gap: '10px',
             color: '#fff',
           }}>
-            <span style={{ fontSize: '18px' }}>\u2696\uFE0F</span>
+            <span style={{ fontSize: '18px' }}>{'\u2696\uFE0F'}</span>
             <label style={{ flex: 1, fontSize: '13px', opacity: 0.85 }}>
               Today's weight (optional)
             </label>

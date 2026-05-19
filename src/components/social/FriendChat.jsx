@@ -852,11 +852,33 @@ function FriendStatsPeek({ stats, loading, firstName }) {
     );
   };
 
+  // Latest bodyweight reading from the friend's weight tile (if they
+  // log it). Showing as a small line above the today/week rollups so
+  // the friend's most-current self-data is the first thing visible.
+  const lw = stats.latest_weight;
+  const fmtDate = (iso) => {
+    if (!iso) return '';
+    try {
+      const [y, m, d] = iso.split('-').map(Number);
+      const dt = new Date(y, m - 1, d);
+      return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } catch { return ''; }
+  };
+
   return (
     <div style={wrapStyle}>
       <div style={{ fontSize: '10px', fontWeight: 800, color: '#0a84ff', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: '4px' }}>
         👀 Sneak peek
       </div>
+      {lw && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '2px 0' }}>
+          <span style={{ fontWeight: 700, color: '#0a84ff', minWidth: 64 }}>Weight</span>
+          <span>
+            {'⚖️'} <strong>{lw.weight_lbs.toFixed(1)} lbs</strong>
+            <span style={{ color: '#888', fontSize: 11, marginLeft: 4 }}>· {fmtDate(lw.logged_on)}</span>
+          </span>
+        </div>
+      )}
       {row('Today', stats.today)}
       {row('This week', stats.week)}
     </div>
