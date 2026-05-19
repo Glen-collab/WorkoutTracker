@@ -1,5 +1,6 @@
 import React from 'react';
 import CastButton from './CastButton';
+import DashboardButton from './DashboardButton';
 
 const s = {
   card: {
@@ -121,15 +122,18 @@ export default function ProgramHeader({
     <div style={s.card}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', flexWrap: 'wrap', marginBottom: '4px' }}>
         <h2 style={{ ...s.title, margin: 0 }}>{program?.name || 'Workout Program'}</h2>
-        <CastButton
-          program={program}
-          accessCode={user?.accessCode}
-          userEmail={userEmail}
-          userName={userName}
-          currentWeek={currentWeek}
-          currentDay={currentDay}
-          maxes={maxes}
-        />
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <DashboardButton userEmail={userEmail} />
+          <CastButton
+            program={program}
+            accessCode={user?.accessCode}
+            userEmail={userEmail}
+            userName={userName}
+            currentWeek={currentWeek}
+            currentDay={currentDay}
+            maxes={maxes}
+          />
+        </div>
       </div>
       <div style={s.meta}>
         For: {userName} ({userEmail})
