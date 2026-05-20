@@ -25,7 +25,7 @@
       // existing revision tracking missed). When localStorage's stored
       // version differs from this, we unregister the SW + clear caches
       // once, then reload. Subsequent loads use the new SW normally.
-      var BUILD_VERSION = '2026-05-14-d';
+      var BUILD_VERSION = '__BUILD_VERSION__';
       if ('serviceWorker' in navigator) {
         var isTvPath = window.location.pathname.startsWith('/tv');
         var stored = '';

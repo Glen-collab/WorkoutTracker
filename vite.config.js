@@ -2,9 +2,20 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// Bumped on every build so the index.html bootstrap script (see Service
+// Worker management block) triggers its nuclear cache reset once per
+// deploy. Replaces a previously hand-bumped constant that drifted stale.
+const BUILD_VERSION = new Date().toISOString();
+
 export default defineConfig({
   plugins: [
     react(),
+    {
+      name: 'inject-build-version',
+      transformIndexHtml(html) {
+        return html.replace(/__BUILD_VERSION__/g, BUILD_VERSION);
+      },
+    },
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon-192.svg', 'icon-512.svg', 'apple-touch-icon.svg'],
