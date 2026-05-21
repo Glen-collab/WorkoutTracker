@@ -41,6 +41,24 @@ function displayName(user) {
   return email || 'Friend';
 }
 
+// Inbox-row label: "Nick Harrington (5k comeback)". Lets the user see
+// what each friend is training without opening the thread — bait.
+// The program string gets ellipsized so a long name+program never
+// overflows the row and pushes the timestamp off-screen.
+function nameWithProgram(f) {
+  const name = displayName(f);
+  const prog = String(f?.program_name || '').trim();
+  if (!prog) return name;
+  const MAX = 30;       // total chars budget for the line
+  const OVERHEAD = 3;   // " (" + ")"
+  const remaining = MAX - name.length - OVERHEAD;
+  if (remaining <= 3) return name; // no useful room for a program preview
+  const shown = prog.length <= remaining
+    ? prog
+    : prog.slice(0, remaining - 1).trimEnd() + '…';
+  return `${name} (${shown})`;
+}
+
 function timeAgo(dateStr) {
   if (!dateStr) return '';
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -558,7 +576,16 @@ export default function FriendChat() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '6px' }}>
-                            <span style={{ fontSize: '14px', fontWeight: 600, color: '#1a1a2e' }}>{displayName(f)}</span>
+                            <span style={{
+                              fontSize: '14px',
+                              fontWeight: 600,
+                              color: '#1a1a2e',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              minWidth: 0,
+                              flex: 1,
+                            }}>{nameWithProgram(f)}</span>
                             {lm && lm.sent_at && (
                               <span style={{ fontSize: '11px', color: '#888', flexShrink: 0 }}>{timeAgo(lm.sent_at)}</span>
                             )}
