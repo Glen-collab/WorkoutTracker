@@ -14,6 +14,7 @@ import TestYourMight, { getWeekConfig } from './components/game/TestYourMight';
 import WorkoutChatbot from './components/chatbot/WorkoutChatbot';
 import FriendChat from './components/social/FriendChat';
 import CastStatusPill from './components/program/CastStatusPill';
+import TransitionSurveyModal from './components/modals/TransitionSurveyModal';
 import useCastSync from './hooks/useCastSync';
 import MagicLinkConsume from './components/MagicLinkConsume';
 import { calcBlockTonnage, calcCardio, getDefaultWeight } from './components/program/DailyTonnage';
@@ -97,6 +98,10 @@ export default function App() {
 
   // Payment gate
   const [paymentRequired, setPaymentRequired] = useState(null);
+
+  // Transition survey + grace period
+  const [showTransitionSurvey, setShowTransitionSurvey] = useState(false);
+  const [graceInfo, setGraceInfo] = useState(null);
 
   // Modal visibility
   const [showPainModal, setShowPainModal] = useState(false);
@@ -460,6 +465,14 @@ export default function App() {
           setPreviousWeekWorkout(prevWorkout);
         } else {
           setPreviousWeekWorkout(null);
+        }
+
+        if (result.data?.grace_days_remaining != null) {
+          setGraceInfo({ daysRemaining: result.data.grace_days_remaining });
+        }
+        if (result.data?.survey_available) {
+          const surveyDone = localStorage.getItem(`gwt_survey_done_${u.email}`);
+          if (!surveyDone) setShowTransitionSurvey(true);
         }
 
         setScreen('program');
@@ -1225,6 +1238,17 @@ export default function App() {
           onOpenPainModal={() => setShowPainModal(true)}
         />
       )}
+      {screen === 'program' && graceInfo && (
+        <div style={{
+          background: 'linear-gradient(135deg, #f59e0b, #d97706)', padding: '10px 16px',
+          textAlign: 'center', fontSize: 13, fontWeight: '600', color: '#1a1a2e',
+        }}>
+          Free access ends in <b>{graceInfo.daysRemaining} day{graceInfo.daysRemaining !== 1 ? 's' : ''}</b> —{' '}
+          <a href="https://app.bestrongagain.com/register/GLENM7NUS?tier=basic" target="_blank" rel="noopener noreferrer"
+            style={{ color: '#1a1a2e', textDecoration: 'underline', fontWeight: '800' }}
+          >Subscribe to keep your programs</a>
+        </div>
+      )}
       {screen === 'program' && program && (
         <ProgramView
           program={program}
@@ -1335,6 +1359,13 @@ export default function App() {
         isOpen={showCompletionModal}
         onSubmit={handleSubmitCompletion}
         onClose={() => setShowCompletionModal(false)}
+      />
+      <TransitionSurveyModal
+        isOpen={showTransitionSurvey}
+        userEmail={user?.email}
+        userName={user?.name}
+        onComplete={() => { setShowTransitionSurvey(false); }}
+        onDismiss={() => setShowTransitionSurvey(false)}
       />
       <CongratulationsModal
         isOpen={showCongratsModal}
