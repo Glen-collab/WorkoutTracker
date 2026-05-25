@@ -95,6 +95,9 @@ export default function App() {
   // Pain areas for questionnaire
   const [painAreas, setPainAreas] = useState([]);
 
+  // Payment gate
+  const [paymentRequired, setPaymentRequired] = useState(null);
+
   // Modal visibility
   const [showPainModal, setShowPainModal] = useState(false);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
@@ -460,6 +463,12 @@ export default function App() {
         }
 
         setScreen('program');
+      } else if (result?.payment_required) {
+        setScreen('access');
+        setPaymentRequired({
+          message: result.message,
+          url: result.subscribe_url,
+        });
       } else {
         console.error('Failed to load program:', result);
         alert(result?.message || 'Invalid access code or email. Please check and try again.');
@@ -1160,7 +1169,45 @@ export default function App() {
 
   return (
     <div style={containerStyle}>
-      {screen === 'access' && (
+      {screen === 'access' && paymentRequired && (
+        <div style={{
+          minHeight: '100dvh', display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', padding: '24px',
+          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+          color: '#fff', textAlign: 'center',
+        }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>💪</div>
+          <h2 style={{ fontSize: '22px', fontWeight: '800', marginBottom: '12px' }}>
+            Subscription Required
+          </h2>
+          <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.7)', maxWidth: '340px', lineHeight: '1.5', marginBottom: '24px' }}>
+            {paymentRequired.message}
+          </p>
+          <a
+            href={paymentRequired.url}
+            style={{
+              display: 'inline-block', padding: '14px 32px', borderRadius: '12px',
+              background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+              color: '#fff', fontSize: '16px', fontWeight: '700',
+              textDecoration: 'none', marginBottom: '16px',
+              boxShadow: '0 4px 14px rgba(34, 197, 94, 0.4)',
+            }}
+          >
+            Subscribe &amp; Get Started
+          </a>
+          <button
+            onClick={() => setPaymentRequired(null)}
+            style={{
+              background: 'none', border: '1px solid rgba(255,255,255,0.2)',
+              color: 'rgba(255,255,255,0.6)', padding: '10px 24px',
+              borderRadius: '8px', fontSize: '14px', cursor: 'pointer',
+            }}
+          >
+            Back
+          </button>
+        </div>
+      )}
+      {screen === 'access' && !paymentRequired && (
         isKioskStation
           ? <KioskPickerScreen onPick={handleLoadProgram} />
           : <AccessScreen onLoadProgram={handleLoadProgram} />

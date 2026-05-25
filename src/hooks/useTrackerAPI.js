@@ -22,8 +22,14 @@ export default function useTrackerAPI() {
         });
         clearTimeout(timeout);
         const text = await response.text();
-        if (!response.ok) throw new Error('Server error: ' + response.status);
         const data = JSON.parse(text);
+        if (!response.ok) {
+          if (data.payment_required) {
+            setLoading(false);
+            return data;
+          }
+          throw new Error(data.message || 'Server error: ' + response.status);
+        }
         setLoading(false);
         return data;
       } catch (err) {
