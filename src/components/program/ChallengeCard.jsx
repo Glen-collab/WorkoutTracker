@@ -17,6 +17,7 @@ export default function ChallengeCard({ userEmail }) {
   const [submitting, setSubmitting] = useState(false);
   const [submitMsg, setSubmitMsg] = useState(null); // { type: 'success'|'error', text }
   const [expanded, setExpanded] = useState(false);
+  const [showAnnounce, setShowAnnounce] = useState(false);
 
   const fetchChallenge = useCallback(async () => {
     if (!userEmail) { setLoading(false); return; }
@@ -39,6 +40,14 @@ export default function ChallengeCard({ userEmail }) {
   }, [userEmail]);
 
   useEffect(() => { fetchChallenge(); }, [fetchChallenge]);
+
+  useEffect(() => {
+    if (!challenge?.id) return;
+    const key = `gwt_challenge_seen_${challenge.id}`;
+    if (!localStorage.getItem(key)) {
+      setShowAnnounce(true);
+    }
+  }, [challenge?.id]);
 
   const handleSubmit = async () => {
     const num = parseFloat(submitValue);
@@ -93,7 +102,65 @@ export default function ChallengeCard({ userEmail }) {
 
   const top5 = standings.slice(0, 5);
 
+  const dismissAnnounce = () => {
+    setShowAnnounce(false);
+    setExpanded(true);
+    try { localStorage.setItem(`gwt_challenge_seen_${challenge.id}`, 'true'); } catch {}
+  };
+
   return (
+    <>
+    {showAnnounce && (
+      <div style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '20px', zIndex: 9998,
+      }} onClick={dismissAnnounce}>
+        <div style={{
+          background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+          borderRadius: '20px', maxWidth: '400px', width: '100%',
+          overflow: 'hidden', boxShadow: '0 30px 60px rgba(0,0,0,0.5)',
+        }} onClick={(e) => e.stopPropagation()}>
+          <div style={{
+            background: 'linear-gradient(135deg, #fbbf24, #d97706)',
+            padding: '24px 20px', textAlign: 'center',
+          }}>
+            <div style={{ fontSize: '36px', marginBottom: '8px' }}>🏆</div>
+            <div style={{ fontSize: '20px', fontWeight: 800, color: '#1a1a2e' }}>New Challenge!</div>
+          </div>
+          <div style={{ padding: '24px 20px', color: '#fff', textAlign: 'center' }}>
+            <div style={{ fontSize: '22px', fontWeight: 800, marginBottom: '10px' }}>{title}</div>
+            {description && (
+              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.5, margin: '0 0 16px' }}>{description}</p>
+            )}
+            <div style={{
+              display: 'inline-flex', gap: '16px', background: 'rgba(255,255,255,0.08)',
+              borderRadius: '12px', padding: '12px 20px', marginBottom: '20px',
+            }}>
+              <div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: '#fbbf24' }}>{daysLeft}</div>
+                <div style={{ fontSize: '10px', fontWeight: 600, opacity: 0.6 }}>DAYS</div>
+              </div>
+              <div style={{ width: '1px', background: 'rgba(255,255,255,0.15)' }} />
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#fbbf24' }}>{unit}</div>
+                <div style={{ fontSize: '10px', fontWeight: 600, opacity: 0.6 }}>{lowerIsBetter ? 'LOWEST WINS' : 'HIGHEST WINS'}</div>
+              </div>
+            </div>
+            <button
+              onClick={dismissAnnounce}
+              style={{
+                width: '100%', padding: '14px', border: 'none', borderRadius: '14px',
+                background: 'linear-gradient(135deg, #fbbf24, #d97706)',
+                color: '#1a1a2e', fontSize: '16px', fontWeight: 800, cursor: 'pointer',
+              }}
+            >
+              Let's Go!
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     <div style={styles.card}>
       {/* Header */}
       <div
@@ -228,6 +295,7 @@ export default function ChallengeCard({ userEmail }) {
         </div>
       )}
     </div>
+    </>
   );
 }
 
