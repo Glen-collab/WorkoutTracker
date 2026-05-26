@@ -262,7 +262,10 @@ export default function TVStatic() {
   const [allBlocks, setAllBlocks] = useState({});
   const [autoLoadError, setAutoLoadError] = useState(null);
   // TV layout: 'two_day' (default), 'wod' (single fullwidth), 'wod_scaled' (Rx + Scaled)
-  const [layout, setLayout] = useState('two_day');
+  const [layout, setLayout] = useState(() => {
+    const p = new URLSearchParams(window.location.search);
+    return p.get('layout') || 'two_day';
+  });
 
   // Per-device display mode (workout vs youth-leaderboard scoreboard).
   // When 'leaderboard', this Pi renders an iframe of
