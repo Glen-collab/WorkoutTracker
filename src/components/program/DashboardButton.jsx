@@ -112,7 +112,7 @@ export default function DashboardButton({ userEmail }) {
     if (isMember) {
       // Send them to the platform — logged-in lands on dashboard, logged-out
       // hits login and then there. New tab so the tracker workout stays open.
-      window.open(`${PLATFORM_BASE}/dashboard`, '_blank', 'noopener');
+      window.open(`${PLATFORM_BASE}/member`, '_blank', 'noopener');
     } else {
       setShowUpsell(true);
     }
