@@ -147,6 +147,21 @@ export default function ChallengeCard({ userEmail }) {
                 <div style={{ fontSize: '10px', fontWeight: 600, opacity: 0.6 }}>{lowerIsBetter ? 'LOWEST WINS' : 'HIGHEST WINS'}</div>
               </div>
             </div>
+            <div style={{
+              background: 'rgba(255,255,255,0.06)', borderRadius: '12px',
+              padding: '14px 16px', marginBottom: '20px', textAlign: 'left',
+            }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#fbbf24', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>How it works</div>
+              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, margin: '0 0 6px' }}>
+                📍 Submit your score at the <b>bottom of your workout</b> in the Challenge section.
+              </p>
+              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, margin: '0 0 6px' }}>
+                🔄 Enter as many times as you want — your <b>best score counts</b>.
+              </p>
+              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, margin: 0 }}>
+                🌎 You're competing against <b>everyone on the app</b>. Let's see what you've got!
+              </p>
+            </div>
             <button
               onClick={dismissAnnounce}
               style={{
