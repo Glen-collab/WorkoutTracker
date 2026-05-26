@@ -26,7 +26,7 @@ const API_BASE = 'https://app.bestrongagain.com/api/workout/';
 // ── Helper: format sets/reps for an exercise ──
 function formatExercise(exercise) {
   const ex = applyExerciseDefaults(exercise);
-  const sets = typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 0);
+  const sets = parseInt(ex.setsCount) || (typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 0));
   // Check all places reps could be stored
   const reps = ex.repsPerSet?.[0] || ex.reps
     || (Array.isArray(ex.sets) && ex.sets.length > 0 && typeof ex.sets[0] === 'object' ? (ex.sets[0].reps || ex.sets[0].targetReps || '') : '')
@@ -188,9 +188,12 @@ function DayColumn({ blocks, dayLabel, userName, maxes, fontScale = 1, scrollRef
       // — that info actually changes how the block is performed. Plain supersets/trisets
       // don't need a title since the rows already speak for themselves.
       if (block.circuitType) {
+        let circuitLabel = block.circuitType.toUpperCase();
+        if (block.rounds) circuitLabel = `${block.rounds} ${circuitLabel}`;
+        if (block.timeLimit) circuitLabel += ` — ${block.timeLimit}`;
         rows.push(
           <div key={`${bi}-circuit`} style={s.circuitTag}>
-            <span style={s.circuitBadge}>{block.circuitType.toUpperCase()}</span>
+            <span style={s.circuitBadge}>{circuitLabel}</span>
           </div>
         );
       }
@@ -957,7 +960,13 @@ export default function TVStatic() {
               dayLabel={`Today's WOD — Week ${currentWeek}, Day ${day1}`}
               userName={userName}
               maxes={maxes}
-              fontScale={1.3}
+              fontScale={(() => {
+                const exCount = (blocks1 || []).reduce((n, b) => n + (b.exercises?.length || 0), 0);
+                if (exCount > 20) return 0.85;
+                if (exCount > 15) return 1.0;
+                if (exCount > 10) return 1.15;
+                return 1.3;
+              })()}
               scrollRef={leftColRef}
               tabletMode={tabletMode}
               onPlayVideo={(url, name) => setPlayingVideo({ url, name })}
