@@ -3,6 +3,7 @@ import ProgramHeader from './ProgramHeader';
 import BlockCard from './BlockCard';
 import DailyTonnage, { calcBlockTonnage, calcCardio, getDefaultWeight } from './DailyTonnage';
 import WeeklyStatsCard from './WeeklyStatsCard';
+import ChallengeCard from './ChallengeCard';
 
 // ── First-Time Walkthrough ──
 function WelcomeWalkthrough({ userName, onDismiss }) {
@@ -458,6 +459,8 @@ export default function ProgramView({
             {'\uD83C\uDFE0'} Logout
           </button>
         </div>
+
+        <ChallengeCard userEmail={userEmail} />
       </div>
     </div>
   );
