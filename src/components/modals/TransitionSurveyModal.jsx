@@ -10,6 +10,16 @@ const BENEFITS = [
 export default function TransitionSurveyModal({ isOpen, onComplete, onDismiss, userEmail, userName }) {
   const [step, setStep] = useState(1);
   const [rating, setRating] = useState(0);
+
+  const handleDismiss = () => {
+    const apiBase = window.gwtConfig?.apiBase || 'https://app.bestrongagain.com/api/workout/';
+    fetch(apiBase + 'dismiss-survey.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_email: userEmail }),
+    }).catch(() => {});
+    onDismiss();
+  };
   const [likelihood, setLikelihood] = useState(0);
   const [improvements, setImprovements] = useState('');
   const [comments, setComments] = useState('');
@@ -138,7 +148,7 @@ export default function TransitionSurveyModal({ isOpen, onComplete, onDismiss, u
               disabled={rating === 0 || likelihood === 0}
               onClick={() => setStep(2)}
             >Next</button>
-            <button style={skipBtn} onClick={onDismiss}>I'll do this later</button>
+            <button style={skipBtn} onClick={handleDismiss}>I'll do this later</button>
           </>)}
 
           {step === 2 && (<>
@@ -189,7 +199,7 @@ export default function TransitionSurveyModal({ isOpen, onComplete, onDismiss, u
               <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
               <p style={{ fontSize: 16, fontWeight: '700', marginBottom: 8 }}>Thanks for your feedback!</p>
               <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', lineHeight: 1.5, marginBottom: 20 }}>
-                You have <b style={{ color: '#22c55e' }}>4 weeks of free access</b> to try everything out.
+                You have <b style={{ color: '#22c55e' }}>2 weeks of free access</b> to try everything out.
                 {graceEndsAt && <><br />Your free trial runs through <b>{graceEndsAt}</b>.</>}
               </p>
               <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 24, lineHeight: 1.5 }}>
