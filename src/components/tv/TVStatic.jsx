@@ -1148,7 +1148,9 @@ const s = {
   // gives "grow to fit, but don't spread past this" behavior.
   wodCenterWrap: {
     flex: '1 1 auto',
+    width: '100%',
     maxWidth: '1200px',
+    minWidth: 0,   // let it shrink below content width on narrow screens
     display: 'flex',
     minHeight: 0,  // needed so children overflow: auto actually scrolls inside flex
   },
@@ -1235,7 +1237,7 @@ const s = {
     borderBottom: '1px solid rgba(255,255,255,0.04)',
     minHeight: 'clamp(36px, 2.7vw, 56px)', flexShrink: 0,
   },
-  exName: { color: '#fff', fontWeight: '500', flex: 1 },
+  exName: { color: '#fff', fontWeight: '500', flex: 1, minWidth: 0, overflowWrap: 'anywhere' },
   // Tablet-mode play button next to each exercise that has a demo video.
   // Big enough for fingers (28px target) but visually quiet.
   videoBtn: {
