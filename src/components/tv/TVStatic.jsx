@@ -960,7 +960,7 @@ export default function TVStatic() {
           <div style={s.wodCenterWrap}>
             <DayColumn
               blocks={blocks1}
-              dayLabel={`Today's WOD — Week ${currentWeek}, Day ${day1}`}
+              dayLabel={`Today's Grind — Week ${currentWeek}, Day ${day1}`}
               userName={userName}
               maxes={maxes}
               fontScale={(() => {
@@ -984,7 +984,7 @@ export default function TVStatic() {
           <>
             <DayColumn
               blocks={blocks1}
-              dayLabel={`Rx / WOD — Week ${currentWeek}, Day ${day1}`}
+              dayLabel={`Rx / Grind — Week ${currentWeek}, Day ${day1}`}
               userName={userName}
               maxes={maxes}
               scrollRef={leftColRef}
