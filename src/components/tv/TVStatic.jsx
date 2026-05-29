@@ -964,6 +964,10 @@ export default function TVStatic() {
               userName={userName}
               maxes={maxes}
               fontScale={(() => {
+                // Tablet/kiosk view is held close — no zoom, it overflows
+                // the narrow screen and clips exercise names. The 1.3x bump
+                // is only for a wide wall-mounted TV viewed from across the gym.
+                if (tabletMode) return 1;
                 const exCount = (blocks1 || []).reduce((n, b) => n + (b.exercises?.length || 0), 0);
                 if (exCount > 20) return 0.85;
                 if (exCount > 15) return 1.0;
