@@ -261,6 +261,32 @@ export default function App() {
   useEffect(() => { currentWeekRef.current = currentWeek; }, [currentWeek]);
   useEffect(() => { currentDayRef.current = currentDay; }, [currentDay]);
 
+  // In-app save of body stats + 1RM maxes (from the Profile widget). Updates
+  // local state immediately so prescribed weights recalc live, then persists
+  // best-effort so the change survives reload/relogin. Either arg may be null.
+  const handleSaveStats = useCallback((newProfile, newMaxes) => {
+    if (newProfile) setProfile(newProfile);
+    if (newMaxes) setMaxes(newMaxes);
+    const p = newProfile || profileRef.current;
+    const m = newMaxes || maxesRef.current;
+    const u = userRef.current;
+    if (!u?.accessCode || !u?.email) return;
+    // Send null for unset/zero values — the backend only writes provided,
+    // non-empty fields, so a blank never clobbers a stored max.
+    api.updateUserStats({
+      accessCode: u.accessCode,
+      email: u.email,
+      benchMax: m?.bench || null,
+      squatMax: m?.squat || null,
+      deadliftMax: m?.deadlift || null,
+      cleanMax: m?.clean || null,
+      height: p?.height || null,
+      weight: p?.weight || null,
+      age: p?.age || null,
+      gender: p?.gender || null,
+    }).catch(() => {});
+  }, [api, setProfile, setMaxes]);
+
   const handleLoadProgramFromAPI = useCallback(async (requestedWeek, requestedDay, directData) => {
     // Use directly-passed data if available (avoids race condition with refs on first login)
     const u = directData?.user || userRef.current;
@@ -1276,6 +1302,7 @@ export default function App() {
           onUpdateTracking={handleUpdateTracking}
           profile={profile}
           onUpdateProfile={setProfile}
+          onSaveStats={handleSaveStats}
           accessCode={user.accessCode}
           getWeeklyStats={api.getWeeklyStats}
           travelMode={travelMode}

@@ -176,6 +176,7 @@ export default function ProgramView({
   onUpdateTracking,
   profile,
   onUpdateProfile,
+  onSaveStats,
   accessCode,
   getWeeklyStats,
   travelMode,
@@ -202,6 +203,10 @@ export default function ProgramView({
   const [tempInches, setTempInches] = useState('');
   const [tempWeight, setTempWeight] = useState('');
   const [tempAge, setTempAge] = useState('');
+  const [tempBench, setTempBench] = useState('');
+  const [tempSquat, setTempSquat] = useState('');
+  const [tempDeadlift, setTempDeadlift] = useState('');
+  const [tempClean, setTempClean] = useState('');
 
   const heightTotal = profile?.height || 0;
   const displayFeet = heightTotal ? Math.floor(heightTotal / 12) : '';
@@ -383,16 +388,20 @@ export default function ProgramView({
               setTempInches(displayInches);
               setTempWeight(profile?.weight || '');
               setTempAge(profile?.age || '');
+              setTempBench(maxes?.bench || '');
+              setTempSquat(maxes?.squat || '');
+              setTempDeadlift(maxes?.deadlift || '');
+              setTempClean(maxes?.clean || '');
             }}
           >
-            {profile?.weight || heightTotal || profile?.gender
+            {profile?.weight || heightTotal || profile?.gender || maxes?.bench || maxes?.squat || maxes?.deadlift || maxes?.clean
               ? [
                   profile?.gender === 'M' ? 'Male' : profile?.gender === 'F' ? 'Female' : null,
                   heightTotal ? `${displayFeet}'${displayInches}"` : null,
                   profile?.weight ? `${profile.weight} lbs` : null,
                   profile?.age ? `Age ${profile.age}` : null,
-                ].filter(Boolean).join(' | ')
-              : 'Set your stats for calorie estimates'}
+                ].filter(Boolean).join(' | ') || 'Edit stats & 1RM maxes'
+              : 'Set your stats & 1RM maxes'}
           </span>
           {showProfileEdit && (
             <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '10px', padding: '12px', marginTop: '8px', maxWidth: '280px', margin: '8px auto 0' }}>
@@ -421,16 +430,37 @@ export default function ProgramView({
                 <input type="number" placeholder="Age" value={tempAge} onChange={(e) => setTempAge(e.target.value)}
                   style={{ padding: '8px', borderRadius: '8px', border: 'none', fontSize: '14px', textAlign: 'center', width: '100%', boxSizing: 'border-box', minWidth: 0 }} />
               </div>
+
+              {/* 1RM maxes — editing these recalculates prescribed weights instantly */}
+              <div style={{ fontSize: '12px', fontWeight: '600', color: 'rgba(255,255,255,0.85)', textAlign: 'left', margin: '4px 2px 6px' }}>
+                1RM Maxes (lbs) — updates your weights live
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
+                <input type="number" inputMode="numeric" placeholder="Bench" value={tempBench} onChange={(e) => setTempBench(e.target.value)}
+                  style={{ padding: '8px', borderRadius: '8px', border: 'none', fontSize: '14px', textAlign: 'center', width: '100%', boxSizing: 'border-box', minWidth: 0 }} />
+                <input type="number" inputMode="numeric" placeholder="Squat" value={tempSquat} onChange={(e) => setTempSquat(e.target.value)}
+                  style={{ padding: '8px', borderRadius: '8px', border: 'none', fontSize: '14px', textAlign: 'center', width: '100%', boxSizing: 'border-box', minWidth: 0 }} />
+                <input type="number" inputMode="numeric" placeholder="Deadlift" value={tempDeadlift} onChange={(e) => setTempDeadlift(e.target.value)}
+                  style={{ padding: '8px', borderRadius: '8px', border: 'none', fontSize: '14px', textAlign: 'center', width: '100%', boxSizing: 'border-box', minWidth: 0 }} />
+                <input type="number" inputMode="numeric" placeholder="Clean" value={tempClean} onChange={(e) => setTempClean(e.target.value)}
+                  style={{ padding: '8px', borderRadius: '8px', border: 'none', fontSize: '14px', textAlign: 'center', width: '100%', boxSizing: 'border-box', minWidth: 0 }} />
+              </div>
               <button
                 onClick={() => {
-                  if (onUpdateProfile) {
-                    onUpdateProfile({
-                      gender: profile?.gender || '',
-                      height: (tempFeet || tempInches) ? (Number(tempFeet || 0) * 12 + Number(tempInches || 0)) : profile?.height || '',
-                      weight: tempWeight ? Number(tempWeight) : profile?.weight || '',
-                      age: tempAge ? Number(tempAge) : profile?.age || '',
-                    });
-                  }
+                  const newProfile = {
+                    gender: profile?.gender || '',
+                    height: (tempFeet || tempInches) ? (Number(tempFeet || 0) * 12 + Number(tempInches || 0)) : profile?.height || '',
+                    weight: tempWeight ? Number(tempWeight) : profile?.weight || '',
+                    age: tempAge ? Number(tempAge) : profile?.age || '',
+                  };
+                  const newMaxes = {
+                    bench: tempBench !== '' ? Number(tempBench) : (maxes?.bench || 0),
+                    squat: tempSquat !== '' ? Number(tempSquat) : (maxes?.squat || 0),
+                    deadlift: tempDeadlift !== '' ? Number(tempDeadlift) : (maxes?.deadlift || 0),
+                    clean: tempClean !== '' ? Number(tempClean) : (maxes?.clean || 0),
+                  };
+                  if (onSaveStats) onSaveStats(newProfile, newMaxes);
+                  else if (onUpdateProfile) onUpdateProfile(newProfile);
                   setShowProfileEdit(false);
                 }}
                 style={{ padding: '8px 24px', borderRadius: '8px', border: 'none', background: '#fff', color: '#764ba2', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}

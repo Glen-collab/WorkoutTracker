@@ -51,6 +51,8 @@ export default function useTrackerAPI() {
   const submitCompletion = useCallback((params) => apiCall('submit-completion.php', params), [apiCall]);
   const getWeeklyStats = useCallback((params) => apiCall('get-weekly-stats.php', params), [apiCall]);
   const getTravelWorkouts = useCallback((params) => apiCall('get-travel-workouts.php', params), [apiCall]);
+  // Persist in-app edits to 1RM maxes + body stats (single retry — best-effort).
+  const updateUserStats = useCallback((params) => apiCall('update-user-stats.php', params, 1), [apiCall]);
 
   // Fetches coach's / featured_global video overrides for the current user.
   // Plain fetch (separate host path, no retry needed — failure = fall back to bundled videos).
@@ -68,5 +70,5 @@ export default function useTrackerAPI() {
     }
   }, []);
 
-  return { loading, error, loadProgram, loadUserOverride, logWorkout, submitQuestionnaire, submitCompletion, getWeeklyStats, getTravelWorkouts, getTrackerOverrides };
+  return { loading, error, loadProgram, loadUserOverride, logWorkout, submitQuestionnaire, submitCompletion, getWeeklyStats, getTravelWorkouts, getTrackerOverrides, updateUserStats };
 }
