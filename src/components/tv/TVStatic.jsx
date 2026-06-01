@@ -38,6 +38,13 @@ function formatExercise(exercise) {
     workReps = ex.sets.filter((s) => !s.isWarmup).map((s) => (s?.reps ?? s?.targetReps));
   } else if (Array.isArray(ex.repsPerSet)) {
     workReps = ex.repsPerSet;
+  } else if (typeof reps === 'string' && /[,/]/.test(reps)) {
+    // Straight-set entry: coach typed varied reps straight into the single
+    // Reps field as "10,10,8,8" (the builder even hints "8,6,4"), so there's
+    // no per-set sets[] array — just a delimited string. Split on comma or
+    // slash so it still renders per-set. Ranges like "8-12" use a hyphen and
+    // are intentionally left intact.
+    workReps = reps.split(/[,/]/);
   }
   workReps = workReps.map((r) => (r == null ? '' : String(r).trim())).filter((r) => r !== '');
   const duration = formatValueWithUnit(ex.duration, ex.durationUnit, 'min');
