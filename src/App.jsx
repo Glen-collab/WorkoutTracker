@@ -3,6 +3,7 @@ import useTrackerState from './hooks/useTrackerState';
 import useTrackerAPI from './hooks/useTrackerAPI';
 import AccessScreen from './components/access/AccessScreen';
 import KioskPickerScreen from './components/access/KioskPickerScreen';
+import OneOnOnePickerScreen from './components/access/OneOnOnePickerScreen';
 import ConsentScreen from './components/consent/ConsentScreen';
 import QuestionnaireScreen from './components/consent/QuestionnaireScreen';
 import ProgramView from './components/program/ProgramView';
@@ -35,6 +36,12 @@ const isMagicMode = window.location.pathname === '/magic';
 // coach handles those at signup), and after a workout is logged returns to
 // the picker for the next member instead of saving credentials anywhere.
 const isKioskStation = new URLSearchParams(window.location.search).get('kiosk') === '1';
+
+// 1-on-1 Training mode (?mode=1on1&coach=<referral_code>) — the trainer's
+// "digital clipboard". Like kiosk-station (no saved creds, skip consent), but
+// it shows the OneOnOne client picker and the chatbot stays available so the
+// coach can drop session notes. Each client loads their OWN program code.
+const isOneOnOne = new URLSearchParams(window.location.search).get('mode') === '1on1';
 
 const WS_BASE = 'wss://app.bestrongagain.com/ws/';
 const tvRoomId = new URLSearchParams(window.location.search).get('tv');
@@ -327,6 +334,14 @@ export default function App() {
       };
       if (requestedWeek) params.requested_week = requestedWeek;
       if (requestedDay) params.requested_day = requestedDay;
+
+      // 1-on-1: tell the backend a coach is logging on behalf of this client
+      // so the paywall is bypassed for clients who haven't bought the app.
+      // Bypass is honored only for programs this coach actually owns.
+      if (isOneOnOne) {
+        const oc = new URLSearchParams(window.location.search).get('coach');
+        if (oc) { params.trainer_logging = true; params.coach = oc; }
+      }
 
       const result = await api.loadProgram(params);
 
@@ -736,7 +751,7 @@ export default function App() {
     // Save credentials to localStorage for quick login next time — but NEVER
     // in kiosk-station mode, since the tablet is shared by multiple members
     // who'd each see the previous user's saved creds otherwise.
-    if (!isKioskStation) {
+    if (!isKioskStation && !isOneOnOne) {
       try {
         localStorage.setItem('gwt_saved_credentials', JSON.stringify({
           email: formData.email,
@@ -762,15 +777,17 @@ export default function App() {
       });
     }
 
-    if (isReturningUser || isKioskStation) {
-      // Skip consent, go straight to loading. Kiosk-station also bypasses
-      // consent — the gym's coach handles consent at member signup, not on
-      // the tablet for every workout.
+    if (isReturningUser || isKioskStation || isOneOnOne) {
+      // Skip consent, go straight to loading. Kiosk-station and 1-on-1 both
+      // bypass consent — the coach handles consent at signup, not on the
+      // tablet/iPad for every workout.
       const profileData = (formData.height || formData.weight || formData.age || formData.gender)
         ? { gender: formData.gender || '', height: formData.height || '', weight: formData.weight || '', age: formData.age || '' }
         : profileRef.current;
       // Pull week/day from URL in kiosk-station mode so the loaded program
-      // jumps directly to the workout the TV is showing.
+      // jumps directly to the workout the TV is showing. In 1-on-1 mode the
+      // picker passes the client's saved week/day so we resume where they
+      // left off.
       let stationWeek, stationDay;
       if (isKioskStation) {
         const usp = new URLSearchParams(window.location.search);
@@ -779,6 +796,8 @@ export default function App() {
         if (Number.isFinite(w) && w > 0) stationWeek = w;
         if (Number.isFinite(d) && d > 0) stationDay = d;
       }
+      if (formData.week > 0) stationWeek = formData.week;
+      if (formData.day > 0) stationDay = formData.day;
       handleLoadProgramFromAPI(stationWeek, stationDay, { user: userData, maxes: newMaxes, profile: profileData });
     } else {
       setScreen('consent');
@@ -1256,9 +1275,11 @@ export default function App() {
         </div>
       )}
       {screen === 'access' && !paymentRequired && (
-        isKioskStation
-          ? <KioskPickerScreen onPick={handleLoadProgram} />
-          : <AccessScreen onLoadProgram={handleLoadProgram} />
+        isOneOnOne
+          ? <OneOnOnePickerScreen onPick={handleLoadProgram} />
+          : isKioskStation
+            ? <KioskPickerScreen onPick={handleLoadProgram} />
+            : <AccessScreen onLoadProgram={handleLoadProgram} />
       )}
       {screen === 'consent' && (
         <ConsentScreen
@@ -1407,11 +1428,11 @@ export default function App() {
         isOpen={showCongratsModal}
         onClose={() => {
           setShowCongratsModal(false);
-          // Kiosk-station tablet: bounce back to the member picker so the
-          // next person can log into the same workout. Skip weekly-summary /
-          // game flow — those are progression features that belong to a
-          // single user's tracker, not a shared tablet.
-          if (isKioskStation) {
+          // Kiosk-station tablet AND 1-on-1 iPad: bounce back to the picker so
+          // the next person / client can be logged. Skip weekly-summary / game
+          // flow — those are progression features that belong to a single
+          // user's tracker, not a shared/trainer-operated device.
+          if (isKioskStation || isOneOnOne) {
             setTrackingData({});
             setRecommendations({});
             logout();
