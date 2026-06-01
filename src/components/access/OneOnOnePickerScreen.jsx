@@ -110,6 +110,7 @@ export default function OneOnOnePickerScreen({ onPick }) {
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newProgram, setNewProgram] = useState('');
+  const [sendInvite, setSendInvite] = useState(true);
 
   useEffect(() => {
     if (!coachCode) { setErr('Missing coach code in the link.'); setClients([]); return; }
@@ -163,6 +164,15 @@ export default function OneOnOnePickerScreen({ onPick }) {
     if (!name) { setErr('Enter the client’s name.'); return; }
     if (!email || !email.includes('@')) { setErr('Enter a valid client email.'); return; }
     if (!newProgram) { setErr('Pick which program this client is on.'); return; }
+    // Fire-and-forget the magic-link welcome so it never blocks the workout.
+    // Best-effort: if it fails, the trainer can re-pair to resend.
+    if (sendInvite) {
+      fetch(`${KIOSK_BASE}invite-client`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coach: coachCode, email, name }),
+      }).catch(() => { /* ignore */ });
+    }
     // First load creates their position; they'll appear in the list next time.
     onPick({ name, email, code: newProgram }, false);
   };
@@ -250,6 +260,13 @@ export default function OneOnOnePickerScreen({ onPick }) {
                 ))}
               </select>
             )}
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: '8px', margin: '6px 2px 14px',
+              fontSize: '13px', color: 'rgba(255,255,255,0.8)', cursor: 'pointer',
+            }}>
+              <input type="checkbox" checked={sendInvite} onChange={(e) => setSendInvite(e.target.checked)} />
+              Email this client a link to their dashboard
+            </label>
             <button style={styles.primaryBtn} onClick={submitNew}>Start workout</button>
             <button style={styles.linkBtn} onClick={() => { setAdding(false); setErr(''); }}>
               ← Back to client list
