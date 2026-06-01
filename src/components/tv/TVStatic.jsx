@@ -848,9 +848,6 @@ export default function TVStatic() {
     );
   }
 
-  // Coach code from URL, surfaced in the footer for gym/brand attribution
-  const coachFooterCode = (new URLSearchParams(window.location.search).get('coach') || '').trim();
-
   const dpw = program?.daysPerWeek || 3;
   const tw = program?.totalWeeks || 4;
   const day1 = startDay;
@@ -1049,12 +1046,6 @@ export default function TVStatic() {
             )}
           </>
         )}
-      </div>
-
-      {/* Footer */}
-      <div style={s.footer}>
-        <span>Code: {code}{coachFooterCode && ` · Coach: ${coachFooterCode}`}</span>
-        <button onClick={() => { setProgram(null); setAllBlocks({}); }} style={s.exitBtn}>Exit</button>
       </div>
     </div>
   );
@@ -1273,18 +1264,5 @@ const s = {
   exDetail: {
     color: 'rgba(255,255,255,0.7)', fontWeight: '700', marginLeft: '8px',
     whiteSpace: 'nowrap', textAlign: 'right',
-  },
-
-  // Footer
-  footer: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '6px 0', fontSize: 'clamp(12px, 1vw, 16px)',
-    color: 'rgba(255,255,255,0.4)',
-    borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0,
-  },
-  exitBtn: {
-    background: 'rgba(239,83,80,0.15)', border: '1px solid rgba(239,83,80,0.3)',
-    color: '#ef5350', borderRadius: '6px', padding: '3px 12px',
-    fontSize: '11px', fontWeight: '600', cursor: 'pointer',
   },
 };
