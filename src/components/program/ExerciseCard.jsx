@@ -975,7 +975,9 @@ export default function ExerciseCard({
     const kind = ex.userDefinedKind === 'cardio' ? 'cardio' : 'strength';
     const field = (label, key, ph) => (
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: '70px' }}>
-        <span style={{ fontSize: '11px', fontWeight: 600, color: '#6b7280', marginBottom: '3px' }}>{label}</span>
+        {/* minHeight reserves 2 lines so a wrapping label (e.g. "Time / Interval")
+            doesn't push its input below the others — boxes stay straight across. */}
+        <span style={{ fontSize: '11px', fontWeight: 600, color: '#6b7280', marginBottom: '3px', minHeight: '26px', lineHeight: '13px', display: 'flex', alignItems: 'flex-end' }}>{label}</span>
         <input
           type="text"
           placeholder={ph}
@@ -1004,32 +1006,31 @@ export default function ExerciseCard({
             readOnly={inputLocked}
           />
         </div>
-        {/* Cardio machine picker (reuses the Swap Equipment list) */}
-        {kind === 'cardio' && !inputLocked && (
-          <div style={{ position: 'relative', marginBottom: '10px' }}>
-            <button
-              onClick={() => setShowSwap(!showSwap)}
-              style={{ background: 'none', border: '1px solid #d1d5db', borderRadius: '8px', padding: '6px 12px', fontSize: '12px', color: '#667eea', fontWeight: 600, cursor: 'pointer' }}
+        {/* Cardio machine picker — native <select> so the whole list (incl. the
+            last item, Jump Rope) is always reachable on mobile and never clipped
+            by the card's scroll container like the old absolute dropdown was. */}
+        {kind === 'cardio' && (
+          <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '10px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 600, color: '#6b7280', marginBottom: '3px' }}>Machine</span>
+            <select
+              value={swappedName || ''}
+              onChange={(e) => {
+                const v = e.target.value;
+                setSwappedName(v || null);
+                onUpdateTracking(blockIndex, exIndex, null, 'swapped_exercise', v);
+              }}
+              disabled={inputLocked}
+              style={{ ...s.condInput, marginBottom: 0, ...lockStyle, cursor: inputLocked ? 'default' : 'pointer' }}
             >
-              {swappedName ? `Machine: ${swappedName}` : 'Pick a machine ▾'}
-            </button>
-            {showSwap && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 100, background: '#fff', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.15)', border: '1px solid #e5e7eb', minWidth: '200px', marginTop: '4px', maxHeight: '250px', overflowY: 'auto' }}>
-                {CARDIO_ALTERNATIVES.map((alt) => (
-                  <button
-                    key={alt.name}
-                    onClick={() => handleSwap(alt.name)}
-                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', border: 'none', background: swappedName === alt.name ? '#f0f0ff' : '#fff', cursor: 'pointer', fontSize: '14px', borderBottom: '1px solid #f5f5f5' }}
-                  >
-                    {alt.icon} {alt.name}
-                  </button>
-                ))}
-              </div>
-            )}
+              <option value="">Pick a machine…</option>
+              {CARDIO_ALTERNATIVES.map((alt) => (
+                <option key={alt.name} value={alt.name}>{alt.icon} {alt.name}</option>
+              ))}
+            </select>
           </div>
         )}
         {/* Fields the client fills in */}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '12px' }}>
           {kind === 'cardio' ? (
             <>
               {field('Duration', 'duration', 'min')}
