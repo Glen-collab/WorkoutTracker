@@ -968,6 +968,88 @@ export default function ExerciseCard({
     );
   };
 
+  // "Write your own" / "Choose your own cardio" — fully client-filled card.
+  // The client names the exercise and enters their own numbers; nothing is
+  // prescribed. Cardio kind also gets the machine picker (reuses the swap list).
+  const renderUserDefined = () => {
+    const kind = ex.userDefinedKind === 'cardio' ? 'cardio' : 'strength';
+    const field = (label, key, ph) => (
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: '70px' }}>
+        <span style={{ fontSize: '11px', fontWeight: 600, color: '#6b7280', marginBottom: '3px' }}>{label}</span>
+        <input
+          type="text"
+          placeholder={ph}
+          value={getTrack(null, key)}
+          onChange={(e) => onUpdateTracking(blockIndex, exIndex, null, key, e.target.value)}
+          style={{ ...s.condInput, marginBottom: 0, ...lockStyle }}
+          readOnly={inputLocked}
+        />
+      </div>
+    );
+    return (
+      <>
+        <div style={{ ...s.detailRow, fontStyle: 'italic', color: '#6b7280', marginBottom: '10px' }}>
+          {kind === 'cardio' ? 'Pick your machine and fill in your numbers.' : 'Name your exercise and fill in what you did.'}
+        </div>
+        {ex.notes && <div style={s.notesCard}>{ex.notes}</div>}
+        {/* Exercise name */}
+        <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '10px' }}>
+          <span style={{ fontSize: '11px', fontWeight: 600, color: '#6b7280', marginBottom: '3px' }}>Exercise name</span>
+          <input
+            type="text"
+            placeholder={kind === 'cardio' ? 'e.g. Stairmaster intervals' : 'e.g. Landmine press'}
+            value={getTrack(null, 'custom_name')}
+            onChange={(e) => onUpdateTracking(blockIndex, exIndex, null, 'custom_name', e.target.value)}
+            style={{ ...s.condInput, marginBottom: 0, ...lockStyle }}
+            readOnly={inputLocked}
+          />
+        </div>
+        {/* Cardio machine picker (reuses the Swap Equipment list) */}
+        {kind === 'cardio' && !inputLocked && (
+          <div style={{ position: 'relative', marginBottom: '10px' }}>
+            <button
+              onClick={() => setShowSwap(!showSwap)}
+              style={{ background: 'none', border: '1px solid #d1d5db', borderRadius: '8px', padding: '6px 12px', fontSize: '12px', color: '#667eea', fontWeight: 600, cursor: 'pointer' }}
+            >
+              {swappedName ? `Machine: ${swappedName}` : 'Pick a machine ▾'}
+            </button>
+            {showSwap && (
+              <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 100, background: '#fff', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.15)', border: '1px solid #e5e7eb', minWidth: '200px', marginTop: '4px', maxHeight: '250px', overflowY: 'auto' }}>
+                {CARDIO_ALTERNATIVES.map((alt) => (
+                  <button
+                    key={alt.name}
+                    onClick={() => handleSwap(alt.name)}
+                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', border: 'none', background: swappedName === alt.name ? '#f0f0ff' : '#fff', cursor: 'pointer', fontSize: '14px', borderBottom: '1px solid #f5f5f5' }}
+                  >
+                    {alt.icon} {alt.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        {/* Fields the client fills in */}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+          {kind === 'cardio' ? (
+            <>
+              {field('Duration', 'duration', 'min')}
+              {field('Distance', 'distance', 'mi')}
+              {field('Time / Interval', 'interval', '30s on/off')}
+            </>
+          ) : (
+            <>
+              {field('Sets', 'sets', '3')}
+              {field('Reps', 'reps', '10')}
+              {field('Weight', 'weight', 'lbs')}
+              {field('Time / Interval', 'interval', 'optional')}
+            </>
+          )}
+        </div>
+        {renderMarkButton()}
+      </>
+    );
+  };
+
   const renderCardio = () => {
     const dUnit = getUnitLabel(ex.durationUnit, 'min');
     const distUnit = getUnitLabel(ex.distanceUnit, 'mi');
@@ -1190,7 +1272,7 @@ export default function ExerciseCard({
       <div style={s.header} onClick={() => collapsed && setForceExpanded(true)}>
         <div style={s.headerLeft}>
           <span>
-            {exIndex + 1}. {ex.name}
+            {exIndex + 1}. {(ex.isUserDefined && getTrack(null, 'custom_name')) || displayName}
             {ex.qualifier && <span style={{ fontSize: '12px', color: '#dc2626', fontWeight: '600' }}> ({ex.qualifier})</span>}
           </span>
           {ex.youtube && (
@@ -1254,12 +1336,16 @@ export default function ExerciseCard({
 
       {!collapsed && (
         <div style={s.body}>
-          {isStrength && renderStrength()}
-          {isCardio && renderCardio()}
-          {isMovement && renderMovement()}
-          {isCircuit && renderCircuit()}
-          {isWarmup && renderWarmup()}
-          {isGeneric && renderWarmup()}
+          {ex.isUserDefined ? renderUserDefined() : (
+            <>
+              {isStrength && renderStrength()}
+              {isCardio && renderCardio()}
+              {isMovement && renderMovement()}
+              {isCircuit && renderCircuit()}
+              {isWarmup && renderWarmup()}
+              {isGeneric && renderWarmup()}
+            </>
+          )}
         </div>
       )}
     </div>

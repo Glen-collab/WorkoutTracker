@@ -942,9 +942,18 @@ export default function App() {
             const trackedDuration = trackingData[`${blockIndex}-${exIndex}-null-duration`] || '';
             const trackedDistance = trackingData[`${blockIndex}-${exIndex}-null-distance`] || '';
             const isCompleted = trackingData[`complete-${blockIndex}-${exIndex}`] || false;
+            // Client-entered name for "write your own" exercises + swapped cardio
+            const customName = trackingData[`${blockIndex}-${exIndex}-null-custom_name`] || '';
+            const swappedName = trackingData[`${blockIndex}-${exIndex}-null-swapped_exercise`] || '';
 
             const result = {
-              name: ex.name || 'Unknown Exercise',
+              name: customName || swappedName || ex.name || 'Unknown Exercise',
+              isUserDefined: !!ex.isUserDefined,
+              userDefinedKind: ex.userDefinedKind || '',
+              customSets: trackingData[`${blockIndex}-${exIndex}-null-sets`] || '',
+              customReps: trackingData[`${blockIndex}-${exIndex}-null-reps`] || '',
+              customWeight: trackingData[`${blockIndex}-${exIndex}-null-weight`] || '',
+              customInterval: trackingData[`${blockIndex}-${exIndex}-null-interval`] || '',
               sets: setsCount,
               targetReps: ex.reps || '',
               actualReps,
