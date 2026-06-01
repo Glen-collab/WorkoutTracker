@@ -31,6 +31,15 @@ function formatExercise(exercise) {
   const reps = ex.repsPerSet?.[0] || ex.reps
     || (Array.isArray(ex.sets) && ex.sets.length > 0 && typeof ex.sets[0] === 'object' ? (ex.sets[0].reps || ex.sets[0].targetReps || '') : '')
     || '';
+  // Per-set WORK reps (warmups excluded) so a varied scheme like 10,10,8,8 shows
+  // as "10/10/8/8" on the board instead of collapsing to the first set's count.
+  let workReps = [];
+  if (Array.isArray(ex.sets) && ex.sets.length > 0 && typeof ex.sets[0] === 'object') {
+    workReps = ex.sets.filter((s) => !s.isWarmup).map((s) => (s?.reps ?? s?.targetReps));
+  } else if (Array.isArray(ex.repsPerSet)) {
+    workReps = ex.repsPerSet;
+  }
+  workReps = workReps.map((r) => (r == null ? '' : String(r).trim())).filter((r) => r !== '');
   const duration = formatValueWithUnit(ex.duration, ex.durationUnit, 'min');
   // No 'mi' fallback — too many gym exercises (SkiErg meters, stair-sprint
   // reps) had a bare distance number and got falsely stamped with miles.
@@ -45,7 +54,12 @@ function formatExercise(exercise) {
   const qualifier = ex.qualifier || '';
 
   let detail = '';
-  if (sets > 0 && reps) detail = `${sets}x${reps}`;
+  if (workReps.length > 0) {
+    const uniqueReps = [...new Set(workReps)];
+    // Uniform scheme stays compact (e.g. "4x10"); varied shows each set.
+    detail = uniqueReps.length === 1 ? `${workReps.length}x${uniqueReps[0]}` : workReps.join('/');
+  }
+  else if (sets > 0 && reps) detail = `${sets}x${reps}`;
   else if (reps) detail = `x${reps}`;
   else if (sets > 0 && duration) detail = `${sets}x ${duration}`;
   else if (duration) detail = duration;
