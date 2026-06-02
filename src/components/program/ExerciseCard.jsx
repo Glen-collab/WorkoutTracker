@@ -1062,6 +1062,7 @@ export default function ExerciseCard({
       { label: 'Speed', val: formatWithUnit(ex.speed, spdUnit) },
       { label: 'Incline', val: ex.incline },
       { label: 'Intensity', val: ex.intensity },
+      { label: 'Calories', val: ex.calories ? `${ex.calories} cal` : '' },
     ].filter((d) => d.val);
 
     return (
@@ -1119,6 +1120,7 @@ export default function ExerciseCard({
       ex.weight ? { label: 'Weight', val: `${ex.weight} lbs` } : null,
       ex.distance ? { label: 'Target', val: `${ex.distance} ${distUnit}`, highlight: true } : null,
       ex.duration ? { label: 'Target', val: `${ex.duration} ${dUnit}`, highlight: true } : null,
+      ex.calories ? { label: 'Calories', val: `${ex.calories} cal`, highlight: true } : null,
       formatWithUnit(ex.speed, spdUnit) ? { label: 'Speed', val: formatWithUnit(ex.speed, spdUnit) } : null,
       ex.incline ? { label: 'Incline', val: ex.incline } : null,
       ex.rest ? { label: 'Rest', val: ex.rest } : null,
