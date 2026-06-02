@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { isTimeUnit, parseClock, formatScore } from '../../utils/challengeFormat';
 
 /**
  * ChallengeCard — shows the active gym challenge at the bottom of the workout.
@@ -50,9 +51,11 @@ export default function ChallengeCard({ userEmail }) {
   }, [challenge?.id]);
 
   const handleSubmit = async () => {
-    const num = parseFloat(submitValue);
+    // Time challenges accept mm:ss / h:mm:ss and store TOTAL SECONDS.
+    const timed = isTimeUnit(challenge?.unit);
+    const num = timed ? parseClock(submitValue) : parseFloat(submitValue);
     if (isNaN(num) || num <= 0) {
-      setSubmitMsg({ type: 'error', text: 'Enter a valid number.' });
+      setSubmitMsg({ type: 'error', text: timed ? 'Enter a time like 8:30.' : 'Enter a valid number.' });
       return;
     }
     setSubmitting(true);
@@ -100,6 +103,7 @@ export default function ChallengeCard({ userEmail }) {
     total_participants: totalParticipants,
   } = challenge;
 
+  const timed = isTimeUnit(unit);
   const top5 = standings.slice(0, 5);
 
   const dismissAnnounce = () => {
@@ -197,7 +201,7 @@ export default function ChallengeCard({ userEmail }) {
       {/* Collapsed summary — show rank if they have one */}
       {!expanded && myRank != null && (
         <div style={styles.collapsedRank}>
-          You are #{myRank} of {totalParticipants} &mdash; {myScore} {unit}
+          You are #{myRank} of {totalParticipants} &mdash; {formatScore(myScore, unit)}
         </div>
       )}
 
@@ -223,7 +227,7 @@ export default function ChallengeCard({ userEmail }) {
                 #{myRank} of {totalParticipants}
               </span>
               <span style={styles.myStandingScore}>
-                Best: {myScore} {unit}
+                Best: {formatScore(myScore, unit)}
               </span>
             </div>
           )}
@@ -254,7 +258,7 @@ export default function ChallengeCard({ userEmail }) {
                     </span>
                     <span style={styles.lbName}>{entry.first_name}</span>
                     <span style={styles.lbScore}>
-                      {entry.score} {unit}
+                      {formatScore(entry.score, unit)}
                     </span>
                   </div>
                 );
@@ -267,16 +271,16 @@ export default function ChallengeCard({ userEmail }) {
             <div style={styles.submitLabel}>Submit Your Result</div>
             <div style={styles.submitRow}>
               <input
-                type="number"
-                inputMode="decimal"
-                step="any"
-                min="0"
-                placeholder="0.0"
+                type={timed ? 'text' : 'number'}
+                inputMode={timed ? 'text' : 'decimal'}
+                step={timed ? undefined : 'any'}
+                min={timed ? undefined : '0'}
+                placeholder={timed ? '8:30' : '0.0'}
                 value={submitValue}
                 onChange={(e) => setSubmitValue(e.target.value)}
                 style={styles.submitInput}
               />
-              <span style={styles.unitLabel}>{unit}</span>
+              <span style={styles.unitLabel}>{timed ? 'min:sec' : unit}</span>
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
