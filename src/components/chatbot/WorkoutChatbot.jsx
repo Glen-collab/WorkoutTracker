@@ -415,6 +415,23 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
     }
   }, [messages, scrollToIndex]);
 
+  // Header "New chat" — wipe the conversation back to the entry greeting so the
+  // user doesn't have to dig through bottom options to start over.
+  const restartChat = useCallback(() => {
+    const node = currentScreen === 'access' ? 'access_entry' : 'entry';
+    llmHistoryRef.current = [];
+    setActiveVideo(null);
+    setTopicsVisited([]);
+    setInputText('');
+    setScrollToIndex(null);
+    setMessages([{
+      text: formatMessage(TREE[node].message),
+      isBot: true,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    }]);
+    setCurrentNode(node);
+  }, [currentScreen, formatMessage]);
+
   const handleOptionClick = useCallback((option) => {
     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -665,16 +682,29 @@ const WorkoutChatbot = forwardRef(({ isOpen: controlledOpen, onClose, userName, 
       <div style={panelStyle}>
         <div style={headerStyle}>
           <span>🤖 Workout Helper</span>
-          <button
-            onClick={handleClose}
-            style={{
-              background: 'none', border: 'none', color: '#fff',
-              fontSize: 20, cursor: 'pointer', padding: '0 4px', lineHeight: 1,
-            }}
-            aria-label="Close chat"
-          >
-            ✕
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <button
+              onClick={restartChat}
+              style={{
+                background: 'rgba(255,255,255,0.18)', border: 'none', color: '#fff',
+                fontSize: 13, fontWeight: 700, cursor: 'pointer', padding: '5px 10px',
+                borderRadius: 8, lineHeight: 1,
+              }}
+              aria-label="Start a new chat"
+            >
+              ↺ New chat
+            </button>
+            <button
+              onClick={handleClose}
+              style={{
+                background: 'none', border: 'none', color: '#fff',
+                fontSize: 20, cursor: 'pointer', padding: '0 4px', lineHeight: 1,
+              }}
+              aria-label="Close chat"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         <div style={messagesAreaStyle}>
