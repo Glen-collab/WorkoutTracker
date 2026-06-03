@@ -47,7 +47,10 @@ function formatExercise(exercise) {
     workReps = reps.split(/[,/]/);
   }
   workReps = workReps.map((r) => (r == null ? '' : String(r).trim())).filter((r) => r !== '');
-  const duration = formatValueWithUnit(ex.duration, ex.durationUnit, 'min');
+  // Fallback 'sec' (matches the tracker's ExerciseCard) — holds/planks with no
+  // saved durationUnit were reading as minutes. Named cardio still gets its
+  // unit from applyExerciseDefaults above.
+  const duration = formatValueWithUnit(ex.duration, ex.durationUnit, 'sec');
   // No 'mi' fallback — too many gym exercises (SkiErg meters, stair-sprint
   // reps) had a bare distance number and got falsely stamped with miles.
   // Honor the explicit distanceUnit if set; otherwise render the bare number.

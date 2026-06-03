@@ -266,7 +266,7 @@ function distanceFallback(raw) {
 function formatSetsReps(ex) {
   const sets = typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 0);
   const reps = ex.reps || (Array.isArray(ex.sets) && ex.sets[0]?.reps) || '';
-  const duration = formatValue(ex.duration, ex.durationUnit, 'min');
+  const duration = formatValue(ex.duration, ex.durationUnit, 'sec');
   const distance = formatValue(ex.distance, ex.distanceUnit, distanceFallback(ex.distance));
   const qualifier = ex.qualifier || '';
   let detail = '';

@@ -135,7 +135,7 @@ function formatValueWithUnit(value, unit, fallback) {
 }
 
 function getDuration(ex) {
-  return formatValueWithUnit(ex.duration, ex.durationUnit, 'min');
+  return formatValueWithUnit(ex.duration, ex.durationUnit, 'sec');
 }
 
 function getDistance(ex) {
@@ -237,7 +237,7 @@ function TVExercise({ exercise, blockIndex, exIndex, maxes, savedData, liveTrack
 
       {isCardio ? (
         <div style={styles.cardioInfo}>
-          {ex.duration && <span style={styles.cardioTag}>⏱ {formatValueWithUnit(ex.duration, ex.durationUnit, 'min')}</span>}
+          {ex.duration && <span style={styles.cardioTag}>⏱ {formatValueWithUnit(ex.duration, ex.durationUnit, 'sec')}</span>}
           {ex.distance && <span style={styles.cardioTag}>📏 {formatValueWithUnit(ex.distance, ex.distanceUnit, 'mi')}</span>}
           {ex.intensity && <span style={styles.cardioTag}>🔥 {ex.intensity}</span>}
           {savedData?.actualDuration && <span style={styles.trackedTag}>Actual: {savedData.actualDuration} min</span>}
