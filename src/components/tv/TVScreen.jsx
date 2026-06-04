@@ -139,11 +139,17 @@ function getDuration(ex) {
 }
 
 function getDistance(ex) {
-  return formatValueWithUnit(ex.distance, ex.distanceUnit, 'mi');
+  // No blind 'mi' fallback — a bare big number (SkiErg "500") is meters, not
+  // miles. Same >=100 heuristic as CastTVDisplay / DailyTonnage.
+  const n = parseFloat(ex.distance);
+  const fallback = Number.isFinite(n) && n >= 100 ? 'm' : 'mi';
+  return formatValueWithUnit(ex.distance, ex.distanceUnit, fallback);
 }
 
 function getSetsCount(ex) {
-  const count = typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 0);
+  // Builder programs store the count in `setsCount` with `sets: []` empty —
+  // read setsCount first or conditioning exercises lose their sets here.
+  const count = parseInt(ex.setsCount) || (typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 0));
   return count;
 }
 
@@ -160,6 +166,12 @@ function formatSetsReps(ex) {
   // Has reps
   if (reps) {
     return sets > 0 ? `${sets}x${reps}` : `x${reps}`;
+  }
+  // Calorie target (Assault Bike, Echo Bike)
+  const caloriesRaw = ex.calories != null && ex.calories !== '' ? String(ex.calories).trim() : '';
+  const calories = caloriesRaw ? (/[a-zA-Z]/.test(caloriesRaw) ? caloriesRaw : `${caloriesRaw} cal`) : '';
+  if (calories) {
+    return sets > 0 ? `${sets}x ${calories}` : calories;
   }
   // Has distance
   const distance = getDistance(ex);

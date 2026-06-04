@@ -75,6 +75,9 @@ function formatExercise(exercise) {
   else if (duration) detail = duration;
   else if (sets > 0 && calories) detail = `${sets}x ${calories}`;
   else if (calories) detail = calories;
+  // Distance-only conditioning (Rower 500m, Run/Walk 400yd) — keep the set
+  // count visible: "3x 500 m", not just "500 m".
+  else if (sets > 0 && distance) detail = `${sets}x ${distance}`;
   else if (distance) detail = distance;
 
   if (qualifier && detail) detail += ` ${qualifier}`;

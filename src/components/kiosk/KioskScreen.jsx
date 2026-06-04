@@ -292,7 +292,8 @@ export default function KioskScreen() {
           type: block.type || 'straight-set',
           trainerNotes: block.trainerNotes || block.notes || '',
           exercises: block.exercises?.map((ex, ei) => {
-            const setsCount = typeof ex.sets === 'number' ? ex.sets : parseInt(ex.sets) || 1;
+            // Builder format stores the count in setsCount (sets is an empty array)
+            const setsCount = parseInt(ex.setsCount) || (typeof ex.sets === 'number' ? ex.sets : parseInt(ex.sets) || 1);
             const weights = [];
             const actualReps = [];
             for (let si = 0; si < setsCount; si++) {
@@ -1081,10 +1082,11 @@ function KioskBlock({ block, blockIndex, trackingData, maxes, onUpdate }) {
 // ════════════════════════════════════════════════
 function KioskExercise({ exercise, blockIndex, exIndex, trackingData, maxes, onUpdate }) {
   const isComplete = trackingData[`complete-${blockIndex}-${exIndex}`] || false;
-  const setsCount = typeof exercise.sets === 'number' ? exercise.sets : parseInt(exercise.sets) || 1;
+  // Builder format stores the count in setsCount (sets is an empty array)
+  const setsCount = parseInt(exercise.setsCount) || (typeof exercise.sets === 'number' ? exercise.sets : parseInt(exercise.sets) || 1);
 
   // Check if it's a cardio/conditioning exercise (has duration or distance fields)
-  const isCardio = !!(exercise.duration || exercise.distance || exercise.durationUnit);
+  const isCardio = !!(exercise.duration || exercise.distance || exercise.durationUnit || exercise.calories);
 
   // Calculate prescribed weights for percentage-based exercises
   const getWeightForSet = (setIndex) => {
@@ -1122,7 +1124,13 @@ function KioskExercise({ exercise, blockIndex, exIndex, trackingData, maxes, onU
             {exercise.name}
           </div>
           <div style={{ fontSize: '13px', color: colors.textDim }}>
-            {setsCount} sets {'\u00D7'} {exercise.reps || '?'} reps
+            {isCardio
+              ? `${setsCount > 1 ? `${setsCount} sets × ` : ''}${
+                  exercise.duration ? `${exercise.duration} ${exercise.durationUnit || 'min'}`
+                  : exercise.distance ? `${exercise.distance} ${exercise.distanceUnit || ''}`.trim()
+                  : exercise.calories ? `${exercise.calories} cal`
+                  : ''}`
+              : `${setsCount} sets × ${exercise.reps || '?'} reps`}
             {exercise.qualifier && ` (${exercise.qualifier})`}
             {exercise.notes && ` — ${exercise.notes}`}
           </div>

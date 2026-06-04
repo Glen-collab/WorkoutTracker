@@ -163,8 +163,9 @@ function calcCoreEquiv(ex, trackingData, blockIndex, exIndex) {
   const trackedSets = parseFloat(trackingData?.[`${blockIndex}-${exIndex}-0-sets`]) || 0;
   const trackedReps = parseFloat(trackingData?.[`${blockIndex}-${exIndex}-0-reps`]) || 0;
 
-  // Use tracked values if available, otherwise fall back to preset
-  const setsCount = trackedSets > 0 ? trackedSets : (typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 1));
+  // Use tracked values if available, otherwise fall back to preset.
+  // Builder format stores the count in setsCount (sets is an empty array).
+  const setsCount = trackedSets > 0 ? trackedSets : ((typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 0)) || parseInt(ex.setsCount) || 1);
 
   // Check for duration-based (planks, holds)
   if (ex.duration && !trackedReps) {
@@ -446,6 +447,11 @@ export function calcCardio(block, trackingData, blockIndex, weightKg) {
       const d = String(distanceVal).match(/([\d.]+)/);
       if (d) exMiles = toMiles(d[1], distanceUnit);
     }
+    // Prescribed values are per-set (3 × 500m row = 1500m total). User-entered
+    // tracked values are already totals, so only multiply the preset fallback.
+    const presetSets = parseInt(ex.setsCount) || (typeof ex.sets === 'number' ? ex.sets : 0) || 1;
+    if (durationVal && !trackedDuration) exMinutes *= presetSets;
+    if (distanceVal && !trackedDistance) exMiles *= presetSets;
     minutes += exMinutes;
     miles += exMiles;
     if (weightKg > 0) {

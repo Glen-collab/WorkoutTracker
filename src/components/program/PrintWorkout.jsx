@@ -32,10 +32,18 @@ export default function PrintWorkout({ program, userName, currentWeek, daysPerWe
             }
             const exList = item.exercises || [item];
             exList.forEach(ex => {
+              // Builder format: set count lives in setsCount, sets is an empty array
+              const setsVal = ex.setsCount || (Array.isArray(ex.sets) ? (ex.sets.length || '') : ex.sets) || '';
+              // Cardio/conditioning: no reps — show duration/distance/calorie target instead
+              const repsVal = ex.reps
+                || (ex.duration ? `${ex.duration} ${ex.durationUnit || ''}`.trim() : '')
+                || (ex.distance ? `${ex.distance} ${ex.distanceUnit || ''}`.trim() : '')
+                || (ex.calories ? `${ex.calories} cal` : '')
+                || '';
               rowsHtml += `<tr>
                 <td style="padding:4px 6px;border:1px solid #ccc;">${ex.name || ex.exercise || ''}</td>
-                <td style="padding:4px 6px;border:1px solid #ccc;text-align:center;">${ex.sets || ''}</td>
-                <td style="padding:4px 6px;border:1px solid #ccc;text-align:center;">${ex.reps || ''}</td>
+                <td style="padding:4px 6px;border:1px solid #ccc;text-align:center;">${setsVal}</td>
+                <td style="padding:4px 6px;border:1px solid #ccc;text-align:center;">${repsVal}</td>
                 <td style="padding:4px 6px;border:1px solid #ccc;width:60px;">&nbsp;</td>
                 <td style="padding:4px 6px;border:1px solid #ccc;width:60px;">&nbsp;</td>
                 <td style="padding:4px 6px;border:1px solid #ccc;width:60px;">&nbsp;</td>

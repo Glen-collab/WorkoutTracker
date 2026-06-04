@@ -264,14 +264,21 @@ function distanceFallback(raw) {
   return Number.isFinite(n) && n >= 100 ? 'm' : 'mi';
 }
 function formatSetsReps(ex) {
-  const sets = typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 0);
+  // Builder programs store the set count in `setsCount` (string) with
+  // `sets: []` as an empty array — read setsCount first or conditioning
+  // exercises (3x Rower, 3x Run/Walk) lose their sets on the cast TV.
+  const sets = parseInt(ex.setsCount) || (typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 0));
   const reps = ex.reps || (Array.isArray(ex.sets) && ex.sets[0]?.reps) || '';
   const duration = formatValue(ex.duration, ex.durationUnit, 'sec');
   const distance = formatValue(ex.distance, ex.distanceUnit, distanceFallback(ex.distance));
+  // Calorie targets (Assault Bike, Echo Bike) — same handling as TVStatic.
+  const caloriesRaw = ex.calories != null && ex.calories !== '' ? String(ex.calories).trim() : '';
+  const calories = caloriesRaw ? (/[a-zA-Z]/.test(caloriesRaw) ? caloriesRaw : `${caloriesRaw} cal`) : '';
   const qualifier = ex.qualifier || '';
   let detail = '';
   if (reps) detail = sets > 0 ? `${sets} × ${reps}` : `× ${reps}`;
   else if (duration) detail = sets > 0 ? `${sets} × ${duration}` : duration;
+  else if (calories) detail = sets > 0 ? `${sets} × ${calories}` : calories;
   else if (distance) detail = sets > 0 ? `${sets} × ${distance}` : distance;
   return qualifier && detail ? `${detail} ${qualifier}` : (detail || qualifier);
 }

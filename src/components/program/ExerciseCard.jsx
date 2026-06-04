@@ -1056,7 +1056,10 @@ export default function ExerciseCard({
     const distUnit = getUnitLabel(ex.distanceUnit, 'mi');
     const spdUnit = getUnitLabel(ex.speedUnit, 'mph');
 
+    // Builder format: set count lives in setsCount (sets is an empty array)
+    const cardioSets = ex.setsCount || (typeof ex.sets === 'number' ? String(ex.sets) : '');
     const details = [
+      { label: 'Sets', val: cardioSets && cardioSets !== '1' && cardioSets !== '0' ? cardioSets : '' },
       { label: 'Duration', val: formatWithUnit(ex.duration, dUnit) },
       { label: 'Distance', val: formatWithUnit(ex.distance, distUnit) },
       { label: 'Speed', val: formatWithUnit(ex.speed, spdUnit) },
