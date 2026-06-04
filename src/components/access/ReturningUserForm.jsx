@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { formatAccessCode } from '../../utils/trackerHelpers';
+import HelpTip from '../common/HelpTip';
 
 const SAVED_CREDS_KEY = 'gwt_saved_credentials';
 
@@ -224,7 +225,10 @@ export default function ReturningUserForm({ onSubmit, onBack, error }) {
             style={styles.collapseHeader}
             onClick={() => setShowMaxes(!showMaxes)}
           >
-            <span>&#x1F4AA; Update 1RM Values (Optional)</span>
+            <span>
+              &#x1F4AA; Update 1RM Values (Optional)
+              <HelpTip text="A 'max' (1RM) is the most weight you can lift one time for that move. Don't know yours? Leave it blank — your trainer dials these in over time and the program works either way." />
+            </span>
             <span>{showMaxes ? '▲' : '▼'}</span>
           </div>
 
@@ -277,7 +281,10 @@ export default function ReturningUserForm({ onSubmit, onBack, error }) {
             style={styles.collapseHeader}
             onClick={() => setShowBodyStats(!showBodyStats)}
           >
-            <span>&#x2696; Body Stats (Optional)</span>
+            <span>
+              &#x2696; Body Stats (Optional)
+              <HelpTip text="Your height, weight, and age. We use these to estimate calories and scale your workouts to your body. All optional \u2014 skip anything you'd rather not share." />
+            </span>
             <span>{showBodyStats ? '\u25B2' : '\u25BC'}</span>
           </div>
 

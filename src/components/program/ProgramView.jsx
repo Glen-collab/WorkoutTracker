@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import HelpTip from '../common/HelpTip';
 import ProgramHeader from './ProgramHeader';
 import BlockCard from './BlockCard';
 import DailyTonnage, { calcBlockTonnage, calcCardio, getDefaultWeight } from './DailyTonnage';
@@ -403,6 +404,7 @@ export default function ProgramView({
                 ].filter(Boolean).join(' | ') || 'Edit stats & 1RM maxes'
               : 'Set your stats & 1RM maxes'}
           </span>
+          <HelpTip text="Optional. Body stats (height/weight/age) sharpen your calorie estimates; 1RM maxes are the most weight you can lift once on a move and help scale percentage workouts. Don't know them? Skip it — your trainer fills these in." />
           {showProfileEdit && (
             <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '10px', padding: '12px', marginTop: '8px', maxWidth: '280px', margin: '8px auto 0' }}>
               {/* Gender display (read-only, set in registration) */}
