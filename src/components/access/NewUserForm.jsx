@@ -1,6 +1,39 @@
 import React, { useState } from 'react';
 import { formatAccessCode } from '../../utils/trackerHelpers';
 
+// Friendly, tappable "?" help badge. Pulses for first-time users (controlled by
+// the parent via `pulse`) until they tap one, then explains jargon like "1RM"
+// in plain English. A blue "?" reads as "tap me for help" — not an error.
+function HelpTip({ text, pulse, onOpen }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex', verticalAlign: 'middle', marginLeft: '6px' }}>
+      <button
+        type="button"
+        aria-label="What's this?"
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); onOpen?.(); }}
+        style={{
+          width: '20px', height: '20px', borderRadius: '50%', border: 'none', padding: 0,
+          background: open ? '#667eea' : '#e8ecff', color: open ? '#fff' : '#4554c9',
+          fontWeight: 800, fontSize: '13px', lineHeight: '20px', cursor: 'pointer',
+          animation: pulse && !open ? 'gwtHelpPulse 1.5s ease-in-out infinite' : 'none',
+        }}
+      >?</button>
+      {open && (
+        <span
+          onClick={(e) => { e.stopPropagation(); setOpen(false); }}
+          style={{
+            position: 'absolute', top: '26px', left: '50%', transform: 'translateX(-50%)',
+            width: '230px', maxWidth: '70vw', background: '#1a1a2e', color: '#fff',
+            fontSize: '12.5px', lineHeight: 1.5, fontWeight: 500, padding: '10px 12px',
+            borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.35)', zIndex: 30, textAlign: 'left',
+          }}
+        >{text}</span>
+      )}
+    </span>
+  );
+}
+
 const styles = {
   container: {
     minHeight: '100vh',
@@ -151,6 +184,13 @@ export default function NewUserForm({ onSubmit, onBack, error }) {
   const [heightInches, setHeightInches] = useState('');
   const [weight, setWeight] = useState('');
   const [age, setAge] = useState('');
+  // Pulse the "?" help badges until a first-time user taps one, then settle.
+  const [helpSeen, setHelpSeen] = useState(() => !!localStorage.getItem('gwt_form_help_seen'));
+  const markHelpSeen = () => {
+    if (helpSeen) return;
+    localStorage.setItem('gwt_form_help_seen', 'true');
+    setHelpSeen(true);
+  };
 
   const handleCodeChange = (e) => {
     setCode(formatAccessCode(e.target.value));
@@ -181,12 +221,22 @@ export default function NewUserForm({ onSubmit, onBack, error }) {
 
   return (
     <div style={styles.container}>
+      <style>{`@keyframes gwtHelpPulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(102,126,234,0.55); }
+        50%      { box-shadow: 0 0 0 6px rgba(102,126,234,0); }
+      }`}</style>
       <div style={styles.card}>
         <div style={styles.header}>
           <div style={styles.icon}>&#x2728;</div>
           <h1 style={styles.title}>Welcome! Let's Get You Set Up</h1>
           <p style={styles.subtitle}>This only takes a minute — and your trainer will use this info to personalize your program.</p>
         </div>
+
+        {!helpSeen && (
+          <div style={{ background: '#eef1ff', border: '1px solid #d3d9ff', color: '#3a3f8c', borderRadius: '10px', padding: '10px 14px', marginBottom: '16px', fontSize: '13px', lineHeight: 1.45, textAlign: 'center' }}>
+            New here? Tap any <strong style={{ color: '#4554c9' }}>?</strong> for a quick plain-English explainer. Everything but your name, email, and code is optional.
+          </div>
+        )}
 
         {error && <div style={styles.error}>{error}</div>}
 
@@ -229,7 +279,14 @@ export default function NewUserForm({ onSubmit, onBack, error }) {
 
           {/* Body Stats */}
           <div style={{ background: '#f0f7ff', border: '1px solid #d0e3f7', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
-            <label style={{ ...styles.label, color: '#1565c0', marginBottom: '4px' }}>About You</label>
+            <label style={{ ...styles.label, color: '#1565c0', marginBottom: '4px' }}>
+              About You
+              <HelpTip
+                pulse={!helpSeen}
+                onOpen={markHelpSeen}
+                text="Your sex, height, weight, and age. We use these to estimate calories burned and scale your workouts to your body. All optional — skip anything you'd rather not share."
+              />
+            </label>
             <p style={{ fontSize: '12px', color: '#666', margin: '0 0 12px', lineHeight: '1.4' }}>This helps us estimate calories, scale your workouts, and track your progress accurately. Fill in what you can — everything here is optional.</p>
           <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
             <button
@@ -316,7 +373,14 @@ export default function NewUserForm({ onSubmit, onBack, error }) {
             style={styles.collapseHeader}
             onClick={() => setShowMaxes(!showMaxes)}
           >
-            <span>&#x1F4AA; Max Lifts (Optional)</span>
+            <span>
+              &#x1F4AA; Max Lifts (Optional)
+              <HelpTip
+                pulse={!helpSeen}
+                onOpen={markHelpSeen}
+                text="A 'max' (also called a 1RM) is the most weight you can lift one time for that move. Don't know yours? Totally normal — leave these blank and your trainer figures them out with you. The programs work great either way."
+              />
+            </span>
             <span>{showMaxes ? '▲' : '▼'}</span>
           </div>
 

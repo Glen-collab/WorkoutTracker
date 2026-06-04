@@ -513,7 +513,17 @@ export default function App() {
         }
         if (result.data?.survey_available) {
           const surveyDone = localStorage.getItem(`gwt_survey_done_${u.email}`);
-          if (!surveyDone) setShowTransitionSurvey(true);
+          // Don't hit a brand-new (or trial) user with the feedback survey the
+          // moment they get in — they haven't even used it yet. Record their
+          // first login, and only surface the survey on a return visit at least
+          // a day later, once they've had a chance to actually try the app.
+          const firstKey = `gwt_first_login_${u.email}`;
+          const firstTs = parseInt(localStorage.getItem(firstKey) || '0', 10);
+          if (!firstTs) {
+            localStorage.setItem(firstKey, Date.now().toString());
+          } else if (!surveyDone && (Date.now() - firstTs) > 24 * 60 * 60 * 1000) {
+            setShowTransitionSurvey(true);
+          }
         }
 
         setScreen('program');
