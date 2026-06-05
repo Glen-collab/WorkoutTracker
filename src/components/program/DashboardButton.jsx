@@ -91,11 +91,13 @@ const s = {
 export default function DashboardButton({ userEmail }) {
   const [busy, setBusy] = useState(false);
   const [showUpsell, setShowUpsell] = useState(false);
+  const [tier, setTier] = useState(null); // 'tracker' = $5.99 gym tracker; null = free trial
 
   const handleClick = async () => {
     if (busy) return;
     setBusy(true);
     let isMember = false;
+    let userTier = null;
     try {
       const res = await fetch(`${API}/auth/check-member`, {
         method: 'POST',
@@ -105,18 +107,25 @@ export default function DashboardButton({ userEmail }) {
       if (res.ok) {
         const data = await res.json();
         isMember = !!data.is_member;
+        userTier = data.tier || null;
       }
     } catch { /* network blip — fall through to upsell, no big deal */ }
     setBusy(false);
 
     if (isMember) {
-      // Send them to the platform — logged-in lands on dashboard, logged-out
-      // hits login and then there. New tab so the tracker workout stays open.
+      // Full members (basic/coached/elite + staff): open the real dashboard.
+      // New tab so the tracker workout stays open.
       window.open(`${PLATFORM_BASE}/member`, '_blank', 'noopener');
     } else {
+      // Free trial OR $5.99 tracker-only → upsell, copy tailored by tier.
+      setTier(userTier);
       setShowUpsell(true);
     }
   };
+
+  // $5.99 tracker-only subscribers vs free-trial users get different framing.
+  const isTracker = tier === 'tracker';
+  const planLabel = isTracker ? 'the Gym Workout Tracker' : 'the Free Tracker';
 
   return (
     <>
@@ -130,32 +139,51 @@ export default function DashboardButton({ userEmail }) {
           <div style={{ ...s.modal, position: 'relative' }} onClick={(e) => e.stopPropagation()}>
             <button onClick={() => setShowUpsell(false)} style={s.closeX}>×</button>
             <div style={s.header}>
-              <h2 style={s.hTitle}>Your numbers, in one place.</h2>
-              <p style={s.hSub}>Members get a dashboard with all the good stuff.</p>
+              <div style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.5px', opacity: 0.8, marginBottom: '6px', textTransform: 'uppercase' }}>
+                You're on {planLabel}
+              </div>
+              <h2 style={s.hTitle}>Unlock your dashboard + Coach's notes.</h2>
+              <p style={s.hSub}>
+                {isTracker
+                  ? 'Your $5.99 tracker logs your workouts. A membership adds the full dashboard and notes from Coach Glen.'
+                  : 'Upgrade to a membership to see your dashboard and notes from Coach Glen.'}
+              </p>
             </div>
             <div style={s.body}>
               <ul style={s.bullets}>
+                <li style={s.bullet}><span style={s.check}>✓</span><span>Personalized weekly and monthly summaries from Coach Glen</span></li>
                 <li style={s.bullet}><span style={s.check}>✓</span><span>Lifetime tonnage with milestone unlocks ("you've lifted a tank")</span></li>
                 <li style={s.bullet}><span style={s.check}>✓</span><span>Weekly tonnage, calories, and cardio charts</span></li>
                 <li style={s.bullet}><span style={s.check}>✓</span><span>Bodyweight trend line — smoothed, not noisy</span></li>
-                <li style={s.bullet}><span style={s.check}>✓</span><span>Personalized weekly and monthly summaries from Coach Glen</span></li>
                 <li style={s.bullet}><span style={s.check}>✓</span><span>Manage your subscription anytime — cancel in one tap</span></li>
               </ul>
 
-              <a
-                href={`${PLATFORM_BASE}/register?tier=basic${userEmail ? '&email=' + encodeURIComponent(userEmail) : ''}`}
-                target="_blank" rel="noopener noreferrer"
-                style={s.primaryBtn}
-              >
-                Become a Member — $20/mo
-              </a>
-              <a
-                href={`${PLATFORM_BASE}/login`}
-                target="_blank" rel="noopener noreferrer"
-                style={s.secondaryBtn}
-              >
-                Already a member? Log in →
-              </a>
+              {isTracker ? (
+                <a
+                  href={`${PLATFORM_BASE}/login`}
+                  target="_blank" rel="noopener noreferrer"
+                  style={s.primaryBtn}
+                >
+                  Log in to upgrade →
+                </a>
+              ) : (
+                <>
+                  <a
+                    href={`${PLATFORM_BASE}/register?tier=basic${userEmail ? '&email=' + encodeURIComponent(userEmail) : ''}`}
+                    target="_blank" rel="noopener noreferrer"
+                    style={s.primaryBtn}
+                  >
+                    Become a Member — $20/mo
+                  </a>
+                  <a
+                    href={`${PLATFORM_BASE}/login`}
+                    target="_blank" rel="noopener noreferrer"
+                    style={s.secondaryBtn}
+                  >
+                    Already a member? Log in →
+                  </a>
+                </>
+              )}
 
               <p style={{ fontSize: '11px', color: '#888', textAlign: 'center', margin: '12px 0 0' }}>
                 Keep getting Strong Again. Cancel anytime.

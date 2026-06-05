@@ -283,7 +283,7 @@ export default function ReturningUserForm({ onSubmit, onBack, error }) {
           >
             <span>
               &#x2696; Body Stats (Optional)
-              <HelpTip text="Your height, weight, and age. We use these to estimate calories and scale your workouts to your body. All optional \u2014 skip anything you'd rather not share." />
+              <HelpTip text="Your height, weight, and age. We use these to estimate calories and scale your workouts to your body. All optional - skip anything you'd rather not share." />
             </span>
             <span>{showBodyStats ? '\u25B2' : '\u25BC'}</span>
           </div>
