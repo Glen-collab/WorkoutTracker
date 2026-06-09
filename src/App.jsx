@@ -977,6 +977,10 @@ export default function App() {
 
             const result = {
               name: customName || swappedName || ex.name || 'Unknown Exercise',
+              // Preserve what was prescribed vs what they actually did, so the
+              // coach dashboard can flag swaps and the AI summary can note them.
+              prescribedName: ex.name || '',
+              swappedExercise: swappedName || '',
               isUserDefined: !!ex.isUserDefined,
               userDefinedKind: ex.userDefinedKind || '',
               customSets: trackingData[`${blockIndex}-${exIndex}-null-sets`] || '',
