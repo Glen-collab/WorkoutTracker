@@ -4,6 +4,11 @@ import TrackingInputs from './TrackingInputs';
 import { getMotivationalMessage } from '../../data/exerciseMotivation';
 import { isFunctional } from './DailyTonnage';
 import { applyExerciseDefaults } from '../../data/exerciseDefaults';
+import SWAP_INDEX from '../../data/exerciseSwapIndex.json';
+
+// name -> swap-index entry, built once. Lets a strength exercise find its
+// muscle category to suggest same-muscle substitutes.
+const SWAP_BY_NAME = new Map(SWAP_INDEX.list.map((e) => [e.name.toLowerCase(), e]));
 
 function showToast(message) {
   const toast = document.createElement('div');
@@ -931,12 +936,31 @@ export default function ExerciseCard({
   ];
   const [showSwap, setShowSwap] = useState(false);
   const [swappedName, setSwappedName] = useState(null);
+  const [swappedVideo, setSwappedVideo] = useState(null);
+  const [swapSearch, setSwapSearch] = useState('');
+  const [showAllCat, setShowAllCat] = useState(false);
+  const [swapOwn, setSwapOwn] = useState('');
   const displayName = swappedName || ex.name;
+  // The demo video follows the swap: a library substitute shows its own video;
+  // a swap to something videoless (write-your-own) shows none rather than the
+  // wrong original; no swap shows the prescribed exercise's video.
+  const activeVideo = swappedName
+    ? (swappedVideo ? `https://iframe.videodelivery.net/${swappedVideo}` : null)
+    : ex.youtube;
 
-  const handleSwap = (newName) => {
+  const handleSwap = (newName, newVideo) => {
     setSwappedName(newName);
+    setSwappedVideo(newVideo || null);
     onUpdateTracking(blockIndex, exIndex, null, 'swapped_exercise', newName);
     setShowSwap(false);
+    setSwapSearch('');
+    setShowAllCat(false);
+    setSwapOwn('');
+  };
+  const resetSwap = () => {
+    setSwappedName(null);
+    setSwappedVideo(null);
+    onUpdateTracking(blockIndex, exIndex, null, 'swapped_exercise', '');
   };
 
   const isConditioningExercise = blockType === 'conditioning' || blockType === 'cardio' || blockType === 'movement';
@@ -962,6 +986,98 @@ export default function ExerciseCard({
                 {alt.icon} {alt.name}
               </button>
             ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Strength swap: substitute a prescribed lift with a same-muscle alternative
+  // (keeps the prescribed sets/reps/scheme — the client just does their numbers
+  // on the new movement), a searched exercise, or a write-your-own. Reuses the
+  // same swapped_exercise tracking field the cardio swap saves through.
+  const renderStrengthSwap = () => {
+    if (inputLocked) return null;
+    const cur = SWAP_BY_NAME.get((ex.name || '').toLowerCase());
+    const cat = cur?.category;
+    const mv = cur?.movement?.[0];
+    const q = swapSearch.trim().toLowerCase();
+
+    let results = [];
+    if (q) {
+      results = SWAP_INDEX.list.filter(e => e.name.toLowerCase().includes(q) && e.name !== ex.name).slice(0, 40);
+    } else if (cat) {
+      results = SWAP_INDEX.list.filter(e =>
+        e.category === cat && e.name !== ex.name && (!mv || (e.movement || []).includes(mv)));
+    }
+    const capped = (!q && !showAllCat) ? results.slice(0, 10) : results;
+    const heading = q ? 'Matches' : (cat ? 'Similar exercises (same muscle)' : 'Search for an exercise');
+
+    const row = (e) => (
+      <button key={e.name} onClick={() => handleSwap(e.name, e.video)}
+        style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', textAlign: 'left',
+          padding: '9px 12px', border: 'none', borderBottom: '1px solid #f3f4f6', background: '#fff',
+          cursor: 'pointer', fontSize: '14px' }}>
+        <span style={{ flex: 1 }}>{e.name}{e.video ? ' 🎬' : ''}</span>
+        {e.equipment && e.equipment[0] && (
+          <span style={{ fontSize: '11px', color: '#9ca3af', whiteSpace: 'nowrap' }}>{e.equipment[0]}</span>
+        )}
+      </button>
+    );
+
+    return (
+      <div style={{ marginBottom: '12px' }}>
+        <button onClick={() => setShowSwap(!showSwap)}
+          style={{ background: swappedName ? '#eef2ff' : 'none', border: '1px solid #c7d2fe',
+            borderRadius: '8px', padding: '6px 12px', fontSize: '12px', color: '#4f46e5',
+            fontWeight: 700, cursor: 'pointer' }}>
+          {swappedName ? `Swapped → ${swappedName}` : '⇄ Swap Exercise'}
+        </button>
+        {swappedName && (
+          <button onClick={resetSwap}
+            style={{ marginLeft: '8px', background: 'none', border: 'none', color: '#9ca3af',
+              fontSize: '12px', cursor: 'pointer', textDecoration: 'underline' }}>reset</button>
+        )}
+        {showSwap && (
+          <div style={{ marginTop: '6px', border: '1px solid #e5e7eb', borderRadius: '10px',
+            background: '#fff', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', overflow: 'hidden' }}>
+            <div style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6' }}>
+              <input type="text" value={swapSearch} onChange={(e) => setSwapSearch(e.target.value)}
+                placeholder="Search all exercises…"
+                style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px',
+                  border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }} />
+            </div>
+            <div style={{ padding: '6px 12px 2px', fontSize: '11px', fontWeight: 700, color: '#9ca3af',
+              textTransform: 'uppercase', letterSpacing: '0.5px' }}>{heading}</div>
+            <div style={{ maxHeight: '240px', overflowY: 'auto' }}>
+              {capped.map(row)}
+              {capped.length === 0 && (
+                <div style={{ padding: '10px 12px', fontSize: '13px', color: '#9ca3af' }}>
+                  {q ? 'No matches — try the search or write your own below.' : 'Use search or write your own below.'}
+                </div>
+              )}
+            </div>
+            {!q && results.length > capped.length && (
+              <button onClick={() => setShowAllCat(true)}
+                style={{ width: '100%', padding: '8px', border: 'none', borderTop: '1px solid #f3f4f6',
+                  background: '#fafafa', color: '#4f46e5', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                Show all {results.length} {cat} options
+              </button>
+            )}
+            <div style={{ display: 'flex', gap: '6px', padding: '8px 10px', borderTop: '1px solid #eef2ff',
+              background: '#fafbff' }}>
+              <input type="text" value={swapOwn} onChange={(e) => setSwapOwn(e.target.value)}
+                placeholder="✏️ Write my own…"
+                style={{ flex: 1, minWidth: 0, padding: '8px 10px', border: '1px solid #d1d5db',
+                  borderRadius: '8px', fontSize: '14px' }} />
+              <button onClick={() => swapOwn.trim() && handleSwap(swapOwn.trim(), '')}
+                disabled={!swapOwn.trim()}
+                style={{ padding: '8px 14px', border: 'none', borderRadius: '8px', fontWeight: 700,
+                  fontSize: '13px', cursor: swapOwn.trim() ? 'pointer' : 'default',
+                  background: swapOwn.trim() ? '#4f46e5' : '#e5e7eb', color: swapOwn.trim() ? '#fff' : '#9ca3af' }}>
+                Use
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -1281,7 +1397,7 @@ export default function ExerciseCard({
             {exIndex + 1}. {(ex.isUserDefined && getTrack(null, 'custom_name')) || displayName}
             {ex.qualifier && <span style={{ fontSize: '12px', color: '#dc2626', fontWeight: '600' }}> ({ex.qualifier})</span>}
           </span>
-          {ex.youtube && (
+          {activeVideo && (
             <button
               style={{ ...s.videoBtn, ...(showVideo ? s.videoBtnActive : {}) }}
               onClick={(e) => {
@@ -1295,8 +1411,8 @@ export default function ExerciseCard({
                   const pair = sessionStorage.getItem('bsa_cast_pair');
                   if (pair) {
                     const payload = next ? {
-                      name: ex.name,
-                      youtube: ex.youtube,
+                      name: displayName,
+                      youtube: activeVideo,
                       sets: ex.sets,
                       reps: ex.reps || (ex.repsPerSet && ex.repsPerSet[0]) || '',
                       duration: ex.duration || '',
@@ -1327,11 +1443,11 @@ export default function ExerciseCard({
         )}
       </div>
 
-      {showVideo && ex.youtube && (
+      {showVideo && activeVideo && (
         <div style={{ padding: '0 14px 10px' }}>
           <div style={s.videoContainer}>
             <iframe
-              src={`${ex.youtube}?preload=metadata`}
+              src={`${activeVideo}?preload=metadata`}
               style={s.videoIframe}
               allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
               allowFullScreen
@@ -1342,6 +1458,7 @@ export default function ExerciseCard({
 
       {!collapsed && (
         <div style={s.body}>
+          {!ex.isUserDefined && isStrength && renderStrengthSwap()}
           {ex.isUserDefined ? renderUserDefined() : (
             <>
               {isStrength && renderStrength()}
