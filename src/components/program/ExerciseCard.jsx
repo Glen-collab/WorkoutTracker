@@ -432,6 +432,42 @@ export default function ExerciseCard({
   );
 
   const renderStrength = () => {
+    // Timed holds (planks, wall sits, dead hangs…): a hold with a duration, no
+    // reps, and no prescribed weight is bodyweight-for-time — show ONLY a
+    // duration box per set, not pointless Weight/Reps inputs.
+    const isTimedHold = !ex.isPercentageBased && ex.duration && !ex.reps && !ex.weight;
+    if (isTimedHold) {
+      const thSets = typeof ex.sets === 'number'
+        ? ex.sets
+        : (Array.isArray(ex.sets) ? ex.sets.length : (parseInt(ex.setsCount) || parseInt(ex.sets) || 1));
+      const thUnit = getUnitLabel(ex.durationUnit, 'sec');
+      return (
+        <>
+          <div style={{ ...s.targetText, fontWeight: '700' }}>
+            Hold for time — {thSets} Set{thSets > 1 ? 's' : ''}{ex.qualifier ? ` (${ex.qualifier})` : ''}
+          </div>
+          {Array.from({ length: thSets }).map((_, si) => (
+            <div key={si}>
+              <div style={s.setLabel}>
+                Set {si + 1}: {formatWithUnit(ex.duration, thUnit)}{ex.qualifier ? ` ${ex.qualifier}` : ''}
+              </div>
+              <input
+                type="text"
+                placeholder={`${ex.duration} ${thUnit}`}
+                value={getTrack(si, 'duration')}
+                onChange={(e) => onUpdateTracking(blockIndex, exIndex, si, 'duration', e.target.value)}
+                style={{ ...s.condInput, marginBottom: '6px', ...lockStyle }}
+                readOnly={inputLocked}
+              />
+            </div>
+          ))}
+          {renderExtraFields()}
+          {renderMarkButton()}
+          {renderRecSection()}
+        </>
+      );
+    }
+
     // Functional/corrective exercises: show warmup-style view, no percentage weights
     if (isFunctional(ex.name)) {
       const fnSets = typeof ex.sets === 'number' ? ex.sets : (ex.setsCount || parseInt(ex.sets) || 1);
