@@ -10,6 +10,7 @@ import ProgramView from './components/program/ProgramView';
 import PainModal from './components/modals/PainModal';
 import CompletionModal from './components/modals/CompletionModal';
 import CongratulationsModal from './components/modals/CongratulationsModal';
+import SessionRecapModal from './components/modals/SessionRecapModal';
 import WeeklySummaryModal from './components/modals/WeeklySummaryModal';
 import TestYourMight, { getWeekConfig } from './components/game/TestYourMight';
 import WorkoutChatbot from './components/chatbot/WorkoutChatbot';
@@ -114,6 +115,8 @@ export default function App() {
   const [showPainModal, setShowPainModal] = useState(false);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [showCongratsModal, setShowCongratsModal] = useState(false);
+  const [showRecapModal, setShowRecapModal] = useState(false);  // 1-on-1 recap preview
+  const [recapBusy, setRecapBusy] = useState(false);
   const [showGame, setShowGame] = useState(false);
   const [showGamePrompt, setShowGamePrompt] = useState(false);
   const [showWeeklySummary, setShowWeeklySummary] = useState(false);
@@ -1340,7 +1343,7 @@ export default function App() {
           onSetRecommendation={setRecommendation}
           isFirstDay={isFirstDay}
           isLastDay={isLastDay}
-          onLogWorkout={handleLogWorkout}
+          onLogWorkout={isOneOnOne ? () => setShowRecapModal(true) : handleLogWorkout}
           onLogout={logout}
           trackingData={trackingData}
           onUpdateTracking={handleUpdateTracking}
@@ -1438,6 +1441,38 @@ export default function App() {
         onComplete={() => { setShowTransitionSurvey(false); }}
         onDismiss={() => setShowTransitionSurvey(false)}
       />
+      <SessionRecapModal
+        isOpen={showRecapModal}
+        onClose={() => setShowRecapModal(false)}
+        program={program}
+        trackingData={trackingData}
+        week={currentWeek}
+        day={currentDay}
+        clientName={user?.name}
+        programName={program?.name}
+        busy={recapBusy}
+        onConfirm={async (notes, sendRecap, items) => {
+          setRecapBusy(true);
+          if (sendRecap) {
+            try {
+              await api.sendSessionRecap({
+                client_email: user?.email,
+                client_name: user?.name,
+                coach_name: 'Your Coach',
+                program_name: program?.name || 'Workout',
+                week: currentWeek,
+                day: currentDay,
+                items,
+                coach_notes: notes,
+              });
+            } catch { /* still log the workout */ }
+          }
+          setRecapBusy(false);
+          setShowRecapModal(false);
+          handleLogWorkout(notes);
+        }}
+      />
+
       <CongratulationsModal
         isOpen={showCongratsModal}
         onClose={() => {

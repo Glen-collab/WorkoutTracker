@@ -49,6 +49,8 @@ export default function useTrackerAPI() {
   const logWorkout = useCallback((params) => apiCall('log-workout.php', params), [apiCall]);
   const submitQuestionnaire = useCallback((params) => apiCall('submit-questionnaire.php', params, 0), [apiCall]);
   const submitCompletion = useCallback((params) => apiCall('submit-completion.php', params), [apiCall]);
+  // 1-on-1 only: email the client a session recap + coach notes (coach reviews first).
+  const sendSessionRecap = useCallback((params) => apiCall('send-session-recap.php', params, 1), [apiCall]);
   const getWeeklyStats = useCallback((params) => apiCall('get-weekly-stats.php', params), [apiCall]);
   const getTravelWorkouts = useCallback((params) => apiCall('get-travel-workouts.php', params), [apiCall]);
   // Persist in-app edits to 1RM maxes + body stats (single retry — best-effort).
@@ -70,5 +72,5 @@ export default function useTrackerAPI() {
     }
   }, []);
 
-  return { loading, error, loadProgram, loadUserOverride, logWorkout, submitQuestionnaire, submitCompletion, getWeeklyStats, getTravelWorkouts, getTrackerOverrides, updateUserStats };
+  return { loading, error, loadProgram, loadUserOverride, logWorkout, submitQuestionnaire, submitCompletion, sendSessionRecap, getWeeklyStats, getTravelWorkouts, getTrackerOverrides, updateUserStats };
 }
