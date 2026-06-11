@@ -116,6 +116,8 @@ export default function OneOnOnePickerScreen({ onPick }) {
 
   // "keep in folder?" prompt for a client picked via search
   const [pendingPin, setPendingPin] = useState(null);
+  // Edit mode: tap "Remove" to un-pin a client who's done with 1-on-1.
+  const [editMode, setEditMode] = useState(false);
 
   const loadFolder = useCallback(async () => {
     if (!coachCode) { setErr('Missing coach code in the link.'); setFolder([]); return; }
@@ -128,6 +130,18 @@ export default function OneOnOnePickerScreen({ onPick }) {
   }, [coachCode]);
 
   useEffect(() => { loadFolder(); }, [loadFolder]);
+
+  // Un-pin a client from the 1-on-1 folder (when they're done training here).
+  const removeFromFolder = async (c) => {
+    if (!window.confirm(`Remove ${c.name} from your 1-on-1 folder?`)) return;
+    try {
+      await fetch(`${KIOSK_BASE}oneonone-folder/remove`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coach: coachCode, email: c.email }),
+      });
+      await loadFolder();
+    } catch (e) { setErr(e.message || 'Failed to remove'); }
+  };
 
   // Lazily fetch the full roster the first time the coach searches.
   const ensureAllClients = useCallback(async () => {
@@ -232,12 +246,19 @@ export default function OneOnOnePickerScreen({ onPick }) {
     onPick({ name, email, code: newProgram }, false);
   };
 
-  const ClientRow = ({ c, onClick, right }) => (
+  const ClientRow = ({ c, onClick, right, onRemove }) => (
     <div onClick={onClick} style={styles.row}>
       <span>{c.name}</span>
-      <span style={styles.rowMeta}>
-        {right != null ? right : `${c.access_code || ''}${c.week ? ` · W${c.week}` : ''}${c.day ? `D${c.day}` : ''}`}
-      </span>
+      {onRemove ? (
+        <button
+          onClick={(e) => { e.stopPropagation(); onRemove(c); }}
+          style={{ background: 'rgba(239,68,68,0.18)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.45)', borderRadius: '8px', padding: '5px 12px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
+        >Remove</button>
+      ) : (
+        <span style={styles.rowMeta}>
+          {right != null ? right : `${c.access_code || ''}${c.week ? ` · W${c.week}` : ''}${c.day ? `D${c.day}` : ''}`}
+        </span>
+      )}
     </div>
   );
 
@@ -324,7 +345,7 @@ export default function OneOnOnePickerScreen({ onPick }) {
                 <div key={name}>
                   <div style={styles.groupLabel}>👥 {name}</div>
                   <div style={styles.list}>
-                    {members.map((c) => <ClientRow key={c.email} c={c} onClick={() => load(c)} />)}
+                    {members.map((c) => <ClientRow key={c.email} c={c} onClick={editMode ? undefined : () => load(c)} onRemove={editMode ? removeFromFolder : undefined} />)}
                   </div>
                 </div>
               ))}
@@ -332,7 +353,7 @@ export default function OneOnOnePickerScreen({ onPick }) {
                 <>
                   {groups.length > 0 && <div style={styles.groupLabel}>Clients</div>}
                   <div style={styles.list}>
-                    {ungrouped.map((c) => <ClientRow key={c.email} c={c} onClick={() => load(c)} />)}
+                    {ungrouped.map((c) => <ClientRow key={c.email} c={c} onClick={editMode ? undefined : () => load(c)} onRemove={editMode ? removeFromFolder : undefined} />)}
                   </div>
                 </>
               )}
@@ -341,10 +362,14 @@ export default function OneOnOnePickerScreen({ onPick }) {
 
           <div style={styles.rowBtns}>
             <button style={styles.ghostBtn} onClick={openAddNew}>+ New client</button>
-            {(folder || []).length >= 2 && (
+            {(folder || []).length >= 2 && !editMode && (
               <button style={styles.ghostBtn} onClick={() => { setGroupMode(true); setSearch(''); }}>Make a group</button>
             )}
+            {(folder || []).length > 0 && (
+              <button style={styles.ghostBtn} onClick={() => setEditMode((v) => !v)}>{editMode ? '✓ Done' : '✏️ Edit'}</button>
+            )}
           </div>
+          {editMode && <p style={{ ...styles.sub, color: '#fca5a5', marginTop: '10px' }}>Tap “Remove” to take a client out of your folder. They keep their program — this just unpins them here.</p>}
         </>
       )}
 

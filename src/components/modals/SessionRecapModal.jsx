@@ -100,17 +100,6 @@ export default function SessionRecapModal({
         </div>
 
         <div style={s.body}>
-          <div style={s.sectionLabel}>What {who} did</div>
-          <div style={s.itemList}>
-            {emailItems.length === 0 && <div style={s.empty}>No logged sets yet.</div>}
-            {emailItems.map((it, i) => (
-              <div key={i} style={s.item}>
-                <span style={s.itemName}>{it.name}</span>
-                <span style={s.itemSummary}>{it.summary || '—'}</span>
-              </div>
-            ))}
-          </div>
-
           <div style={s.sectionLabel}>Notes {prefill ? '(your exercise notes, edit or add more)' : ''}</div>
           <textarea
             style={s.textarea}
