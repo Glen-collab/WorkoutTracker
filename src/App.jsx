@@ -241,6 +241,26 @@ export default function App() {
     const key = isDirectKey ? field : `${blockIndex}-${exIndex}-${setIndex}-${field}`;
     setTrackingData(prev => {
       const updated = { ...prev, [key]: value };
+
+      // Weight autofill: typing the FIRST set's weight pre-fills every later
+      // set whose weight is still blank (coach/client just enters reps after).
+      // Only the first set drives it, and it never overwrites a weight already
+      // typed — so ramping sets you set by hand are preserved.
+      if (field === 'weight' && String(setIndex) === '0' && value !== '' && value != null) {
+        const ex = programRef.current?.blocks?.[blockIndex]?.exercises?.[exIndex];
+        let n = 1;
+        if (ex) {
+          if (Array.isArray(ex.percentages)) n = ex.percentages.length || 1;
+          else if (typeof ex.sets === 'number') n = ex.sets;
+          else if (Array.isArray(ex.sets)) n = ex.sets.length || 1;
+          else n = parseInt(ex.sets) || parseInt(ex.setsCount) || 1;
+        }
+        for (let j = 1; j < n; j++) {
+          const wk = `${blockIndex}-${exIndex}-${j}-weight`;
+          if (!updated[wk]) updated[wk] = value;
+        }
+      }
+
       // Autosave to localStorage
       try {
         const storageKey = `gwt_tracking_${userRef.current?.accessCode}_${currentWeekRef.current}_${currentDayRef.current}`;
@@ -265,11 +285,13 @@ export default function App() {
   const profileRef = useRef(profile);
   const currentWeekRef = useRef(currentWeek);
   const currentDayRef = useRef(currentDay);
+  const programRef = useRef(program);
   useEffect(() => { userRef.current = user; }, [user]);
   useEffect(() => { maxesRef.current = maxes; }, [maxes]);
   useEffect(() => { profileRef.current = profile; }, [profile]);
   useEffect(() => { currentWeekRef.current = currentWeek; }, [currentWeek]);
   useEffect(() => { currentDayRef.current = currentDay; }, [currentDay]);
+  useEffect(() => { programRef.current = program; }, [program]);
 
   // In-app save of body stats + 1RM maxes (from the Profile widget). Updates
   // local state immediately so prescribed weights recalc live, then persists
