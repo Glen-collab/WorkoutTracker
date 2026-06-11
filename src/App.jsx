@@ -1458,7 +1458,7 @@ export default function App() {
               await api.sendSessionRecap({
                 client_email: user?.email,
                 client_name: user?.name,
-                coach_name: 'Your Coach',
+                coach_name: 'Glen',
                 program_name: program?.name || 'Workout',
                 week: currentWeek,
                 day: currentDay,
