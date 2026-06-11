@@ -1487,6 +1487,7 @@ export default function App() {
                 items,
                 coach_notes: notes,
                 photos: photos || [],
+                coach: new URLSearchParams(window.location.search).get('coach') || '',
               });
             } catch { /* still log the workout */ }
           }
