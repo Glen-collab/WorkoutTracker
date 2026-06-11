@@ -1,4 +1,28 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
+
+// Resize/compress a photo client-side before it rides along in the email — keeps
+// attachments small (phone shots are huge). Returns a JPEG data URL.
+function resizePhoto(file, maxDim = 1280, quality = 0.7) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width >= height && width > maxDim) { height = Math.round(height * maxDim / width); width = maxDim; }
+        else if (height > maxDim) { width = Math.round(width * maxDim / height); height = maxDim; }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 // 1-on-1 ONLY: shown when the trainer taps "Log Workout". Previews the session
 // the coach just logged for the client, pre-fills a notes box with the coach's
@@ -45,7 +69,19 @@ export default function SessionRecapModal({
     [items]
   );
   const [notes, setNotes] = useState(prefill);
-  useEffect(() => { if (isOpen) setNotes(prefill); }, [isOpen, prefill]);
+  const [photos, setPhotos] = useState([]);   // resized JPEG data URLs
+  const fileRef = useRef(null);
+  useEffect(() => { if (isOpen) { setNotes(prefill); setPhotos([]); } }, [isOpen, prefill]);
+
+  const onPickPhotos = async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    for (const f of files) {
+      if (!f.type.startsWith('image/')) continue;
+      if (photos.length >= 6) break;
+      try { const url = await resizePhoto(f); setPhotos((p) => (p.length >= 6 ? p : [...p, url])); } catch { /* skip */ }
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -83,13 +119,27 @@ export default function SessionRecapModal({
             placeholder="• Back Squat: great depth, add 10 lbs next week&#10;Add anything else here…"
             rows={6}
           />
+
+          <div style={s.sectionLabel}>Reference photos (optional, emailed only)</div>
+          <div style={s.photoRow}>
+            {photos.map((src, i) => (
+              <div key={i} style={s.thumbWrap}>
+                <img src={src} alt={`ref ${i + 1}`} style={s.thumb} />
+                <button style={s.thumbX} onClick={() => setPhotos((p) => p.filter((_, idx) => idx !== i))}>✕</button>
+              </div>
+            ))}
+            {photos.length < 6 && (
+              <button style={s.addPhoto} onClick={() => fileRef.current?.click()}>＋<div style={{ fontSize: 10, marginTop: 2 }}>Photo</div></button>
+            )}
+            <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={onPickPhotos} />
+          </div>
         </div>
 
         <div style={s.footer}>
-          <button style={{ ...s.btn, ...s.btnGhost }} disabled={busy} onClick={() => onConfirm(notes, false, emailItems)}>
+          <button style={{ ...s.btn, ...s.btnGhost }} disabled={busy} onClick={() => onConfirm(notes, false, emailItems, photos)}>
             Log only
           </button>
-          <button style={{ ...s.btn, ...s.btnPrimary, ...(busy ? s.btnBusy : {}) }} disabled={busy} onClick={() => onConfirm(notes, true, emailItems)}>
+          <button style={{ ...s.btn, ...s.btnPrimary, ...(busy ? s.btnBusy : {}) }} disabled={busy} onClick={() => onConfirm(notes, true, emailItems, photos)}>
             {busy ? 'Sending…' : `Log + Email ${who.split(' ')[0]}`}
           </button>
         </div>
@@ -113,6 +163,11 @@ const s = {
   itemSummary: { color: '#555', fontFamily: 'monospace', fontSize: 13, whiteSpace: 'nowrap' },
   empty: { padding: 14, color: '#9ca3af', fontSize: 14, textAlign: 'center' },
   textarea: { width: '100%', boxSizing: 'border-box', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: 12, fontSize: 14, fontFamily: 'inherit', lineHeight: 1.5, outline: 'none', resize: 'vertical' },
+  photoRow: { display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  thumbWrap: { position: 'relative', width: 64, height: 64 },
+  thumb: { width: 64, height: 64, objectFit: 'cover', borderRadius: 8, border: '1px solid #e5e7eb' },
+  thumbX: { position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', border: 'none', background: '#ef4444', color: '#fff', fontSize: 11, cursor: 'pointer', lineHeight: '20px', padding: 0 },
+  addPhoto: { width: 64, height: 64, borderRadius: 8, border: '1.5px dashed #c7cdd6', background: '#f9fafb', color: '#667eea', fontSize: 20, fontWeight: 700, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' },
   footer: { display: 'flex', gap: 10, padding: '14px 18px', borderTop: '1px solid #f0f0f0' },
   btn: { flex: 1, padding: '13px', borderRadius: 10, border: 'none', fontSize: 14.5, fontWeight: 700, cursor: 'pointer' },
   btnGhost: { background: '#f3f4f6', color: '#374151' },

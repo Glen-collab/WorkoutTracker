@@ -1451,7 +1451,7 @@ export default function App() {
         clientName={user?.name}
         programName={program?.name}
         busy={recapBusy}
-        onConfirm={async (notes, sendRecap, items) => {
+        onConfirm={async (notes, sendRecap, items, photos) => {
           setRecapBusy(true);
           if (sendRecap) {
             try {
@@ -1464,6 +1464,7 @@ export default function App() {
                 day: currentDay,
                 items,
                 coach_notes: notes,
+                photos: photos || [],
               });
             } catch { /* still log the workout */ }
           }
