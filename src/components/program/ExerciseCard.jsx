@@ -567,8 +567,9 @@ export default function ExerciseCard({
                 </div>
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
                   <input
-                    type="number"
-                    placeholder={isMachineExercise ? "Weight / lbs" : "Weight (lbs)"}
+                    type="text"
+                    inputMode="text"
+                    placeholder={isMachineExercise ? "Weight / lbs (or BW)" : "Weight (lbs) or BW"}
                     value={getTrack(si, 'weight')}
                     onChange={(e) => onUpdateTracking(blockIndex, exIndex, si, 'weight', e.target.value)}
                     style={{ ...s.condInput, flex: 1, marginBottom: 0, ...lockStyle }}
