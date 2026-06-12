@@ -252,24 +252,29 @@ export default function App() {
     setTrackingData(prev => {
       const updated = { ...prev, [key]: value };
 
-      // Weight autofill: typing the FIRST set's weight pre-fills every later
-      // set whose weight is still blank (coach/client just enters reps after).
-      // Only the first set drives it, and it never overwrites a weight already
-      // typed — so ramping sets you set by hand are preserved.
-      if (field === 'weight' && String(setIndex) === '0' && value !== '' && value != null) {
+      // Weight fill-down: editing ANY set's weight carries the value to the
+      // sets BELOW it. A later set is overwritten only if it's blank or still
+      // mirrors this set's PREVIOUS value (so it was following along) — a
+      // hand-typed ramping weight is left alone. This makes 10→10→10 become
+      // 10→12→12 when you change set 2 to 12, and lets "B"→"Bw"→"Bwt" keep
+      // propagating as you type a bodyweight marker. (Reps aren't cascaded —
+      // each set already pre-fills its own prescribed reps.)
+      const numericSet = parseInt(setIndex);
+      if (field === 'weight' && value !== '' && value != null && !Number.isNaN(numericSet)) {
         const ex = programRef.current?.blocks?.[blockIndex]?.exercises?.[exIndex];
         let n = 1;
         if (ex) {
           // setsCount-first (builder saves sets:[] empty + the count in
-          // setsCount). An empty sets[] array must NOT win and collapse n to 1,
-          // or the weight never fills past set 1.
+          // setsCount). An empty sets[] array must NOT win and collapse n to 1.
           if (Array.isArray(ex.percentages) && ex.percentages.length) n = ex.percentages.length;
           else if (typeof ex.sets === 'number' && ex.sets > 0) n = ex.sets;
           else n = parseInt(ex.setsCount) || (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets)) || 1;
         }
-        for (let j = 1; j < n; j++) {
-          const wk = `${blockIndex}-${exIndex}-${j}-weight`;
-          if (!updated[wk]) updated[wk] = value;
+        const oldValue = prev[key];
+        for (let j = numericSet + 1; j < n; j++) {
+          const wk = `${blockIndex}-${exIndex}-${j}-${field}`;
+          const cur = updated[wk];
+          if (!cur || cur === oldValue) updated[wk] = value;
         }
       }
 
@@ -1142,6 +1147,33 @@ export default function App() {
       const userGender = profile?.gender || '';
       const userWeight = profile?.weight || getDefaultWeight(userGender);
       const weightKg = userWeight * 0.453592;
+
+      // 1-on-1: the prescribed reps shown greyed in each box aren't in
+      // trackingData until touched, so the volume math (which reads
+      // trackingData) would miss them. Build an effective copy that fills any
+      // empty reps with the prescribed value so a left-alone "got all 10" set
+      // still counts. Only complete exercises count toward tonnage anyway, so
+      // filling every set is safe.
+      let volTracking = trackingData;
+      if (isOneOnOne) {
+        volTracking = { ...trackingData };
+        (program?.blocks || []).forEach((block, bi) => {
+          (block.exercises || []).forEach((ex, ei) => {
+            const sc = (typeof ex.sets === 'number' && ex.sets > 0)
+              ? ex.sets
+              : (parseInt(ex.setsCount) || (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets)) || 1);
+            const presc = String(ex.reps || ex.repsPerSet?.[0] || '').match(/\d+/)?.[0] || '';
+            for (let si = 0; si < sc; si++) {
+              const rk = `${bi}-${ei}-${si}-reps`;
+              if (volTracking[rk] === '' || volTracking[rk] == null) {
+                const perSet = ex.repsPerSet?.[si] ? (String(ex.repsPerSet[si]).match(/\d+/)?.[0] || '') : '';
+                const v = perSet || presc;
+                if (v) volTracking[rk] = v;
+              }
+            }
+          });
+        });
+      }
       let totalTonnage = 0, totalCore = 0, totalCardioMin = 0, totalCardioMiles = 0, totalCardioCal = 0;
       let totalBwCalories = 0; // Tiered bodyweight/functional exercise calories
       let completedExercises = 0;
@@ -1159,11 +1191,11 @@ export default function App() {
           return; // Skip further processing for cooldown
         }
 
-        const bt = calcBlockTonnage(block, maxes || {}, trackingData, blockIndex, userWeight, userGender);
+        const bt = calcBlockTonnage(block, maxes || {}, volTracking, blockIndex, userWeight, userGender);
         totalTonnage += bt.tonnage;
         totalCore += bt.coreEquiv;
         totalBwCalories += bt.bwCalories || 0; // Add tiered bodyweight calories
-        const c = calcCardio(block, trackingData, blockIndex, weightKg);
+        const c = calcCardio(block, volTracking, blockIndex, weightKg);
         totalCardioMin += c.minutes;
         totalCardioMiles += c.miles;
         totalCardioCal += c.calories;

@@ -438,14 +438,20 @@ export default function ExerciseCard({
     // duration box per set, not pointless Weight/Reps inputs.
     const isTimedHold = !ex.isPercentageBased && ex.duration && !ex.reps && !ex.weight;
     if (isTimedHold) {
-      const thSets = typeof ex.sets === 'number'
+      // setsCount-first so an empty sets[] doesn't render "0 Set".
+      const thSets = (typeof ex.sets === 'number' && ex.sets > 0)
         ? ex.sets
-        : (Array.isArray(ex.sets) ? ex.sets.length : (parseInt(ex.setsCount) || parseInt(ex.sets) || 1));
+        : (parseInt(ex.setsCount) || (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets)) || 1);
       const thUnit = getUnitLabel(ex.durationUnit, 'sec');
+      // Only call it a "Hold" for actual isometric holds (plank, wall sit, dead
+      // hang, L-sit…). Other timed movements (tire walks, carries) are "For
+      // time" — not a hold.
+      const isActualHold = /\b(plank|wall\s?sit|dead\s?hang|hang|l-?sit|hollow|bridge|superman|iso|isometric|hold)\b/i.test(ex.name || '');
+      const timedLabel = isActualHold ? 'Hold for time' : 'For time';
       return (
         <>
           <div style={{ ...s.targetText, fontWeight: '700' }}>
-            Hold for time — {thSets} Set{thSets > 1 ? 's' : ''}{ex.qualifier ? ` (${ex.qualifier})` : ''}
+            {timedLabel} — {thSets} Set{thSets > 1 ? 's' : ''}{ex.qualifier ? ` (${ex.qualifier})` : ''}
           </div>
           {Array.from({ length: thSets }).map((_, si) => (
             <div key={si}>
