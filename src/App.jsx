@@ -453,6 +453,10 @@ export default function App() {
           setUser(prev => ({ ...prev, name: prog.userName }));
         }
 
+        // Track whether this week starts truly blank (no logged workout, no
+        // autosave). Only then do we carry last week's numbers/arrows forward —
+        // we never stomp on data the user already entered this week.
+        let currentWeekIsFresh = false;
         if (result.data.savedWorkout) {
           setSavedWorkout(result.data.savedWorkout);
           initializeTrackingFromSaved(result.data.savedWorkout);
@@ -468,9 +472,11 @@ export default function App() {
               setTrackingData(JSON.parse(autosaved));
             } else {
               setTrackingData({});
+              currentWeekIsFresh = true;
             }
           } catch {
             setTrackingData({});
+            currentWeekIsFresh = true;
           }
         }
 
@@ -529,6 +535,40 @@ export default function App() {
           }
 
           setPreviousWeekWorkout(prevWorkout);
+
+          // Carry last week's ending numbers + recommendation arrows forward so
+          // week N starts where week N-1 left off (Glen: "the numbers don't
+          // carry over to the next week"). Only when this week is truly fresh —
+          // never overwrite weights/arrows the user already entered. We carry
+          // WEIGHTS and ARROWS only; reps come from the prescribed value (the
+          // stepper), since "how many you should do" resets each week.
+          if (currentWeekIsFresh && prevWorkout?.data?.blocks) {
+            const carry = {};
+            const carryRecs = {};
+            prevWorkout.data.blocks.forEach((block, bi) => {
+              if (!block.exercises) return;
+              block.exercises.forEach((ex, ei) => {
+                const weights = ex.weights || [];
+                weights.forEach((w, si) => {
+                  if (w !== undefined && w !== '' && w !== null) {
+                    carry[`${bi}-${ei}-${si}-weight`] = w;
+                  }
+                });
+                if (ex.recommendation) {
+                  carry[`rec-${bi}-${ei}`] = ex.recommendation;          // drives the arrow display
+                  carryRecs[`${bi}-${ei}`] = ex.recommendation;          // drives re-save persistence
+                }
+              });
+            });
+            if (Object.keys(carry).length) {
+              // Merge under anything already in state (prev wins) so a race with
+              // autosave restore can't clobber real entries.
+              setTrackingData(prev => ({ ...carry, ...prev }));
+            }
+            if (Object.keys(carryRecs).length) {
+              setRecommendations(prev => ({ ...carryRecs, ...prev }));
+            }
+          }
         } else {
           setPreviousWeekWorkout(null);
         }
