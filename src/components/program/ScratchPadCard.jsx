@@ -1,16 +1,89 @@
 import React, { useEffect, useState } from 'react';
-import { readScratchpad, writeScratchpad } from '../../utils/scratchpad';
+import { readScratchpad, writeScratchpad, scratchpadToText } from '../../utils/scratchpad';
+
+// Public chatbot endpoint that proxies to Claude (same one the trainer
+// dashboard's AI Coach Summary uses). Browser-callable, no auth.
+const CHAT_API_BASE =
+  (typeof window !== 'undefined' && window.gwtConfig?.chatApiBase) ||
+  'https://chat.bestrongagain.com';
+
+// At the end of a program, summarize the whole running sheet of notes into a
+// coach-facing recap that informs building the next block. Reuses the monthly
+// report's clinical/sectioned tone, but the INPUT is raw coach notes (not
+// volume numbers), and the OUTPUT is for the coach's own planning.
+function buildProgramSummaryPrompt(clientName, programName, notesText) {
+  return [
+    `You are Coach Glen reviewing your own training notes at the end of a program block for ${clientName || 'your client'}${programName ? ` ("${programName}")` : ''}.`,
+    'Below are your raw session notes from the whole program, logged day by day.',
+    '',
+    'SESSION NOTES:',
+    '"""',
+    notesText,
+    '"""',
+    '',
+    'TASK: Summarize the findings so you can build the next program. Write:',
+    '  1. OVERVIEW — 2-3 sentences on how the block went overall.',
+    '  2. PROGRESS & WINS — what improved, PRs, movements that clicked.',
+    '  3. ISSUES & LIMITATIONS — pain, mobility restrictions, exercises to avoid or regress, anything to watch.',
+    '  4. FOCUS NEXT PROGRAM — 3-5 concrete priorities for the next block, grounded in these notes.',
+    'Stay specific to what is actually in the notes — do NOT invent numbers or details that are not there. This is for the coach\'s own planning, so be direct and practical. Output ONLY the summary.',
+  ].join('\n');
+}
 
 // Running coach scratch pad at the top of the 1-on-1 view. Shows every stamped
 // note logged for this program so far (piles up day to day). Auto-fed when the
 // trainer logs out a session; each entry is also editable here, and a quick
 // "add a note" appends one for today.
 
-export default function ScratchPadCard({ accessCode, programName, currentWeek, currentDay }) {
+export default function ScratchPadCard({ accessCode, programName, currentWeek, currentDay, totalWeeks, clientName }) {
   const [entries, setEntries] = useState([]);
   const [open, setOpen] = useState(true);
   const [editingIdx, setEditingIdx] = useState(-1);
   const [draft, setDraft] = useState('');
+
+  // Program-end AI summary state
+  const [summarizing, setSummarizing] = useState(false);
+  const [summary, setSummary] = useState('');
+  const [summaryErr, setSummaryErr] = useState('');
+
+  // Show the summarize button once they're in the last week (or if the program
+  // length is unknown). Glen hits it when the client's done — even if they
+  // didn't train every day of that last week.
+  const isLastWeek = !totalWeeks || (currentWeek && currentWeek >= totalWeeks);
+
+  const runSummary = async () => {
+    setSummarizing(true);
+    setSummaryErr('');
+    setSummary('');
+    try {
+      const notesText = scratchpadToText(entries);
+      const res = await fetch(`${CHAT_API_BASE}/api/embed-chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: buildProgramSummaryPrompt(clientName, programName, notesText),
+          // 'trainer_dashboard' routes to the chatbot's clean generate_summary()
+          // path (bypasses the sales-funnel system prompt + compliance audit),
+          // so the recap comes out direct instead of as a sales chat.
+          context: { source: 'trainer_dashboard', user_first_name: (clientName || '').split(' ')[0] || '' },
+        }),
+      });
+      if (!res.ok) {
+        const t = await res.text().catch(() => '');
+        throw new Error(t || `${res.status} ${res.statusText}`);
+      }
+      const json = await res.json();
+      setSummary(json.response || '(no response)');
+    } catch (e) {
+      setSummaryErr(e.message || 'Could not generate the summary.');
+    } finally {
+      setSummarizing(false);
+    }
+  };
+
+  const copySummary = () => {
+    if (summary) navigator.clipboard?.writeText(summary).catch(() => {});
+  };
 
   // Re-read whenever we switch client/program/day (e.g. opening a new session).
   useEffect(() => {
@@ -101,6 +174,32 @@ export default function ScratchPadCard({ accessCode, programName, currentWeek, c
           {editingIdx < 0 && (
             <button style={s.addBtn} onClick={addToday}>＋ Add a note for today</button>
           )}
+
+          {/* Program-end AI summary — appears on the last week. Hit it when the
+              client wraps the block; it reads the whole sheet and recaps the
+              findings to inform the next program. */}
+          {isLastWeek && entries.length > 0 && (
+            <div style={s.summaryWrap}>
+              <button style={s.summaryBtn} onClick={runSummary} disabled={summarizing}>
+                {summarizing ? '🧠 Summarizing the program…' : '🧠 Summarize this program for the next one'}
+              </button>
+              {summaryErr && <div style={s.summaryErr}>{summaryErr}</div>}
+              {summary && (
+                <div style={{ marginTop: 8 }}>
+                  <textarea
+                    style={{ ...s.textarea, minHeight: 180 }}
+                    value={summary}
+                    onChange={(e) => setSummary(e.target.value)}
+                    rows={10}
+                  />
+                  <div style={s.editRow}>
+                    <button style={{ ...s.miniBtn, ...s.ghost }} onClick={copySummary}>Copy</button>
+                    <button style={{ ...s.miniBtn, ...s.primary }} onClick={runSummary} disabled={summarizing}>Regenerate</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -125,4 +224,7 @@ const s = {
   ghost: { background: '#f1f0f6', color: '#555' },
   primary: { background: 'linear-gradient(135deg,#667eea,#764ba2)', color: '#fff' },
   addBtn: { marginTop: 8, width: '100%', padding: '9px', borderRadius: 8, border: '1.5px dashed #c7c0e6', background: '#faf9ff', color: '#6d5fb3', fontSize: 13, fontWeight: 700, cursor: 'pointer' },
+  summaryWrap: { marginTop: 12, paddingTop: 12, borderTop: '1px solid #efeafa' },
+  summaryBtn: { width: '100%', padding: '11px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', color: '#fff', fontSize: 13.5, fontWeight: 800, cursor: 'pointer' },
+  summaryErr: { marginTop: 8, padding: '8px 10px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', fontSize: 12.5 },
 };

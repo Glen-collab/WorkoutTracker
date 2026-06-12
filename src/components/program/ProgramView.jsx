@@ -318,6 +318,8 @@ export default function ProgramView({
             programName={program?.name}
             currentWeek={currentWeek}
             currentDay={currentDay}
+            totalWeeks={totalWeeks}
+            clientName={userName}
           />
         )}
 
