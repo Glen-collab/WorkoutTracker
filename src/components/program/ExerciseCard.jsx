@@ -833,7 +833,7 @@ export default function ExerciseCard({
                 weightValue={getTrack(si, 'weight')}
                 repsValue={getTrack(si, 'reps')}
                 weightPlaceholder="Weight (lbs)"
-                repsPlaceholder="Reps"
+                repsPlaceholder={fallbackReps ? `${fallbackReps} reps` : 'Reps'}
                 onUpdate={onUpdateTracking}
                 disabled={inputLocked}
               />
@@ -859,6 +859,8 @@ export default function ExerciseCard({
         {Array.from({ length: sets }).map((_, si) => {
           const prevW = prevWeights[si];
           const wPlaceholder = prevW ? `${prevW} lbs (last wk)` : 'Weight (lbs)';
+          // Prescribed reps so the +/- stepper seeds off the programmed target.
+          const repsHint = ex.repsPerSet?.[si] || ex.reps;
           return (
           <div key={si}>
             <div style={s.setLabel}>Set {si + 1}</div>
@@ -869,7 +871,7 @@ export default function ExerciseCard({
               weightValue={getTrack(si, 'weight')}
               repsValue={getTrack(si, 'reps')}
               weightPlaceholder={wPlaceholder}
-              repsPlaceholder="Reps"
+              repsPlaceholder={repsHint ? `${repsHint} reps` : 'Reps'}
               onUpdate={onUpdateTracking}
               disabled={inputLocked}
             />

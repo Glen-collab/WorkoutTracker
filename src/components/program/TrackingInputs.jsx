@@ -38,15 +38,20 @@ export default function TrackingInputs({
 
   const prescribed = parsePrescribedReps(repsPlaceholder);
 
-  // Step reps up/down. Start from what's typed; if the box is empty, seed from
-  // the prescribed value so the first tap nudges off the programmed target.
+  // Step reps up/down. If the box already has a number, ±1 from it. If it's
+  // empty, seed off the prescribed reps: "+" accepts the prescribed value (got
+  // all), "−" starts one below it (missed some) — so an empty box never jumps
+  // to 1.
   const stepReps = (delta) => {
     if (disabled) return;
     const current = parseInt(repsValue, 10);
-    const base = Number.isNaN(current)
-      ? (prescribed != null ? prescribed : 0)
-      : current;
-    const next = Math.max(0, base + delta);
+    let next;
+    if (Number.isNaN(current)) {
+      const base = prescribed != null ? prescribed : 0;
+      next = delta > 0 ? base : Math.max(0, base + delta);
+    } else {
+      next = Math.max(0, current + delta);
+    }
     onUpdate(blockIndex, exIndex, setIndex, 'reps', String(next));
   };
 

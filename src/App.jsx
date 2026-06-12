@@ -251,10 +251,12 @@ export default function App() {
         const ex = programRef.current?.blocks?.[blockIndex]?.exercises?.[exIndex];
         let n = 1;
         if (ex) {
-          if (Array.isArray(ex.percentages)) n = ex.percentages.length || 1;
-          else if (typeof ex.sets === 'number') n = ex.sets;
-          else if (Array.isArray(ex.sets)) n = ex.sets.length || 1;
-          else n = parseInt(ex.sets) || parseInt(ex.setsCount) || 1;
+          // setsCount-first (builder saves sets:[] empty + the count in
+          // setsCount). An empty sets[] array must NOT win and collapse n to 1,
+          // or the weight never fills past set 1.
+          if (Array.isArray(ex.percentages) && ex.percentages.length) n = ex.percentages.length;
+          else if (typeof ex.sets === 'number' && ex.sets > 0) n = ex.sets;
+          else n = parseInt(ex.setsCount) || (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets)) || 1;
         }
         for (let j = 1; j < n; j++) {
           const wk = `${blockIndex}-${exIndex}-${j}-weight`;
