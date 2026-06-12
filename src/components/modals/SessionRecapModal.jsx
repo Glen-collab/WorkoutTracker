@@ -57,16 +57,34 @@ function buildItems(program, trackingData) {
   return items;
 }
 
+// Collect per-block notes ("Notes for this block") so they show in the recap
+// too — they were getting dropped before (only exercise notes were pulled).
+function buildBlockNotes(program, trackingData) {
+  const td = trackingData || {};
+  const out = [];
+  (program?.blocks || []).forEach((block, bi) => {
+    const note = (td[`block-notes-${bi}`] || '').trim();
+    if (note) {
+      const label = block.name || block.type || `Block ${bi + 1}`;
+      out.push(`• ${label}: ${note}`);
+    }
+  });
+  return out;
+}
+
 export default function SessionRecapModal({
   isOpen, onClose, program, trackingData, week, day,
   clientName, programName, onConfirm, busy,
 }) {
   const items = useMemo(() => buildItems(program, trackingData), [program, trackingData]);
 
-  // Pre-fill the notes box with the coach's per-exercise notes as bullets.
+  // Pre-fill the notes box with block notes + the coach's per-exercise notes.
   const prefill = useMemo(
-    () => items.filter((i) => i.note).map((i) => `• ${i.name}: ${i.note}`).join('\n'),
-    [items]
+    () => [
+      ...buildBlockNotes(program, trackingData),
+      ...items.filter((i) => i.note).map((i) => `• ${i.name}: ${i.note}`),
+    ].join('\n'),
+    [items, program, trackingData]
   );
   const [notes, setNotes] = useState(prefill);
   const [photos, setPhotos] = useState([]);   // resized JPEG data URLs

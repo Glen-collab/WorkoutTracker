@@ -194,6 +194,10 @@ export default function App() {
     if (!saved?.data?.blocks) return;
     const newTracking = {};
     saved.data.blocks.forEach((block, blockIndex) => {
+      // Restore the per-block note ("Notes for this block") on reopen.
+      if (block.clientNotes) {
+        newTracking[`block-notes-${blockIndex}`] = block.clientNotes;
+      }
       if (!block.exercises) return;
       block.exercises.forEach((ex, exIndex) => {
         // Saved format uses weights[] and actualReps[] arrays (not sets[].weight)
@@ -213,6 +217,11 @@ export default function App() {
         // Also mark as complete if there's any data for this exercise
         if (weights.some(w => w) || actualReps.some(r => r)) {
           newTracking[`complete-${blockIndex}-${exIndex}`] = true;
+        }
+
+        // Restore the coach's per-exercise note so it's there on reopen.
+        if (ex.clientNote) {
+          newTracking[`${blockIndex}-${exIndex}-null-note`] = ex.clientNote;
         }
 
         // Legacy format: sets as array of objects with weight/reps
