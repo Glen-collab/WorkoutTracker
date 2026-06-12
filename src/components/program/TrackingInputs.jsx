@@ -83,6 +83,15 @@ export default function TrackingInputs({
         onChange={(e) =>
           onUpdate(blockIndex, exIndex, setIndex, 'weight', e.target.value)
         }
+        // Re-fire on click-off / return so the set-1 weight (a number OR "bwt")
+        // reliably fills the remaining sets on iPad, where the per-keystroke
+        // autofill can miss. Type it once, tap away, the rest fill in.
+        onBlur={(e) =>
+          onUpdate(blockIndex, exIndex, setIndex, 'weight', e.target.value)
+        }
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur();
+        }}
         style={finalStyle}
         readOnly={disabled}
       />
