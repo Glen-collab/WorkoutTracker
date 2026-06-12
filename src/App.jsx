@@ -1211,6 +1211,9 @@ export default function App() {
           current_day: travelMode ? travelDay : currentDay,
           days_per_week: daysPerWeek,
           total_weeks: totalWeeks,
+          // 1-on-1 "pen to paper": save this day in place, don't roll the
+          // client's program position forward — the trainer picks the day.
+          advance_position: !isOneOnOne,
           one_rm_bench: maxes.bench || null,
           one_rm_squat: maxes.squat || null,
           one_rm_deadlift: maxes.deadlift || null,
