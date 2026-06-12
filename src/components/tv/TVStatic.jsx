@@ -298,7 +298,7 @@ export default function TVStatic() {
   // When 'leaderboard', this Pi renders an iframe of
   // leaderboard.bestrongagain.com/tv pre-locked to the chosen metric/gender/group;
   // every other Pi at the gym stays on its workout view independently.
-  const [display, setDisplay] = useState({ mode: 'workout', metric_id: null, gender: null, group: null, year: null });
+  const [display, setDisplay] = useState({ mode: 'workout', metric_id: null, metric_ids: [], gender: null, group: null, year: null });
 
   // Coach branding — gym_name, logo_data (base64), primary + accent hex colors.
   // Fetched from /tv-config; falls back to BSA defaults when any field is null.
@@ -650,15 +650,18 @@ export default function TVStatic() {
         const disp = data?.device?.display;
         if (disp && (disp.mode === 'workout' || disp.mode === 'leaderboard')) {
           setDisplay((prev) => {
+            const dispIds = Array.isArray(disp.metric_ids) ? disp.metric_ids : [];
             const same = prev
               && prev.mode      === disp.mode
               && prev.metric_id === (disp.metric_id ?? null)
+              && (prev.metric_ids || []).join(',') === dispIds.join(',')
               && prev.gender    === (disp.gender ?? null)
               && prev.group     === (disp.group ?? null)
               && prev.year      === (disp.year ?? null);
             return same ? prev : {
               mode: disp.mode,
               metric_id: disp.metric_id ?? null,
+              metric_ids: dispIds,
               gender:    disp.gender ?? null,
               group:     disp.group ?? null,
               year:      disp.year ?? null,
@@ -792,6 +795,8 @@ export default function TVStatic() {
   if (display.mode === 'leaderboard') {
     const lbParams = new URLSearchParams();
     if (display.metric_id) lbParams.set('metric_id', display.metric_id);
+    // Multi-metric rotation subset → TVMode rotates just these (1 = locked full list).
+    if (display.metric_ids && display.metric_ids.length) lbParams.set('metric_ids', display.metric_ids.join(','));
     // gender: 'M' / 'F' / 'A' (= all). Pass 'all' through so TVMode locks
     // to "show everyone" instead of defaulting to BOYS.
     if (display.gender)    lbParams.set('gender',    display.gender === 'A' ? 'all' : display.gender);
