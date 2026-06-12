@@ -239,6 +239,7 @@ export default function ExerciseCard({
   onUpdateTracking,
   onMarkComplete,
   onSetRecommendation,
+  prefillReps,
 }) {
   // Collapsed if marked complete, but allow manual expand
   const isMarkedComplete = trackingData?.[`complete-${blockIndex}-${exIndex}`] || false;
@@ -763,6 +764,7 @@ export default function ExerciseCard({
                   repsPlaceholder={`${mainReps} reps`}
                   onUpdate={onUpdateTracking}
                   disabled={inputLocked}
+                  prefillReps={prefillReps}
                 />
                 {/* Drop set inputs */}
                 {(isDropSet || isStripSet) && dropPct > 0 && dropReps > 0 && (
@@ -836,6 +838,7 @@ export default function ExerciseCard({
                 repsPlaceholder={fallbackReps ? `${fallbackReps} reps` : 'Reps'}
                 onUpdate={onUpdateTracking}
                 disabled={inputLocked}
+                prefillReps={prefillReps}
               />
             </div>
           ))}
@@ -874,6 +877,7 @@ export default function ExerciseCard({
               repsPlaceholder={repsHint ? `${repsHint} reps` : 'Reps'}
               onUpdate={onUpdateTracking}
               disabled={inputLocked}
+              prefillReps={prefillReps}
             />
           </div>
         );})}

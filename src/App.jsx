@@ -1007,7 +1007,13 @@ export default function App() {
           trainerNotes: block.trainerNotes || block.notes || '',
           clientNotes: trackingData[`block-notes-${blockIndex}`] || '',
           exercises: block.exercises?.map((ex, exIndex) => {
-            const setsCount = typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 1);
+            // setsCount-first: an empty sets[] array must not collapse the count
+            // to 0 (which would log zero sets for the exercise).
+            const setsCount = (typeof ex.sets === 'number' && ex.sets > 0)
+              ? ex.sets
+              : (parseInt(ex.setsCount) || (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets)) || 1);
+            // 1-on-1: an untouched pre-filled reps box logs the prescribed reps.
+            const prescribedReps = String(ex.reps || ex.repsPerSet?.[0] || '').match(/\d+/)?.[0] || '';
 
             // Build flat weights[] and actualReps[] arrays from tracking data
             const weights = [];
@@ -1019,8 +1025,9 @@ export default function App() {
               // Fall back to preset weight from sets array
               const presetWeight = Array.isArray(ex.sets) && ex.sets[si] ? (ex.sets[si].weight || '') : '';
               const presetReps = Array.isArray(ex.sets) && ex.sets[si] ? (ex.sets[si].reps || '') : '';
+              const repsPerSet = ex.repsPerSet?.[si] ? String(ex.repsPerSet[si]).match(/\d+/)?.[0] || '' : '';
               weights.push(trackedWeight || presetWeight || '');
-              actualReps.push(trackedReps || presetReps || '');
+              actualReps.push(trackedReps || presetReps || (isOneOnOne ? (repsPerSet || prescribedReps) : ''));
               // Track prescribed weights for comparison
               if (ex.isPercentageBased && ex.percentages?.[si] && maxes) {
                 const baseMax = ex.baseMax || 'bench';

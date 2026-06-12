@@ -140,6 +140,7 @@ export default function BlockCard({
   onMarkComplete,
   onSetRecommendation,
   recommendations,
+  prefillReps,
 }) {
   const [expanded, setExpanded] = useState(false);
   const isTheme = block.type === 'theme';
@@ -199,6 +200,7 @@ export default function BlockCard({
                 onUpdateTracking={onUpdateTracking}
                 onMarkComplete={onMarkComplete}
                 onSetRecommendation={onSetRecommendation}
+                prefillReps={prefillReps}
               />
             );
           })}

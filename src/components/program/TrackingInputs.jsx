@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const inputStyle = {
   width: '100%',
@@ -31,6 +31,7 @@ export default function TrackingInputs({
   onUpdate,
   style,
   disabled,
+  prefillReps,
 }) {
   const finalStyle = disabled
     ? { ...inputStyle, background: '#f5f5f5', color: '#999', cursor: 'not-allowed' }
@@ -38,19 +39,31 @@ export default function TrackingInputs({
 
   const prescribed = parsePrescribedReps(repsPlaceholder);
 
-  // Step reps up/down. If the box already has a number, ±1 from it. If it's
-  // empty, seed off the prescribed reps: "+" accepts the prescribed value (got
-  // all), "−" starts one below it (missed some) — so an empty box never jumps
-  // to 1.
+  // 1-on-1 mode: show the prescribed reps already filled in the box (got all =
+  // leave it; missed some = step down). Tracked once the coach touches it.
+  // `touched` lets them clear it back to empty without it re-appearing.
+  const [touched, setTouched] = useState(false);
+  const hasRepsValue = repsValue !== '' && repsValue != null;
+  const showPrefill = prefillReps && !touched && !hasRepsValue && prescribed != null;
+  const repsDisplay = hasRepsValue ? repsValue : (showPrefill ? String(prescribed) : '');
+
+  // Step reps up/down.
+  //  - Box already has a number → ±1 from it.
+  //  - Prefill showing the prescribed value → ±1 from prescribed (+ → 11, − → 9).
+  //  - Empty, no prefill → "+" accepts prescribed (got all), "−" starts one
+  //    below it — so an empty box never jumps to 1.
   const stepReps = (delta) => {
     if (disabled) return;
+    setTouched(true);
     const current = parseInt(repsValue, 10);
     let next;
-    if (Number.isNaN(current)) {
+    if (!Number.isNaN(current)) {
+      next = Math.max(0, current + delta);
+    } else if (showPrefill) {
+      next = Math.max(0, prescribed + delta);
+    } else {
       const base = prescribed != null ? prescribed : 0;
       next = delta > 0 ? base : Math.max(0, base + delta);
-    } else {
-      next = Math.max(0, current + delta);
     }
     onUpdate(blockIndex, exIndex, setIndex, 'reps', String(next));
   };
@@ -116,11 +129,12 @@ export default function TrackingInputs({
           inputMode="numeric"
           className="gwt-tracking-input"
           placeholder={repsPlaceholder || 'Reps'}
-          value={repsValue || ''}
-          onChange={(e) =>
-            onUpdate(blockIndex, exIndex, setIndex, 'reps', e.target.value)
-          }
-          style={{ ...finalStyle, textAlign: 'center', minWidth: 0 }}
+          value={repsDisplay}
+          onChange={(e) => {
+            setTouched(true);
+            onUpdate(blockIndex, exIndex, setIndex, 'reps', e.target.value);
+          }}
+          style={{ ...finalStyle, textAlign: 'center', minWidth: 0, ...(showPrefill ? { color: '#9aa0ab' } : null) }}
           readOnly={disabled}
         />
         <button

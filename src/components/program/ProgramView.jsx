@@ -387,6 +387,7 @@ export default function ProgramView({
             onMarkComplete={() => {}}
             onSetRecommendation={onSetRecommendation}
             recommendations={recommendations}
+            prefillReps={isOneOnOne}
           />
         ))}
 
