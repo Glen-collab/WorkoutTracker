@@ -5,6 +5,7 @@ import BlockCard from './BlockCard';
 import DailyTonnage, { calcBlockTonnage, calcCardio, getDefaultWeight } from './DailyTonnage';
 import WeeklyStatsCard from './WeeklyStatsCard';
 import ChallengeCard from './ChallengeCard';
+import ScratchPadCard from './ScratchPadCard';
 
 // ── First-Time Walkthrough ──
 function WelcomeWalkthrough({ userName, onDismiss }) {
@@ -187,6 +188,7 @@ export default function ProgramView({
   onExitTravelMode,
   todayWeight,
   onChangeTodayWeight,
+  isOneOnOne,
 }) {
   const blocks = program?.blocks || [];
   const [showProfileEdit, setShowProfileEdit] = useState(false);
@@ -309,6 +311,15 @@ export default function ProgramView({
           customReason={customReason}
           maxes={maxes}
         />
+
+        {isOneOnOne && !travelMode && (
+          <ScratchPadCard
+            accessCode={accessCode}
+            programName={program?.name}
+            currentWeek={currentWeek}
+            currentDay={currentDay}
+          />
+        )}
 
         {savedWorkout && (
           <div style={s.savedMsg}>

@@ -11,6 +11,7 @@ import PainModal from './components/modals/PainModal';
 import CompletionModal from './components/modals/CompletionModal';
 import CongratulationsModal from './components/modals/CongratulationsModal';
 import SessionRecapModal from './components/modals/SessionRecapModal';
+import { appendScratchpadNote } from './utils/scratchpad';
 import WeeklySummaryModal from './components/modals/WeeklySummaryModal';
 import TestYourMight, { getWeekConfig } from './components/game/TestYourMight';
 import WorkoutChatbot from './components/chatbot/WorkoutChatbot';
@@ -1421,6 +1422,7 @@ export default function App() {
           onExitTravelMode={handleExitTravelMode}
           todayWeight={todayWeight}
           onChangeTodayWeight={setTodayWeight}
+          isOneOnOne={isOneOnOne}
         />
       )}
 
@@ -1536,6 +1538,15 @@ export default function App() {
           }
           setRecapBusy(false);
           setShowRecapModal(false);
+          // Pile this session's notes onto the running scratch pad for this
+          // client+program so they carry forward to every following day/week.
+          try {
+            appendScratchpadNote(user?.accessCode, program?.name, {
+              week: currentWeek,
+              day: currentDay,
+              text: notes,
+            });
+          } catch { /* scratch pad is best-effort */ }
           handleLogWorkout(notes);
           // Don't let a failed email masquerade as "sent" — surface it so the
           // coach knows to retry (the workout was still logged).
