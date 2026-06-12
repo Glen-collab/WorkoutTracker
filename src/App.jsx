@@ -1475,6 +1475,7 @@ export default function App() {
         busy={recapBusy}
         onConfirm={async (notes, sendRecap, items, photos) => {
           setRecapBusy(true);
+          let recapError = null;
           if (sendRecap) {
             try {
               await api.sendSessionRecap({
@@ -1489,11 +1490,18 @@ export default function App() {
                 photos: photos || [],
                 coach: new URLSearchParams(window.location.search).get('coach') || '',
               });
-            } catch { /* still log the workout */ }
+            } catch (e) {
+              recapError = e?.message || 'send failed';
+            }
           }
           setRecapBusy(false);
           setShowRecapModal(false);
           handleLogWorkout(notes);
+          // Don't let a failed email masquerade as "sent" — surface it so the
+          // coach knows to retry (the workout was still logged).
+          if (recapError) {
+            alert(`⚠️ The recap email to ${user?.name || 'your client'} did NOT send (${recapError}). The workout was logged. Try the email again from their session.`);
+          }
         }}
       />
 
