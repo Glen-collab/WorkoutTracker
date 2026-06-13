@@ -99,6 +99,18 @@ const s = {
     color: '#666',
     marginBottom: '4px',
   },
+  // Blue "prescribed" line for timed/loaded work (e.g. "40 yd", "1 min") —
+  // read-only; the client already knows the target, no input box needed.
+  timedTarget: {
+    display: 'inline-block',
+    background: '#e3f2fd',
+    color: '#1565c0',
+    borderRadius: '8px',
+    padding: '6px 12px',
+    fontSize: '14px',
+    fontWeight: 700,
+    margin: '2px 0 10px',
+  },
   pill: {
     display: 'inline-block',
     background: '#e3f2fd',
@@ -437,11 +449,12 @@ export default function ExerciseCard({
   const renderStrength = () => {
     // Timed / loaded work — the metric is TIME or DISTANCE, never reps:
     //   • Plank / wall sit / dead hang  → sets × duration
-    //   • Farmers carry / sled / loaded carry → sets × weight × duration (or distance)
+    //   • Farmers carry / sled / loaded carry → sets × weight × distance (or time)
     //   • Weighted plank (weight set in builder) → sets × weight × duration
-    // Show per-set rows of [weight (only if loaded)] + [duration] + [distance],
-    // no reps box, and DON'T also dump a second duration/distance box from
-    // renderExtraFields (that was the redundant box).
+    // The prescribed time/distance is FIXED, so it's a read-only blue line (no
+    // input box). The only thing actually logged is weight (when loaded) per
+    // set — and a bodyweight hold just needs Mark Complete. No reps box, and no
+    // redundant renderExtraFields duration box.
     const isTimed = !ex.isPercentageBased && (ex.duration || ex.distance);
     if (isTimed) {
       // setsCount-first so an empty sets[] doesn't render "0 Set".
@@ -452,54 +465,31 @@ export default function ExerciseCard({
       const distUnit = getUnitLabel(ex.distanceUnit, 'yd');
       const showWeight = !!ex.weight;   // loaded carry / weighted hold
       const isActualHold = /\b(plank|wall\s?sit|dead\s?hang|hang|l-?sit|hollow|bridge|superman|iso|isometric|hold)\b/i.test(ex.name || '');
-      const timedLabel = showWeight ? 'Loaded — for time' : (isActualHold ? 'Hold for time' : 'For time');
+      const timedLabel = showWeight ? 'Loaded — for time/distance' : (isActualHold ? 'Hold for time' : 'For time/distance');
+      // The fixed prescription shown as a blue line (no input needed).
       const targetBits = [];
-      if (ex.weight) targetBits.push(`Weight: ${ex.weight}`);
       if (ex.duration) targetBits.push(formatWithUnit(ex.duration, dUnit));
       if (ex.distance) targetBits.push(formatWithUnit(ex.distance, distUnit));
-      const tInput = { ...s.condInput, flex: 1, minWidth: 0, marginBottom: 0, ...lockStyle };
       return (
         <>
           <div style={{ ...s.targetText, fontWeight: '700' }}>
             {timedLabel} — {tSets} Set{tSets > 1 ? 's' : ''}{ex.qualifier ? ` (${ex.qualifier})` : ''}
           </div>
-          {targetBits.length > 0 && <div style={s.detailRow}>{targetBits.join('  ·  ')}</div>}
-          {Array.from({ length: tSets }).map((_, si) => (
+          {targetBits.length > 0 && (
+            <div style={s.timedTarget}>{targetBits.join('  ·  ')}{ex.qualifier ? ` ${ex.qualifier}` : ''}</div>
+          )}
+          {showWeight && Array.from({ length: tSets }).map((_, si) => (
             <div key={si}>
-              <div style={s.setLabel}>Set {si + 1}</div>
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
-                {showWeight && (
-                  <input
-                    type="text"
-                    placeholder={`${ex.weight}`}
-                    value={getTrack(si, 'weight')}
-                    onChange={(e) => onUpdateTracking(blockIndex, exIndex, si, 'weight', e.target.value)}
-                    onBlur={(e) => onUpdateTracking(blockIndex, exIndex, si, 'weight', e.target.value)}
-                    style={tInput}
-                    readOnly={inputLocked}
-                  />
-                )}
-                {ex.duration && (
-                  <input
-                    type="text"
-                    placeholder={`${ex.duration} ${dUnit}`}
-                    value={getTrack(si, 'duration')}
-                    onChange={(e) => onUpdateTracking(blockIndex, exIndex, si, 'duration', e.target.value)}
-                    style={tInput}
-                    readOnly={inputLocked}
-                  />
-                )}
-                {ex.distance && (
-                  <input
-                    type="text"
-                    placeholder={`${ex.distance} ${distUnit}`}
-                    value={getTrack(si, 'distance')}
-                    onChange={(e) => onUpdateTracking(blockIndex, exIndex, si, 'distance', e.target.value)}
-                    style={tInput}
-                    readOnly={inputLocked}
-                  />
-                )}
-              </div>
+              <div style={s.setLabel}>Set {si + 1} — weight</div>
+              <input
+                type="text"
+                placeholder={`${ex.weight}`}
+                value={getTrack(si, 'weight')}
+                onChange={(e) => onUpdateTracking(blockIndex, exIndex, si, 'weight', e.target.value)}
+                onBlur={(e) => onUpdateTracking(blockIndex, exIndex, si, 'weight', e.target.value)}
+                style={{ ...s.condInput, marginBottom: '6px', ...lockStyle }}
+                readOnly={inputLocked}
+              />
             </div>
           ))}
           {renderMarkButton()}
