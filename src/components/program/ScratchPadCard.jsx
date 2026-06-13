@@ -99,10 +99,11 @@ export default function ScratchPadCard({ accessCode, programName, currentWeek, c
     let cancelled = false;
     (async () => {
       try {
+        // Filter by access code only (unique per program) — robust to the
+        // coach renaming the program title later.
         const res = await getSessionNotes({
           access_code: accessCode,
           user_email: userEmail,
-          program_name: programName || '',
         });
         if (cancelled || !res?.success || !Array.isArray(res.data) || !res.data.length) return;
         const local = readScratchpad(accessCode, programName);
