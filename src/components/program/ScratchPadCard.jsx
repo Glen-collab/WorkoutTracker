@@ -12,10 +12,10 @@ const CHAT_API_BASE =
 // report's clinical/sectioned tone, but the INPUT is raw coach notes (not
 // volume numbers), and the OUTPUT is for the coach's own planning.
 function buildProgramSummaryPrompt(clientName, programName, notesText) {
-  const who = (clientName && clientName.trim()) ? clientName.trim() : 'this athlete';
+  const who = (clientName && clientName.trim()) ? clientName.trim() : 'this client';
   return [
     `You are Coach Glen reviewing your own training notes at the end of a program block for ${who}${programName ? ` (their "${programName}" program)` : ''}.`,
-    `IMPORTANT: the athlete is ${who}. Refer to them by their name (first name in prose is fine) or he/she/they. NEVER use the program name${programName ? ` ("${programName}")` : ''} as if it were the person — that is the program label, not who you trained.`,
+    `IMPORTANT: the client is ${who} — most likely an adult general-fitness client (could be a youth athlete, but do NOT assume "athlete"). Refer to them by their name (first name in prose is fine) or he/she/they. NEVER use the program name${programName ? ` ("${programName}")` : ''} as if it were the person — that is the program label, not who you trained.`,
     'Below are your raw session notes from the whole block, logged day by day.',
     '',
     'SESSION NOTES:',
@@ -33,7 +33,7 @@ function buildProgramSummaryPrompt(clientName, programName, notesText) {
     'VOICE — write it BOTH ways at once, the way a sharp coach explains things:',
     '  - Lead each point with the precise, slightly technical coaching language — keep the real terminology (posterior chain, scapular control, knee valgus, hip hinge, etc.).',
     '  - Then add a short plain-language explanation in parentheses right after, e.g. "(Simply put, his glutes aren\'t doing enough yet, so his hamstrings pick up the slack.)"',
-    '  - The plain version is so a parent or the client can follow it — clear and human, but NEVER dumbed-down or condescending. Do not talk down to anyone.',
+    '  - The plain version is so the client (or their family) can follow it — clear and human, but NEVER dumbed-down or condescending. Do not talk down to anyone.',
     '',
     'Stay specific to what is actually in the notes — do NOT invent numbers or details that are not there. Output ONLY the summary.',
   ].join('\n');
