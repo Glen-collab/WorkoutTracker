@@ -553,33 +553,41 @@ export default function App() {
 
           setPreviousWeekWorkout(prevWorkout);
 
-          // Carry last week's ending numbers + recommendation arrows forward so
+          // Carry last week's ending WEIGHTS + recommendation arrows forward so
           // week N starts where week N-1 left off (Glen: "the numbers don't
-          // carry over to the next week"). Only when this week is truly fresh —
-          // never overwrite weights/arrows the user already entered. We carry
-          // WEIGHTS and ARROWS only; reps come from the prescribed value (the
-          // stepper), since "how many you should do" resets each week.
-          if (currentWeekIsFresh && prevWorkout?.data?.blocks) {
+          // carry over to the next week"). Matched by exercise NAME (robust to
+          // re-ordering between weeks), and merged UNDER whatever is already in
+          // state ({...carry, ...prev}) so it only fills empty slots and never
+          // stomps on data the trainer already entered this week — no need to
+          // gate on "fresh week". Reps come from the prescribed stepper, so we
+          // carry weights + arrows only.
+          if (prevWorkout?.data?.blocks && prog?.blocks) {
+            const prevByName = {};
+            prevWorkout.data.blocks.forEach((block) => {
+              (block.exercises || []).forEach((ex) => {
+                const key = (ex.name || ex.prescribedName || '').trim().toLowerCase();
+                if (key && !prevByName[key]) prevByName[key] = ex;
+              });
+            });
             const carry = {};
             const carryRecs = {};
-            prevWorkout.data.blocks.forEach((block, bi) => {
-              if (!block.exercises) return;
-              block.exercises.forEach((ex, ei) => {
-                const weights = ex.weights || [];
-                weights.forEach((w, si) => {
+            prog.blocks.forEach((block, bi) => {
+              (block.exercises || []).forEach((ex, ei) => {
+                const key = (ex.name || '').trim().toLowerCase();
+                const prev = key ? prevByName[key] : null;
+                if (!prev) return;
+                (prev.weights || []).forEach((w, si) => {
                   if (w !== undefined && w !== '' && w !== null) {
                     carry[`${bi}-${ei}-${si}-weight`] = w;
                   }
                 });
-                if (ex.recommendation) {
-                  carry[`rec-${bi}-${ei}`] = ex.recommendation;          // drives the arrow display
-                  carryRecs[`${bi}-${ei}`] = ex.recommendation;          // drives re-save persistence
+                if (prev.recommendation) {
+                  carry[`rec-${bi}-${ei}`] = prev.recommendation;        // drives the arrow display
+                  carryRecs[`${bi}-${ei}`] = prev.recommendation;        // drives re-save persistence
                 }
               });
             });
             if (Object.keys(carry).length) {
-              // Merge under anything already in state (prev wins) so a race with
-              // autosave restore can't clobber real entries.
               setTrackingData(prev => ({ ...carry, ...prev }));
             }
             if (Object.keys(carryRecs).length) {

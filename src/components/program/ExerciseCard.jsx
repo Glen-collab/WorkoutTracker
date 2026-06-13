@@ -396,9 +396,11 @@ export default function ExerciseCard({
           {'\uD83D\uDCC8'} Last week you said:{' '}
           <strong>{recLabels[previousRecommendation] || previousRecommendation}</strong>
           {(() => {
-            const prevSets = previousExerciseData?.sets;
-            if (!Array.isArray(prevSets) || prevSets.length === 0) return null;
-            const weights = prevSets.map(st => parseFloat(st.weight)).filter(w => w > 0);
+            // Saved workouts store weights in a flat weights[] array (not
+            // sets[].weight) — read that so the "used X lbs" actually shows.
+            const prevWeights = previousExerciseData?.weights;
+            if (!Array.isArray(prevWeights) || prevWeights.length === 0) return null;
+            const weights = prevWeights.map((w) => parseFloat(w)).filter((w) => w > 0);
             if (weights.length === 0) return null;
             return ` (used ${Math.max(...weights)} lbs)`;
           })()}
