@@ -12,21 +12,30 @@ const CHAT_API_BASE =
 // report's clinical/sectioned tone, but the INPUT is raw coach notes (not
 // volume numbers), and the OUTPUT is for the coach's own planning.
 function buildProgramSummaryPrompt(clientName, programName, notesText) {
+  const who = (clientName && clientName.trim()) ? clientName.trim() : 'this athlete';
   return [
-    `You are Coach Glen reviewing your own training notes at the end of a program block for ${clientName || 'your client'}${programName ? ` ("${programName}")` : ''}.`,
-    'Below are your raw session notes from the whole program, logged day by day.',
+    `You are Coach Glen reviewing your own training notes at the end of a program block for ${who}${programName ? ` (their "${programName}" program)` : ''}.`,
+    `IMPORTANT: the athlete is ${who}. Refer to them by their name (first name in prose is fine) or he/she/they. NEVER use the program name${programName ? ` ("${programName}")` : ''} as if it were the person — that is the program label, not who you trained.`,
+    'Below are your raw session notes from the whole block, logged day by day.',
     '',
     'SESSION NOTES:',
     '"""',
     notesText,
     '"""',
     '',
-    'TASK: Summarize the findings so you can build the next program. Write:',
-    '  1. OVERVIEW — 2-3 sentences on how the block went overall.',
-    '  2. PROGRESS & WINS — what improved, PRs, movements that clicked.',
-    '  3. ISSUES & LIMITATIONS — pain, mobility restrictions, exercises to avoid or regress, anything to watch.',
-    '  4. FOCUS NEXT PROGRAM — 3-5 concrete priorities for the next block, grounded in these notes.',
-    'Stay specific to what is actually in the notes — do NOT invent numbers or details that are not there. This is for the coach\'s own planning, so be direct and practical. Output ONLY the summary.',
+    'Write a BLOCK SUMMARY using these exact section headers:',
+    '  1. OVERVIEW — 2-4 sentences on how the block went overall.',
+    '  2. PROGRESS & WINS — what improved, PRs, movements that clicked (group by exercise/theme where useful).',
+    '  3. AREAS FOR IMPROVEMENT — weaknesses, pain/compensation, mobility limits, things to watch.',
+    '  4. NEXT BLOCK PRIORITIES — 3-5 concrete priorities for the next block, grounded in these notes.',
+    "  5. COACH'S NOTE — a short human closing paragraph on the big-picture takeaway (effort, coachability, trajectory).",
+    '',
+    'VOICE — write it BOTH ways at once, the way a sharp coach explains things:',
+    '  - Lead each point with the precise, slightly technical coaching language — keep the real terminology (posterior chain, scapular control, knee valgus, hip hinge, etc.).',
+    '  - Then add a short plain-language explanation in parentheses right after, e.g. "(Simply put, his glutes aren\'t doing enough yet, so his hamstrings pick up the slack.)"',
+    '  - The plain version is so a parent or the client can follow it — clear and human, but NEVER dumbed-down or condescending. Do not talk down to anyone.',
+    '',
+    'Stay specific to what is actually in the notes — do NOT invent numbers or details that are not there. Output ONLY the summary.',
   ].join('\n');
 }
 
