@@ -1041,9 +1041,13 @@ export default function App() {
             const weights = [];
             const actualReps = [];
             const prescribedWeights = [];
+            const durations = [];   // per-set duration (timed/loaded work)
+            const distances = [];   // per-set distance (carries)
             for (let si = 0; si < setsCount; si++) {
               const trackedWeight = trackingData[`${blockIndex}-${exIndex}-${si}-weight`];
               const trackedReps = trackingData[`${blockIndex}-${exIndex}-${si}-reps`];
+              durations.push(trackingData[`${blockIndex}-${exIndex}-${si}-duration`] || '');
+              distances.push(trackingData[`${blockIndex}-${exIndex}-${si}-distance`] || '');
               // Fall back to preset weight from sets array
               const presetWeight = Array.isArray(ex.sets) && ex.sets[si] ? (ex.sets[si].weight || '') : '';
               const presetReps = Array.isArray(ex.sets) && ex.sets[si] ? (ex.sets[si].reps || '') : '';
@@ -1064,9 +1068,12 @@ export default function App() {
               }
             }
 
-            // Capture conditioning/cardio fields (duration, distance, speed, incline)
-            const trackedDuration = trackingData[`${blockIndex}-${exIndex}-null-duration`] || '';
-            const trackedDistance = trackingData[`${blockIndex}-${exIndex}-null-distance`] || '';
+            // Capture conditioning/cardio fields (duration, distance, speed, incline).
+            // Fall back to the first per-set value so timed/loaded work (planks,
+            // carries) still populates the single field readers (volume calc,
+            // email) even though it's logged per set.
+            const trackedDuration = trackingData[`${blockIndex}-${exIndex}-null-duration`] || durations.find(Boolean) || '';
+            const trackedDistance = trackingData[`${blockIndex}-${exIndex}-null-distance`] || distances.find(Boolean) || '';
             const isCompleted = trackingData[`complete-${blockIndex}-${exIndex}`] || false;
             // Client-entered name for "write your own" exercises + swapped cardio
             const customName = trackingData[`${blockIndex}-${exIndex}-null-custom_name`] || '';
@@ -1089,6 +1096,8 @@ export default function App() {
               actualReps,
               weights,
               prescribedWeights,
+              durations,
+              distances,
               isPercentageBased: !!ex.isPercentageBased,
               percentages: ex.percentages || [],
               repsPerSet: ex.repsPerSet || [],
