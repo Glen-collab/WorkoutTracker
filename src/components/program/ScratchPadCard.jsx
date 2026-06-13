@@ -35,7 +35,7 @@ function buildProgramSummaryPrompt(clientName, programName, notesText) {
 // trainer logs out a session; each entry is also editable here, and a quick
 // "add a note" appends one for today.
 
-export default function ScratchPadCard({ accessCode, programName, currentWeek, currentDay, totalWeeks, clientName }) {
+export default function ScratchPadCard({ accessCode, programName, currentWeek, currentDay, totalWeeks, clientName, userEmail, getSessionNotes }) {
   const [entries, setEntries] = useState([]);
   const [open, setOpen] = useState(true);
   const [editingIdx, setEditingIdx] = useState(-1);
@@ -90,6 +90,34 @@ export default function ScratchPadCard({ accessCode, programName, currentWeek, c
     setEntries(readScratchpad(accessCode, programName));
     setEditingIdx(-1);
   }, [accessCode, programName, currentDay, currentWeek]);
+
+  // Back-fill from already-logged notes: pull the block + exercise notes the
+  // coach has logged for this client's program and drop any day not already on
+  // the sheet onto its correct week/day. Local edits are never clobbered.
+  useEffect(() => {
+    if (!getSessionNotes || !accessCode || !userEmail) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getSessionNotes({
+          access_code: accessCode,
+          user_email: userEmail,
+          program_name: programName || '',
+        });
+        if (cancelled || !res?.success || !Array.isArray(res.data) || !res.data.length) return;
+        const local = readScratchpad(accessCode, programName);
+        const seen = new Set(local.map((e) => `${e.week}-${e.day}`));
+        const additions = res.data.filter((e) => !seen.has(`${e.week}-${e.day}`));
+        if (!additions.length) return;
+        const merged = [...local, ...additions].sort(
+          (a, b) => (a.week - b.week) || (a.day - b.day)
+        );
+        writeScratchpad(accessCode, programName, merged);
+        setEntries(merged);
+      } catch { /* backfill is best-effort */ }
+    })();
+    return () => { cancelled = true; };
+  }, [accessCode, programName, userEmail, getSessionNotes]);
 
   const persist = (next) => {
     setEntries(next);

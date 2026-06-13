@@ -1468,6 +1468,7 @@ export default function App() {
           onSaveStats={handleSaveStats}
           accessCode={user.accessCode}
           getWeeklyStats={api.getWeeklyStats}
+          getSessionNotes={api.getSessionNotes}
           travelMode={travelMode}
           travelEquipment={travelEquipment}
           travelDay={travelDay}

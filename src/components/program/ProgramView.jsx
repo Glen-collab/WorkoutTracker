@@ -181,6 +181,7 @@ export default function ProgramView({
   onSaveStats,
   accessCode,
   getWeeklyStats,
+  getSessionNotes,
   travelMode,
   travelEquipment,
   travelDay,
@@ -320,6 +321,8 @@ export default function ProgramView({
             currentDay={currentDay}
             totalWeeks={totalWeeks}
             clientName={userName}
+            userEmail={userEmail}
+            getSessionNotes={getSessionNotes}
           />
         )}
 
