@@ -116,23 +116,14 @@ const styles = {
   },
 };
 
+// NOTE: "primary fitness goal" is intentionally NOT asked here — goals are
+// owned by the coach platform (app.bestrongagain.com) signup chips + dashboard
+// (users.goals), which drive program matching. Asking again here was redundant
+// and used a different taxonomy. This questionnaire is the body/injury intake.
 const questions = [
   {
-    key: 'goal',
-    label: '1. What is your primary fitness goal?',
-    type: 'single',
-    options: [
-      { value: 'lose_weight', label: 'Lose Weight' },
-      { value: 'build_muscle', label: 'Build Muscle' },
-      { value: 'athletic_performance', label: 'Athletic Performance' },
-      { value: 'mobility', label: 'Improve Mobility' },
-      { value: 'general_health', label: 'General Health' },
-      { value: 'competition', label: 'Competition Prep' },
-    ],
-  },
-  {
     key: 'fitnessLevel',
-    label: '2. What is your current fitness level?',
+    label: '1. What is your current fitness level?',
     type: 'single',
     options: [
       { value: 'beginner', label: 'Beginner' },
@@ -142,7 +133,7 @@ const questions = [
   },
   {
     key: 'location',
-    label: '3. Where do you primarily train?',
+    label: '2. Where do you primarily train?',
     type: 'single',
     options: [
       { value: 'commercial_gym', label: 'Commercial Gym' },
@@ -154,7 +145,7 @@ const questions = [
   },
   {
     key: 'equipment',
-    label: '4. What equipment do you have access to? (select all)',
+    label: '3. What equipment do you have access to? (select all)',
     type: 'multi',
     options: [
       { value: 'dumbbells', label: 'Dumbbells' },
@@ -168,7 +159,7 @@ const questions = [
   },
   {
     key: 'daysPerWeek',
-    label: '5. How many days per week can you train?',
+    label: '4. How many days per week can you train?',
     type: 'single',
     options: [
       { value: '1-2', label: '1-2 Days' },
@@ -179,7 +170,7 @@ const questions = [
   },
   {
     key: 'injuries',
-    label: '6. Do you have any current injuries or pain?',
+    label: '5. Do you have any current injuries or pain?',
     type: 'single',
     options: [
       { value: 'yes', label: 'Yes' },
@@ -188,7 +179,7 @@ const questions = [
   },
   {
     key: 'motivation',
-    label: '7. What motivates you most?',
+    label: '6. What motivates you most?',
     type: 'single',
     options: [
       { value: 'health', label: 'Health & Longevity' },
@@ -201,7 +192,7 @@ const questions = [
   },
   {
     key: 'intensity',
-    label: '8. How intense do you want your workouts?',
+    label: '7. How intense do you want your workouts?',
     type: 'single',
     options: [
       { value: 'challenging', label: 'Push Me Hard' },
@@ -211,7 +202,7 @@ const questions = [
   },
   {
     key: 'coachingStyle',
-    label: '9. What coaching style do you prefer?',
+    label: '8. What coaching style do you prefer?',
     type: 'single',
     options: [
       { value: 'strict', label: 'Strict & Direct' },
@@ -257,7 +248,7 @@ export default function QuestionnaireScreen({ onSubmit, onOpenPainModal }) {
   const handleSubmit = () => {
     if (submitting) return;
 
-    const requiredKeys = ['goal', 'fitnessLevel', 'location', 'equipment', 'daysPerWeek', 'injuries', 'motivation', 'intensity', 'coachingStyle'];
+    const requiredKeys = ['fitnessLevel', 'location', 'equipment', 'daysPerWeek', 'injuries', 'motivation', 'intensity', 'coachingStyle'];
     const missing = requiredKeys.filter((key) => {
       const val = responses[key];
       if (Array.isArray(val)) return val.length === 0;
