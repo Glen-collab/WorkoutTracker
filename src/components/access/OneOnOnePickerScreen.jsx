@@ -230,21 +230,52 @@ export default function OneOnOnePickerScreen({ onPick }) {
   // ── Group session: run ONE workout for a whole group, log once, email all ──
   const [groupSession, setGroupSession] = useState(null);  // { name, members }
   const [groupProgram, setGroupProgram] = useState('');
+
+  // The group's program = the access_code ALL members share (they're put on it
+  // together). Null = not set yet / mismatched → prompt to pick.
+  const groupCodeOf = (members) => {
+    const codes = (members || []).map((m) => (m.access_code || '').trim());
+    if (codes.length && codes.every((c) => c && c === codes[0])) return codes[0];
+    return null;
+  };
+  const memberList = (members) => members.map((m) => ({ name: m.name, email: m.email }));
+
+  // Load the group's shared workout directly (no picker) — log once, email all.
+  const trainGroup = (name, members, code) =>
+    onPick({ name, email: members[0].email, code, groupMembers: memberList(members) }, false);
+
+  // Open the program picker to assign / change the group's workout.
   const startGroup = (name, members) => {
     setGroupSession({ name, members });
-    setGroupProgram('');
+    setGroupProgram(groupCodeOf(members) || '');
     setErr('');
     ensurePrograms();
   };
-  const launchGroup = () => {
+
+  const launchGroup = async () => {
     if (!groupProgram) { setErr('Pick a program for the group.'); return; }
-    const members = groupSession.members.map((m) => ({ name: m.name, email: m.email }));
+    const members = memberList(groupSession.members);
     const name = groupSession.name;
+    const code = groupProgram;
+    // Persist: put the WHOLE group on this program so it sticks like an
+    // individual (every member is on it; loads directly next time).
+    try {
+      await fetch(`${KIOSK_BASE}oneonone-group/set-program`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coach: coachCode, group_name: name, access_code: code }),
+      });
+    } catch { /* best-effort — still run this session */ }
     setGroupSession(null);
-    // Load under the first member as the carrier; groupMembers drives the
-    // recap so logging emails everyone in the room.
-    onPick({ name, email: members[0].email, code: groupProgram, groupMembers: members }, false);
+    trainGroup(name, members, code);
   };
+
+  // Load program names once so a group row can show "· Strong Again".
+  useEffect(() => { ensurePrograms(); }, [ensurePrograms]);
+  const programNameByCode = useMemo(() => {
+    const m = {};
+    (programs || []).forEach((p) => { m[p.access_code] = p.name; });
+    return m;
+  }, [programs]);
 
   const submitNew = async () => {
     const name = newName.trim();
@@ -363,22 +394,34 @@ export default function OneOnOnePickerScreen({ onPick }) {
             <div style={styles.empty}>No clients pinned yet. Search above or add a new client below.</div>
           ) : (
             <>
-              {groups.map(([name, members]) => (
+              {groups.map(([name, members]) => {
+                const gcode = groupCodeOf(members);
+                const gLabel = gcode ? (programNameByCode[gcode] || gcode) : null;
+                return (
                 <div key={name}>
                   <div style={{ ...styles.groupLabel, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                    <span>👥 {name}</span>
-                    {!editMode && members.length >= 2 && (
-                      <button
-                        onClick={() => startGroup(name, members)}
-                        style={{ background: 'rgba(245,158,11,0.18)', color: '#fcd34d', border: '1px solid rgba(245,158,11,0.45)', borderRadius: '8px', padding: '5px 12px', fontSize: '12px', fontWeight: 800, cursor: 'pointer', letterSpacing: 0 }}
-                      >▶ Train together</button>
+                    <span>
+                      👥 {name}
+                      {gLabel && <span style={{ color: 'rgba(255,255,255,0.45)', fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}> · {gLabel}</span>}
+                    </span>
+                    {members.length >= 2 && (
+                      editMode
+                        ? <button
+                            onClick={() => startGroup(name, members)}
+                            style={{ background: 'rgba(255,255,255,0.08)', color: '#cbd5e1', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '8px', padding: '5px 12px', fontSize: '12px', fontWeight: 800, cursor: 'pointer', letterSpacing: 0 }}
+                          >⚙ Workout</button>
+                        : <button
+                            onClick={() => (gcode ? trainGroup(name, members, gcode) : startGroup(name, members))}
+                            style={{ background: 'rgba(245,158,11,0.18)', color: '#fcd34d', border: '1px solid rgba(245,158,11,0.45)', borderRadius: '8px', padding: '5px 12px', fontSize: '12px', fontWeight: 800, cursor: 'pointer', letterSpacing: 0 }}
+                          >▶ Train together</button>
                     )}
                   </div>
                   <div style={styles.list}>
                     {members.map((c) => <ClientRow key={c.email} c={c} onClick={editMode ? undefined : () => load(c)} onRemove={editMode ? removeFromFolder : undefined} />)}
                   </div>
                 </div>
-              ))}
+                );
+              })}
               {ungrouped.length > 0 && (
                 <>
                   {groups.length > 0 && <div style={styles.groupLabel}>Clients</div>}
@@ -408,9 +451,9 @@ export default function OneOnOnePickerScreen({ onPick }) {
           <div style={styles.modal}>
             <div style={{ fontSize: '17px', fontWeight: 800, marginBottom: '6px' }}>👥 {groupSession.name}</div>
             <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.4, marginBottom: '14px' }}>
-              {groupSession.members.map((m) => m.name).join(', ')} — run one workout, log once, and the recap emails everyone. Put each person’s weights in the notes.
+              {groupSession.members.map((m) => m.name).join(', ')} — put the group on one program. They’ll all be on it (like an individual), it loads straight to this workout next time, and logging emails everyone.
             </p>
-            <div style={styles.fieldLabel}>Workout for this session</div>
+            <div style={styles.fieldLabel}>Group’s program</div>
             {programs === null ? <div style={styles.status}>Loading programs…</div> : (
               <select style={styles.search} value={groupProgram} onChange={(e) => setGroupProgram(e.target.value)}>
                 <option value="">Select a program…</option>
