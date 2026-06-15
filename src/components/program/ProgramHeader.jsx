@@ -102,7 +102,9 @@ export default function ProgramHeader({
   isCustomWorkout,
   customReason,
   maxes,
+  groupMembers,
 }) {
+  const isGroup = Array.isArray(groupMembers) && groupMembers.length > 0;
   const showNav = totalWeeks > 1 || daysPerWeek > 1;
   const days = Array.from({ length: daysPerWeek || 1 }, (_, i) => i + 1);
 
@@ -136,7 +138,9 @@ export default function ProgramHeader({
         </div>
       </div>
       <div style={s.meta}>
-        For: {userName} ({userEmail})
+        {isGroup
+          ? <>👥 Group: {userName} — {groupMembers.map((m) => m.name).filter(Boolean).join(', ')}</>
+          : <>For: {userName} ({userEmail})</>}
       </div>
 
       {showNav && (

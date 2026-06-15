@@ -265,6 +265,15 @@ export default function OneOnOnePickerScreen({ onPick }) {
         body: JSON.stringify({ coach: coachCode, group_name: name, access_code: code }),
       });
     } catch { /* best-effort — still run this session */ }
+    // Give each member their OWN dashboard — same magic-link welcome an
+    // individual client gets when paired. So group folks aren't second-class.
+    members.forEach((m) => {
+      if (!m.email) return;
+      fetch(`${KIOSK_BASE}invite-client`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coach: coachCode, email: m.email, name: m.name }),
+      }).catch(() => {});
+    });
     setGroupSession(null);
     trainGroup(name, members, code);
   };

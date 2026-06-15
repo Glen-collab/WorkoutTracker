@@ -1504,6 +1504,7 @@ export default function App() {
           todayWeight={todayWeight}
           onChangeTodayWeight={setTodayWeight}
           isOneOnOne={isOneOnOne}
+          groupMembers={groupMembers}
         />
       )}
 

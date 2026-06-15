@@ -190,6 +190,7 @@ export default function ProgramView({
   todayWeight,
   onChangeTodayWeight,
   isOneOnOne,
+  groupMembers,
 }) {
   const blocks = program?.blocks || [];
   const [showProfileEdit, setShowProfileEdit] = useState(false);
@@ -311,6 +312,7 @@ export default function ProgramView({
           isCustomWorkout={isCustomWorkout}
           customReason={customReason}
           maxes={maxes}
+          groupMembers={groupMembers}
         />
 
         {isOneOnOne && !travelMode && (
