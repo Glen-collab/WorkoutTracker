@@ -121,9 +121,6 @@ export default function App() {
   // 1-on-1 GROUP session: when the coach runs one workout for a group, this
   // holds [{name,email}] so logging emails the recap to everyone in the room.
   const [groupMembers, setGroupMembers] = useState(null);
-  // Coach-facing: the loaded client's billing status (trial/grace/expired/…) so
-  // the trainer sees in 1-on-1 whether they still need to subscribe.
-  const [clientBilling, setClientBilling] = useState(null);
   const [showGame, setShowGame] = useState(false);
   const [showGamePrompt, setShowGamePrompt] = useState(false);
   const [showWeeklySummary, setShowWeeklySummary] = useState(false);
@@ -607,8 +604,6 @@ export default function App() {
         if (result.data?.grace_days_remaining != null) {
           setGraceInfo({ daysRemaining: result.data.grace_days_remaining });
         }
-        // Coach-facing client billing snapshot (shown only in 1-on-1).
-        setClientBilling(result.data?.client_billing || null);
         if (result.data?.survey_available) {
           const surveyDone = localStorage.getItem(`gwt_survey_done_${u.email}`);
           // Don't hit a brand-new (or trial) user with the feedback survey the
@@ -1470,31 +1465,6 @@ export default function App() {
           >Subscribe to keep your programs</a>
         </div>
       )}
-      {/* Coach-facing trial/billing banner — 1-on-1 individual sessions only.
-          Tells the trainer whether THIS client still needs to subscribe. */}
-      {screen === 'program' && isOneOnOne && !groupMembers && clientBilling &&
-        ['trial', 'grace', 'expired', 'none'].includes(clientBilling.status) && (() => {
-          const cb = clientBilling;
-          const first = (user?.name || 'This client').split(' ')[0];
-          const days = cb.days_remaining;
-          const isRed = cb.status === 'expired' || cb.status === 'none';
-          const msg =
-            cb.status === 'trial'
-              ? `${first} is on a FREE TRIAL${days != null ? ` — ${days} day${days !== 1 ? 's' : ''} left` : ''}. Remind them to subscribe ($20/mo).`
-              : cb.status === 'grace'
-              ? `${first} is in their grace period${days != null ? ` — ${days} day${days !== 1 ? 's' : ''} left` : ''}. Nudge them to subscribe.`
-              : cb.status === 'expired'
-              ? `${first}'s free access has ENDED — they need to subscribe to keep their own access.`
-              : `${first} has no app account yet — they can only train with you here until they sign up.`;
-          return (
-            <div style={{
-              background: isRed ? 'linear-gradient(135deg,#ef4444,#dc2626)' : 'linear-gradient(135deg,#f59e0b,#d97706)',
-              padding: '9px 16px', textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#1a1a2e',
-            }}>
-              {isRed ? '🔴' : '🟡'} {msg}
-            </div>
-          );
-        })()}
       {screen === 'program' && program && (
         <ProgramView
           program={program}
