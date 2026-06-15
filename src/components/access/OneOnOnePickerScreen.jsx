@@ -213,15 +213,37 @@ export default function OneOnOnePickerScreen({ onPick }) {
     loadFolder();
   };
 
+  const ensurePrograms = useCallback(async () => {
+    if (programs !== null) return;
+    try {
+      const r = await fetch(`${KIOSK_BASE}coach-programs?coach=${encodeURIComponent(coachCode)}`);
+      const d = await r.json();
+      setPrograms(r.ok ? (d.programs || []) : []);
+    } catch { setPrograms([]); }
+  }, [programs, coachCode]);
+
   const openAddNew = async () => {
     setAdding(true); setErr('');
-    if (programs === null) {
-      try {
-        const r = await fetch(`${KIOSK_BASE}coach-programs?coach=${encodeURIComponent(coachCode)}`);
-        const d = await r.json();
-        setPrograms(r.ok ? (d.programs || []) : []);
-      } catch { setPrograms([]); }
-    }
+    ensurePrograms();
+  };
+
+  // ── Group session: run ONE workout for a whole group, log once, email all ──
+  const [groupSession, setGroupSession] = useState(null);  // { name, members }
+  const [groupProgram, setGroupProgram] = useState('');
+  const startGroup = (name, members) => {
+    setGroupSession({ name, members });
+    setGroupProgram('');
+    setErr('');
+    ensurePrograms();
+  };
+  const launchGroup = () => {
+    if (!groupProgram) { setErr('Pick a program for the group.'); return; }
+    const members = groupSession.members.map((m) => ({ name: m.name, email: m.email }));
+    const name = groupSession.name;
+    setGroupSession(null);
+    // Load under the first member as the carrier; groupMembers drives the
+    // recap so logging emails everyone in the room.
+    onPick({ name, email: members[0].email, code: groupProgram, groupMembers: members }, false);
   };
 
   const submitNew = async () => {
@@ -343,7 +365,15 @@ export default function OneOnOnePickerScreen({ onPick }) {
             <>
               {groups.map(([name, members]) => (
                 <div key={name}>
-                  <div style={styles.groupLabel}>👥 {name}</div>
+                  <div style={{ ...styles.groupLabel, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                    <span>👥 {name}</span>
+                    {!editMode && members.length >= 2 && (
+                      <button
+                        onClick={() => startGroup(name, members)}
+                        style={{ background: 'rgba(245,158,11,0.18)', color: '#fcd34d', border: '1px solid rgba(245,158,11,0.45)', borderRadius: '8px', padding: '5px 12px', fontSize: '12px', fontWeight: 800, cursor: 'pointer', letterSpacing: 0 }}
+                      >▶ Train together</button>
+                    )}
+                  </div>
                   <div style={styles.list}>
                     {members.map((c) => <ClientRow key={c.email} c={c} onClick={editMode ? undefined : () => load(c)} onRemove={editMode ? removeFromFolder : undefined} />)}
                   </div>
@@ -371,6 +401,26 @@ export default function OneOnOnePickerScreen({ onPick }) {
           </div>
           {editMode && <p style={{ ...styles.sub, color: '#fca5a5', marginTop: '10px' }}>Tap “Remove” to take a client out of your folder. They keep their program — this just unpins them here.</p>}
         </>
+      )}
+
+      {groupSession && (
+        <div style={styles.overlay}>
+          <div style={styles.modal}>
+            <div style={{ fontSize: '17px', fontWeight: 800, marginBottom: '6px' }}>👥 {groupSession.name}</div>
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.4, marginBottom: '14px' }}>
+              {groupSession.members.map((m) => m.name).join(', ')} — run one workout, log once, and the recap emails everyone. Put each person’s weights in the notes.
+            </p>
+            <div style={styles.fieldLabel}>Workout for this session</div>
+            {programs === null ? <div style={styles.status}>Loading programs…</div> : (
+              <select style={styles.search} value={groupProgram} onChange={(e) => setGroupProgram(e.target.value)}>
+                <option value="">Select a program…</option>
+                {programs.map((p) => <option key={p.access_code} value={p.access_code}>{p.name} ({p.access_code})</option>)}
+              </select>
+            )}
+            <button style={styles.primaryBtn} onClick={launchGroup}>Start group workout</button>
+            <button style={styles.linkBtn} onClick={() => { setGroupSession(null); setErr(''); }}>Cancel</button>
+          </div>
+        </div>
       )}
 
       {pendingPin && (

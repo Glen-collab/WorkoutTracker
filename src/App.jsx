@@ -118,6 +118,9 @@ export default function App() {
   const [showCongratsModal, setShowCongratsModal] = useState(false);
   const [showRecapModal, setShowRecapModal] = useState(false);  // 1-on-1 recap preview
   const [recapBusy, setRecapBusy] = useState(false);
+  // 1-on-1 GROUP session: when the coach runs one workout for a group, this
+  // holds [{name,email}] so logging emails the recap to everyone in the room.
+  const [groupMembers, setGroupMembers] = useState(null);
   const [showGame, setShowGame] = useState(false);
   const [showGamePrompt, setShowGamePrompt] = useState(false);
   const [showWeeklySummary, setShowWeeklySummary] = useState(false);
@@ -847,6 +850,13 @@ export default function App() {
       isReturningUser,
     };
     setUser(userData);
+
+    // Group session: carry the member list so the recap emails the whole group.
+    setGroupMembers(
+      Array.isArray(formData.groupMembers) && formData.groupMembers.length
+        ? formData.groupMembers
+        : null
+    );
 
     // Save credentials to localStorage for quick login next time — but NEVER
     // in kiosk-station mode, since the tablet is shared by multiple members
@@ -1585,27 +1595,38 @@ export default function App() {
         day={currentDay}
         clientName={user?.name}
         programName={program?.name}
+        groupMembers={groupMembers}
         busy={recapBusy}
         onConfirm={async (notes, sendRecap, items, photos) => {
           setRecapBusy(true);
           let recapError = null;
           if (sendRecap) {
-            try {
-              await api.sendSessionRecap({
-                client_email: user?.email,
-                client_name: user?.name,
-                coach_name: 'Glen',
-                program_name: program?.name || 'Workout',
-                week: currentWeek,
-                day: currentDay,
-                items,
-                coach_notes: notes,
-                photos: photos || [],
-                coach: new URLSearchParams(window.location.search).get('coach') || '',
-              });
-            } catch (e) {
-              recapError = e?.message || 'send failed';
+            // Group session → email every member; solo → just the one client.
+            const recipients = (groupMembers && groupMembers.length)
+              ? groupMembers
+              : [{ name: user?.name, email: user?.email }];
+            const coachParam = new URLSearchParams(window.location.search).get('coach') || '';
+            const failed = [];
+            for (const r of recipients) {
+              if (!r?.email) continue;
+              try {
+                await api.sendSessionRecap({
+                  client_email: r.email,
+                  client_name: r.name || 'there',
+                  coach_name: 'Glen',
+                  program_name: program?.name || 'Workout',
+                  week: currentWeek,
+                  day: currentDay,
+                  items,
+                  coach_notes: notes,
+                  photos: photos || [],
+                  coach: coachParam,
+                });
+              } catch (e) {
+                failed.push(`${r.name || r.email} (${e?.message || 'send failed'})`);
+              }
             }
+            if (failed.length) recapError = failed.join('; ');
           }
           setRecapBusy(false);
           setShowRecapModal(false);
@@ -1622,7 +1643,7 @@ export default function App() {
           // Don't let a failed email masquerade as "sent" — surface it so the
           // coach knows to retry (the workout was still logged).
           if (recapError) {
-            alert(`⚠️ The recap email to ${user?.name || 'your client'} did NOT send (${recapError}). The workout was logged. Try the email again from their session.`);
+            alert(`⚠️ Recap email did NOT send to: ${recapError}. The workout was logged — try emailing again from the session.`);
           }
         }}
       />

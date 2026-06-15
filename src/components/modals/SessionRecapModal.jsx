@@ -74,8 +74,9 @@ function buildBlockNotes(program, trackingData) {
 
 export default function SessionRecapModal({
   isOpen, onClose, program, trackingData, week, day,
-  clientName, programName, onConfirm, busy,
+  clientName, programName, onConfirm, busy, groupMembers,
 }) {
+  const isGroup = Array.isArray(groupMembers) && groupMembers.length > 0;
   const items = useMemo(() => buildItems(program, trackingData), [program, trackingData]);
 
   // Pre-fill the notes box with block notes + the coach's per-exercise notes.
@@ -112,12 +113,18 @@ export default function SessionRecapModal({
     <div style={s.backdrop} onClick={onClose}>
       <div style={s.modal} onClick={(e) => e.stopPropagation()}>
         <div style={s.header}>
-          <div style={s.title}>Session Recap</div>
+          <div style={s.title}>{isGroup ? 'Group Session Recap' : 'Session Recap'}</div>
           <div style={s.sub}>{programName ? `${programName} · ` : ''}W{week} D{day}</div>
           <button style={s.x} onClick={onClose}>✕</button>
         </div>
 
         <div style={s.body}>
+          {isGroup && (
+            <div style={s.groupNote}>
+              👥 Emails this recap to all {groupMembers.length}: {groupMembers.map((m) => m.name).filter(Boolean).join(', ')}.
+              {' '}Put each person's weights in the notes.
+            </div>
+          )}
           <div style={s.sectionLabel}>Notes {prefill ? '(your exercise notes, edit or add more)' : ''}</div>
           <textarea
             style={s.textarea}
@@ -147,7 +154,7 @@ export default function SessionRecapModal({
             Log only
           </button>
           <button style={{ ...s.btn, ...s.btnPrimary, ...(busy ? s.btnBusy : {}) }} disabled={busy} onClick={() => onConfirm(notes, true, emailItems, photos)}>
-            {busy ? 'Sending…' : `Log + Email ${who.split(' ')[0]}`}
+            {busy ? 'Sending…' : isGroup ? `Log + Email group (${groupMembers.length})` : `Log + Email ${who.split(' ')[0]}`}
           </button>
         </div>
       </div>
@@ -164,6 +171,7 @@ const s = {
   x: { position: 'absolute', top: 12, right: 14, background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', width: 30, height: 30, borderRadius: '50%', cursor: 'pointer', fontSize: 15 },
   body: { padding: '16px 18px', overflowY: 'auto' },
   sectionLabel: { fontSize: 11, fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase', color: '#9ca3af', margin: '4px 0 8px' },
+  groupNote: { background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: 10, padding: '10px 12px', fontSize: 13, color: '#3730a3', lineHeight: 1.45, marginBottom: 14 },
   itemList: { border: '1px solid #eef0f4', borderRadius: 10, overflow: 'hidden', marginBottom: 16 },
   item: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '9px 12px', borderBottom: '1px solid #f3f4f6', fontSize: 14 },
   itemName: { fontWeight: 600, color: '#1a1a2e' },
