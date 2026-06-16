@@ -13,6 +13,21 @@ export function startSwAutoUpdate() {
   if (!('serviceWorker' in navigator)) return;
   if (window.location.hostname === 'localhost') return;
 
+  // Always-on PASSIVE displays must never auto-reload. On /tv the index.html
+  // bootstrap unregisters the SW every load; vite-plugin-pwa then re-registers
+  // it, firing a controllerchange — and our reload-on-controllerchange below
+  // turns that into an endless "screen flashing" loop. The gym TV, kiosk
+  // tablet, and cast view pick up new builds on their next reboot/load instead.
+  // (Interactive surfaces — member tracker, 1-on-1 iPad — still self-update.)
+  const path = window.location.pathname;
+  const params = new URLSearchParams(window.location.search);
+  if (
+    path.startsWith('/tv') || path === '/kiosk' || path === '/cast' ||
+    params.get('tv') === '1' || params.get('kiosk') === '1'
+  ) {
+    return;
+  }
+
   const hadController = !!navigator.serviceWorker.controller;
   let refreshing = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
