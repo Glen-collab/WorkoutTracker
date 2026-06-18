@@ -648,7 +648,7 @@ export default function TVStatic() {
         setLayout((prev) => (prev === serverLayout ? prev : serverLayout));
         // Display-mode toggle (workout vs leaderboard scoreboard).
         const disp = data?.device?.display;
-        if (disp && (disp.mode === 'workout' || disp.mode === 'leaderboard')) {
+        if (disp && (disp.mode === 'workout' || disp.mode === 'leaderboard' || disp.mode === 'cards')) {
           setDisplay((prev) => {
             const dispIds = Array.isArray(disp.metric_ids) ? disp.metric_ids : [];
             const same = prev
@@ -792,6 +792,20 @@ export default function TVStatic() {
   // 'workout', the iframe is unmounted and the existing workout view
   // takes over again. No navigation of Chromium itself, so the kiosk
   // respawn loop / agent / poll all keep working unchanged.
+  // Player-cards cinematic reel — coach flipped this Pi to the card showcase.
+  // Fullscreen iframe of the leaderboard's /cards/showcase in lite mode (lighter
+  // blur so it stays smooth on the Pi). Like leaderboard mode, no Chromium swap.
+  if (display.mode === 'cards') {
+    return (
+      <iframe
+        src="https://leaderboard.bestrongagain.com/cards/showcase?lite=1"
+        title="BSA Player Cards"
+        style={{ position: 'fixed', inset: 0, width: '100vw', height: '100vh', border: 0, background: '#000' }}
+        allow="autoplay; fullscreen"
+      />
+    );
+  }
+
   if (display.mode === 'leaderboard') {
     const lbParams = new URLSearchParams();
     if (display.metric_id) lbParams.set('metric_id', display.metric_id);
