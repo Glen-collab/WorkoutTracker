@@ -227,6 +227,25 @@ export default function OneOnOnePickerScreen({ onPick }) {
     ensurePrograms();
   };
 
+  // ── Switch an INDIVIDUAL client to a different program (Edit mode → ⚙ Program) ──
+  const [switchClient, setSwitchClient] = useState(null);  // the client being switched
+  const [switchProgram, setSwitchProgram] = useState('');
+
+  const openSwitch = (c) => { setSwitchClient(c); setSwitchProgram(c.access_code || ''); setErr(''); ensurePrograms(); };
+  const launchSwitch = async () => {
+    if (!switchProgram) { setErr('Pick a program.'); return; }
+    const c = switchClient;
+    // Re-pin with the new access_code (upserts on coach+email → swaps program).
+    try {
+      await fetch(`${KIOSK_BASE}oneonone-folder/add`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coach: coachCode, email: c.email, name: c.name, access_code: switchProgram }),
+      });
+    } catch { /* best-effort — still start the session */ }
+    setSwitchClient(null); setEditMode(false);
+    onPick({ name: c.name, email: c.email, code: switchProgram }, false);  // start the new program fresh
+  };
+
   // ── Group session: run ONE workout for a whole group, log once, email all ──
   const [groupSession, setGroupSession] = useState(null);  // { name, members }
   const [groupProgram, setGroupProgram] = useState('');
@@ -308,14 +327,24 @@ export default function OneOnOnePickerScreen({ onPick }) {
     onPick({ name, email, code: newProgram }, false);
   };
 
-  const ClientRow = ({ c, onClick, right, onRemove }) => (
+  const ClientRow = ({ c, onClick, right, onRemove, onSwitch }) => (
     <div onClick={onClick} style={styles.row}>
       <span>{c.name}</span>
-      {onRemove ? (
-        <button
-          onClick={(e) => { e.stopPropagation(); onRemove(c); }}
-          style={{ background: 'rgba(239,68,68,0.18)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.45)', borderRadius: '8px', padding: '5px 12px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
-        >Remove</button>
+      {(onRemove || onSwitch) ? (
+        <span style={{ display: 'flex', gap: '6px' }}>
+          {onSwitch && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onSwitch(c); }}
+              style={{ background: 'rgba(245,158,11,0.18)', color: '#fcd34d', border: '1px solid rgba(245,158,11,0.45)', borderRadius: '8px', padding: '5px 12px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
+            >⚙ Program</button>
+          )}
+          {onRemove && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onRemove(c); }}
+              style={{ background: 'rgba(239,68,68,0.18)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.45)', borderRadius: '8px', padding: '5px 12px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
+            >Remove</button>
+          )}
+        </span>
       ) : (
         <span style={styles.rowMeta}>
           {right != null ? right : `${c.access_code || ''}${c.week ? ` · W${c.week}` : ''}${c.day ? `D${c.day}` : ''}`}
@@ -435,7 +464,7 @@ export default function OneOnOnePickerScreen({ onPick }) {
                 <>
                   {groups.length > 0 && <div style={styles.groupLabel}>Clients</div>}
                   <div style={styles.list}>
-                    {ungrouped.map((c) => <ClientRow key={c.email} c={c} onClick={editMode ? undefined : () => load(c)} onRemove={editMode ? removeFromFolder : undefined} />)}
+                    {ungrouped.map((c) => <ClientRow key={c.email} c={c} onClick={editMode ? undefined : () => load(c)} onRemove={editMode ? removeFromFolder : undefined} onSwitch={editMode ? openSwitch : undefined} />)}
                   </div>
                 </>
               )}
@@ -451,7 +480,7 @@ export default function OneOnOnePickerScreen({ onPick }) {
               <button style={styles.ghostBtn} onClick={() => setEditMode((v) => !v)}>{editMode ? '✓ Done' : '✏️ Edit'}</button>
             )}
           </div>
-          {editMode && <p style={{ ...styles.sub, color: '#fca5a5', marginTop: '10px' }}>Tap “Remove” to take a client out of your folder. They keep their program — this just unpins them here.</p>}
+          {editMode && <p style={{ ...styles.sub, color: '#fcd34d', marginTop: '10px' }}>Tap “⚙ Program” to switch a client to a different program, or “Remove” to unpin them (they keep their program).</p>}
         </>
       )}
 
@@ -471,6 +500,26 @@ export default function OneOnOnePickerScreen({ onPick }) {
             )}
             <button style={styles.primaryBtn} onClick={launchGroup}>Start group workout</button>
             <button style={styles.linkBtn} onClick={() => { setGroupSession(null); setErr(''); }}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {switchClient && (
+        <div style={styles.overlay}>
+          <div style={styles.modal}>
+            <div style={{ fontSize: '17px', fontWeight: 800, marginBottom: '6px' }}>Change {switchClient.name}’s program</div>
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.4, marginBottom: '14px' }}>
+              Pick a new program for {switchClient.name}. They start it at Week 1, Day 1, and it loads straight to this workout next time.
+            </p>
+            <div style={styles.fieldLabel}>Program</div>
+            {programs === null ? <div style={styles.status}>Loading programs…</div> : (
+              <select style={styles.search} value={switchProgram} onChange={(e) => setSwitchProgram(e.target.value)}>
+                <option value="">Select a program…</option>
+                {programs.map((p) => <option key={p.access_code} value={p.access_code}>{p.name} ({p.access_code})</option>)}
+              </select>
+            )}
+            <button style={styles.primaryBtn} onClick={launchSwitch}>Set program &amp; start workout</button>
+            <button style={styles.linkBtn} onClick={() => { setSwitchClient(null); setErr(''); }}>Cancel</button>
           </div>
         </div>
       )}
