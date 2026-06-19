@@ -1598,7 +1598,7 @@ export default function App() {
         programName={program?.name}
         groupMembers={groupMembers}
         busy={recapBusy}
-        onConfirm={async (notes, sendRecap, items, photos, memberNotes) => {
+        onConfirm={async (notes, sendRecap, items, photos, memberNotes, memberPhotos) => {
           setRecapBusy(true);
           let recapError = null;
           const isGroup = !!(groupMembers && groupMembers.length);
@@ -1621,9 +1621,11 @@ export default function App() {
             const failed = [];
             for (const r of recipients) {
               if (!r?.email) continue;
-              // Private body: the shared note + ONLY this person's individual note.
+              // Private body + photos: the shared note + ONLY this person's
+              // individual note and ONLY their own photos.
               const personal = (memberNotes?.[r.email] || '').trim();
               const body = isGroup ? [notes, personal].filter(Boolean).join('\n\n') : notes;
+              const personalPhotos = isGroup ? (memberPhotos?.[r.email] || []) : (photos || []);
               try {
                 await api.sendSessionRecap({
                   client_email: r.email,
@@ -1634,7 +1636,7 @@ export default function App() {
                   day: currentDay,
                   items,
                   coach_notes: body,
-                  photos: photos || [],
+                  photos: personalPhotos,
                   coach: coachParam,
                 });
               } catch (e) {
