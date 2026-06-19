@@ -16,13 +16,18 @@ function slug(s) {
     .replace(/^-+|-+$/g, '') || 'program';
 }
 
-function padKey(accessCode, programName) {
-  return `gwt_scratchpad_${accessCode || 'anon'}_${slug(programName)}`;
+// Keyed per client (email) + access code + program. The EMAIL is critical:
+// multiple 1-on-1 clients can share the same program code (e.g. a whole group
+// on "Strong Again" 6561), and without the email they'd all read the SAME pad
+// and see each other's private notes. Scoping by email gives each person their
+// own sheet.
+function padKey(accessCode, programName, email) {
+  return `gwt_scratchpad_${accessCode || 'anon'}_${slug(programName)}_${slug(email)}`;
 }
 
-export function readScratchpad(accessCode, programName) {
+export function readScratchpad(accessCode, programName, email) {
   try {
-    const raw = localStorage.getItem(padKey(accessCode, programName));
+    const raw = localStorage.getItem(padKey(accessCode, programName, email));
     const arr = raw ? JSON.parse(raw) : [];
     return Array.isArray(arr) ? arr : [];
   } catch {
@@ -30,9 +35,9 @@ export function readScratchpad(accessCode, programName) {
   }
 }
 
-export function writeScratchpad(accessCode, programName, entries) {
+export function writeScratchpad(accessCode, programName, email, entries) {
   try {
-    localStorage.setItem(padKey(accessCode, programName), JSON.stringify(entries || []));
+    localStorage.setItem(padKey(accessCode, programName, email), JSON.stringify(entries || []));
   } catch { /* storage full / unavailable — non-fatal */ }
   return entries || [];
 }
@@ -47,15 +52,15 @@ function stampDate() {
 
 // Append (or replace, if the same week+day already exists) one stamped note.
 // Empty text is ignored so a no-note log-out doesn't add a blank block.
-export function appendScratchpadNote(accessCode, programName, { week, day, text }) {
+export function appendScratchpadNote(accessCode, programName, email, { week, day, text }) {
   const trimmed = (text || '').trim();
-  if (!trimmed) return readScratchpad(accessCode, programName);
-  const entries = readScratchpad(accessCode, programName);
+  if (!trimmed) return readScratchpad(accessCode, programName, email);
+  const entries = readScratchpad(accessCode, programName, email);
   const entry = { week, day, date: stampDate(), text: trimmed };
   const idx = entries.findIndex((e) => e.week === week && e.day === day);
   if (idx >= 0) entries[idx] = entry;
   else entries.push(entry);
-  return writeScratchpad(accessCode, programName, entries);
+  return writeScratchpad(accessCode, programName, email, entries);
 }
 
 // Build one plain-text blob of the whole running sheet — used for the AI

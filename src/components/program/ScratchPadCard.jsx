@@ -95,10 +95,12 @@ export default function ScratchPadCard({ accessCode, programName, currentWeek, c
   };
 
   // Re-read whenever we switch client/program/day (e.g. opening a new session).
+  // Keyed by userEmail too so each client on a shared program code gets THEIR
+  // own pad (not the whole group's).
   useEffect(() => {
-    setEntries(readScratchpad(accessCode, programName));
+    setEntries(readScratchpad(accessCode, programName, userEmail));
     setEditingIdx(-1);
-  }, [accessCode, programName, currentDay, currentWeek]);
+  }, [accessCode, programName, userEmail, currentDay, currentWeek]);
 
   // Back-fill from already-logged notes: pull the block + exercise notes the
   // coach has logged for this client's program and drop any day not already on
@@ -115,14 +117,14 @@ export default function ScratchPadCard({ accessCode, programName, currentWeek, c
           user_email: userEmail,
         });
         if (cancelled || !res?.success || !Array.isArray(res.data) || !res.data.length) return;
-        const local = readScratchpad(accessCode, programName);
+        const local = readScratchpad(accessCode, programName, userEmail);
         const seen = new Set(local.map((e) => `${e.week}-${e.day}`));
         const additions = res.data.filter((e) => !seen.has(`${e.week}-${e.day}`));
         if (!additions.length) return;
         const merged = [...local, ...additions].sort(
           (a, b) => (a.week - b.week) || (a.day - b.day)
         );
-        writeScratchpad(accessCode, programName, merged);
+        writeScratchpad(accessCode, programName, userEmail, merged);
         setEntries(merged);
       } catch { /* backfill is best-effort */ }
     })();
@@ -131,7 +133,7 @@ export default function ScratchPadCard({ accessCode, programName, currentWeek, c
 
   const persist = (next) => {
     setEntries(next);
-    writeScratchpad(accessCode, programName, next);
+    writeScratchpad(accessCode, programName, userEmail, next);
   };
 
   const startEdit = (idx) => {

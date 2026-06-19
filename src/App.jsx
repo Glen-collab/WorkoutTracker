@@ -1650,7 +1650,7 @@ export default function App() {
           // Pile this session's notes onto the running scratch pad for this
           // client+program so they carry forward to every following day/week.
           try {
-            appendScratchpadNote(user?.accessCode, program?.name, {
+            appendScratchpadNote(user?.accessCode, program?.name, user?.email, {
               week: currentWeek,
               day: currentDay,
               text: combinedNote,
