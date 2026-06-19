@@ -1598,18 +1598,32 @@ export default function App() {
         programName={program?.name}
         groupMembers={groupMembers}
         busy={recapBusy}
-        onConfirm={async (notes, sendRecap, items, photos) => {
+        onConfirm={async (notes, sendRecap, items, photos, memberNotes) => {
           setRecapBusy(true);
           let recapError = null;
+          const isGroup = !!(groupMembers && groupMembers.length);
+          // The coach's full record (shared note + each person's private note,
+          // labeled) → goes to the log + scratch pad. The EMAILS stay private:
+          // each person gets the shared note + only their own line.
+          const combinedNote = isGroup
+            ? [notes, ...groupMembers
+                .map((m) => (memberNotes?.[m.email] || '').trim()
+                  ? `${(m.name || '').split(' ')[0] || m.email}: ${memberNotes[m.email].trim()}`
+                  : '')
+                .filter(Boolean)].filter(Boolean).join('\n')
+            : notes;
           if (sendRecap) {
             // Group session → email every member; solo → just the one client.
-            const recipients = (groupMembers && groupMembers.length)
+            const recipients = isGroup
               ? groupMembers
               : [{ name: user?.name, email: user?.email }];
             const coachParam = new URLSearchParams(window.location.search).get('coach') || '';
             const failed = [];
             for (const r of recipients) {
               if (!r?.email) continue;
+              // Private body: the shared note + ONLY this person's individual note.
+              const personal = (memberNotes?.[r.email] || '').trim();
+              const body = isGroup ? [notes, personal].filter(Boolean).join('\n\n') : notes;
               try {
                 await api.sendSessionRecap({
                   client_email: r.email,
@@ -1619,7 +1633,7 @@ export default function App() {
                   week: currentWeek,
                   day: currentDay,
                   items,
-                  coach_notes: notes,
+                  coach_notes: body,
                   photos: photos || [],
                   coach: coachParam,
                 });
@@ -1637,10 +1651,10 @@ export default function App() {
             appendScratchpadNote(user?.accessCode, program?.name, {
               week: currentWeek,
               day: currentDay,
-              text: notes,
+              text: combinedNote,
             });
           } catch { /* scratch pad is best-effort */ }
-          handleLogWorkout(notes);
+          handleLogWorkout(combinedNote);
           // Don't let a failed email masquerade as "sent" — surface it so the
           // coach knows to retry (the workout was still logged).
           if (recapError) {

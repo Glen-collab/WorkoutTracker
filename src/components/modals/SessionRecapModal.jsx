@@ -89,8 +89,9 @@ export default function SessionRecapModal({
   );
   const [notes, setNotes] = useState(prefill);
   const [photos, setPhotos] = useState([]);   // resized JPEG data URLs
+  const [memberNotes, setMemberNotes] = useState({});   // email -> private note (group only)
   const fileRef = useRef(null);
-  useEffect(() => { if (isOpen) { setNotes(prefill); setPhotos([]); } }, [isOpen, prefill]);
+  useEffect(() => { if (isOpen) { setNotes(prefill); setPhotos([]); setMemberNotes({}); } }, [isOpen, prefill]);
 
   const onPickPhotos = async (e) => {
     const files = Array.from(e.target.files || []);
@@ -121,18 +122,35 @@ export default function SessionRecapModal({
         <div style={s.body}>
           {isGroup && (
             <div style={s.groupNote}>
-              👥 Emails this recap to all {groupMembers.length}: {groupMembers.map((m) => m.name).filter(Boolean).join(', ')}.
-              {' '}Put each person's weights in the notes.
+              👥 Each of the {groupMembers.length} gets the <b>shared note</b> below <b>plus only their own</b> private note — nobody sees anyone else's.
             </div>
           )}
-          <div style={s.sectionLabel}>Notes {prefill ? '(your exercise notes, edit or add more)' : ''}</div>
+          <div style={s.sectionLabel}>{isGroup ? 'Shared note — goes to everyone (the workout)' : `Notes ${prefill ? '(your exercise notes, edit or add more)' : ''}`}</div>
           <textarea
             style={s.textarea}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="• Back Squat: great depth, add 10 lbs next week&#10;Add anything else here…"
-            rows={6}
+            rows={isGroup ? 4 : 6}
           />
+
+          {isGroup && (
+            <>
+              <div style={{ ...s.sectionLabel, marginTop: 16 }}>🔒 Individual notes — private to each person</div>
+              {groupMembers.map((m, i) => (
+                <div key={m.email || i} style={{ marginBottom: 10 }}>
+                  <div style={s.memberName}>✍️ {m.name || m.email}</div>
+                  <textarea
+                    style={s.textarea}
+                    value={memberNotes[m.email] || ''}
+                    onChange={(e) => setMemberNotes((p) => ({ ...p, [m.email]: e.target.value }))}
+                    placeholder={`A personal note just for ${(m.name || '').split(' ')[0] || 'them'}…`}
+                    rows={2}
+                  />
+                </div>
+              ))}
+            </>
+          )}
 
           <div style={s.sectionLabel}>Reference photos (optional, emailed only)</div>
           <div style={s.photoRow}>
@@ -150,11 +168,11 @@ export default function SessionRecapModal({
         </div>
 
         <div style={s.footer}>
-          <button style={{ ...s.btn, ...s.btnGhost }} disabled={busy} onClick={() => onConfirm(notes, false, emailItems, photos)}>
+          <button style={{ ...s.btn, ...s.btnGhost }} disabled={busy} onClick={() => onConfirm(notes, false, emailItems, photos, memberNotes)}>
             Log only
           </button>
-          <button style={{ ...s.btn, ...s.btnPrimary, ...(busy ? s.btnBusy : {}) }} disabled={busy} onClick={() => onConfirm(notes, true, emailItems, photos)}>
-            {busy ? 'Sending…' : isGroup ? `Log + Email group (${groupMembers.length})` : `Log + Email ${who.split(' ')[0]}`}
+          <button style={{ ...s.btn, ...s.btnPrimary, ...(busy ? s.btnBusy : {}) }} disabled={busy} onClick={() => onConfirm(notes, true, emailItems, photos, memberNotes)}>
+            {busy ? 'Sending…' : isGroup ? `Log + Email each (${groupMembers.length})` : `Log + Email ${who.split(' ')[0]}`}
           </button>
         </div>
       </div>
@@ -178,6 +196,7 @@ const s = {
   itemSummary: { color: '#555', fontFamily: 'monospace', fontSize: 13, whiteSpace: 'nowrap' },
   empty: { padding: 14, color: '#9ca3af', fontSize: 14, textAlign: 'center' },
   textarea: { width: '100%', boxSizing: 'border-box', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: 12, fontSize: 14, fontFamily: 'inherit', lineHeight: 1.5, outline: 'none', resize: 'vertical' },
+  memberName: { fontSize: 13, fontWeight: 700, color: '#4338ca', margin: '0 0 4px 2px' },
   photoRow: { display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   thumbWrap: { position: 'relative', width: 64, height: 64 },
   thumb: { width: 64, height: 64, objectFit: 'cover', borderRadius: 8, border: '1px solid #e5e7eb' },
