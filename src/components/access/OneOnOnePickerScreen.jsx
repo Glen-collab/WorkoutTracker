@@ -190,8 +190,12 @@ export default function OneOnOnePickerScreen({ onPick }) {
     );
   }, [allClients, search]);
 
-  const load = (c, isReturning = true) =>
+  const load = (c, isReturning = true) => {
+    // No program assigned yet → can't open a workout; pop the program picker
+    // so the coach assigns one (or builds it) first.
+    if (!c.access_code) { openSwitch(c); return; }
     onPick({ name: c.name, email: c.email, code: c.access_code, week: c.week, day: c.day }, isReturning);
+  };
 
   const pickFromSearch = (c) => {
     if (folderEmails.has((c.email || '').toLowerCase())) { load(c); return; }
@@ -326,12 +330,13 @@ export default function OneOnOnePickerScreen({ onPick }) {
     const email = newEmail.trim().toLowerCase();
     if (!name) { setErr('Enter the client’s name.'); return; }
     if (!email || !email.includes('@')) { setErr('Enter a valid client email.'); return; }
-    if (!newProgram) { setErr('Pick which program this client is on.'); return; }
-    // New 1-on-1 clients auto-pin to the folder.
+    // Program is OPTIONAL — in 1-on-1 you often add the person first and build
+    // their personalized program after (then group them / assign via ⚙ Program).
+    // New 1-on-1 clients auto-pin to the folder; access_code may be empty.
     try {
       await fetch(`${KIOSK_BASE}oneonone-folder/add`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ coach: coachCode, email, name, access_code: newProgram }),
+        body: JSON.stringify({ coach: coachCode, email, name, access_code: newProgram || null }),
       });
     } catch { /* best-effort */ }
     if (sendInvite) {
@@ -340,7 +345,16 @@ export default function OneOnOnePickerScreen({ onPick }) {
         body: JSON.stringify({ coach: coachCode, email, name }),
       }).catch(() => {});
     }
-    onPick({ name, email, code: newProgram }, false);
+    if (newProgram) {
+      // Program chosen → jump straight into the workout to log it now.
+      onPick({ name, email, code: newProgram }, false);
+    } else {
+      // No program yet → just pin them and return to the list so they can be
+      // grouped / assigned a program once it's built.
+      setAdding(false);
+      setNewName(''); setNewEmail(''); setNewProgram(''); setErr('');
+      loadFolder();
+    }
   };
 
   const ClientRow = ({ c, onClick, right, onRemove, onSwitch, onUngroup }) => (
@@ -382,15 +396,15 @@ export default function OneOnOnePickerScreen({ onPick }) {
         <div style={styles.brand}>Be Strong Again</div>
         <h1 style={styles.title}>1-on-1 Training</h1>
         {err && <div style={styles.errorBox}>{err}</div>}
-        <p style={styles.sub}>Pair a new client to one of your programs.</p>
+        <p style={styles.sub}>Add a client. Program is optional — add them now and build/assign their program (or group them) after.</p>
         <div style={styles.fieldLabel}>Client name</div>
         <input style={styles.search} value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Debbie" autoFocus />
         <div style={styles.fieldLabel}>Client email (their dashboard login)</div>
         <input style={styles.search} type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="debbie@example.com" />
-        <div style={styles.fieldLabel}>Program</div>
+        <div style={styles.fieldLabel}>Program <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, opacity: 0.7 }}>(optional — leave blank to set later)</span></div>
         {programs === null ? <div style={styles.status}>Loading programs…</div> : (
           <select style={styles.search} value={newProgram} onChange={(e) => setNewProgram(e.target.value)}>
-            <option value="">Select a program…</option>
+            <option value="">No program yet — set later</option>
             {programs.map((p) => <option key={p.access_code} value={p.access_code}>{p.name} ({p.access_code})</option>)}
           </select>
         )}
@@ -398,7 +412,7 @@ export default function OneOnOnePickerScreen({ onPick }) {
           <input type="checkbox" checked={sendInvite} onChange={(e) => setSendInvite(e.target.checked)} />
           Email this client a link to their dashboard
         </label>
-        <button style={styles.primaryBtn} onClick={submitNew}>Start workout</button>
+        <button style={styles.primaryBtn} onClick={submitNew}>{newProgram ? 'Start workout' : 'Add client'}</button>
         <button style={styles.linkBtn} onClick={() => { setAdding(false); setErr(''); }}>← Back to client list</button>
       </div></div>
     );
