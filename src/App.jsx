@@ -1619,6 +1619,7 @@ export default function App() {
               : [{ name: user?.name, email: user?.email }];
             const coachParam = new URLSearchParams(window.location.search).get('coach') || '';
             const failed = [];
+            const sentOk = [];
             for (const r of recipients) {
               if (!r?.email) continue;
               // Private body + photos: the shared note + ONLY this person's
@@ -1626,8 +1627,9 @@ export default function App() {
               const personal = (memberNotes?.[r.email] || '').trim();
               const body = isGroup ? [notes, personal].filter(Boolean).join('\n\n') : notes;
               const personalPhotos = isGroup ? (memberPhotos?.[r.email] || []) : (photos || []);
+              const who = (r.name || r.email).split(' ')[0] || r.email;
               try {
-                await api.sendSessionRecap({
+                const res = await api.sendSessionRecap({
                   client_email: r.email,
                   client_name: r.name || 'there',
                   coach_name: 'Glen',
@@ -1639,11 +1641,19 @@ export default function App() {
                   photos: personalPhotos,
                   coach: coachParam,
                 });
+                // The endpoint now reports the REAL send result (used to always
+                // say success). sent === false = SMTP refused it (bad address).
+                if (res && res.sent === false) failed.push(`${who} (didn't go — check the email address)`);
+                else sentOk.push(who);
               } catch (e) {
-                failed.push(`${r.name || r.email} (${e?.message || 'send failed'})`);
+                failed.push(`${who} (${e?.message || 'send failed'})`);
               }
             }
             if (failed.length) recapError = failed.join('; ');
+            // Immediate per-person confirmation so Glen never has to wonder.
+            const okLine = sentOk.length ? `✓ Sent to: ${sentOk.join(', ')}` : '';
+            const failLine = failed.length ? `\n✗ DID NOT send: ${failed.join('; ')}` : '';
+            if (okLine || failLine) alert(`${okLine}${failLine}`.trim());
           }
           setRecapBusy(false);
           setShowRecapModal(false);
@@ -1657,11 +1667,8 @@ export default function App() {
             });
           } catch { /* scratch pad is best-effort */ }
           handleLogWorkout(combinedNote);
-          // Don't let a failed email masquerade as "sent" — surface it so the
-          // coach knows to retry (the workout was still logged).
-          if (recapError) {
-            alert(`⚠️ Recap email did NOT send to: ${recapError}. The workout was logged — try emailing again from the session.`);
-          }
+          // (Per-person ✓/✗ already shown above right after sending.)
+          void recapError;
         }}
       />
 
