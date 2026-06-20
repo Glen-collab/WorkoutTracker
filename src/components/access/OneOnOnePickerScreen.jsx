@@ -143,6 +143,22 @@ export default function OneOnOnePickerScreen({ onPick }) {
     } catch (e) { setErr(e.message || 'Failed to remove'); }
   };
 
+  // Take client(s) OUT of their group (clears group_name) — they STAY pinned as
+  // individual clients (unlike Remove, which un-pins them entirely). Backend
+  // ungroups when group_name is ''. Their program is left as-is (fix it with
+  // ⚙ Program on the individual row if a group had moved them onto a shared code).
+  const ungroupEmails = async (emails) => {
+    try {
+      await fetch(`${KIOSK_BASE}oneonone-group`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coach: coachCode, group_name: '', emails }),
+      });
+      await loadFolder();
+    } catch (e) { setErr(e.message || 'Failed to update group'); }
+  };
+  const ungroupOne = (c) => { if (window.confirm(`Take ${c.name} out of this group? They stay a client (just not in this group).`)) ungroupEmails([c.email]); };
+  const disbandGroup = (name, members) => { if (window.confirm(`Disband "${name}"? Everyone becomes an individual client again — nobody is deleted.`)) ungroupEmails(members.map((m) => m.email)); };
+
   // Lazily fetch the full roster the first time the coach searches.
   const ensureAllClients = useCallback(async () => {
     if (allClients !== null) return;
@@ -327,16 +343,22 @@ export default function OneOnOnePickerScreen({ onPick }) {
     onPick({ name, email, code: newProgram }, false);
   };
 
-  const ClientRow = ({ c, onClick, right, onRemove, onSwitch }) => (
+  const ClientRow = ({ c, onClick, right, onRemove, onSwitch, onUngroup }) => (
     <div onClick={onClick} style={styles.row}>
       <span>{c.name}</span>
-      {(onRemove || onSwitch) ? (
+      {(onRemove || onSwitch || onUngroup) ? (
         <span style={{ display: 'flex', gap: '6px' }}>
           {onSwitch && (
             <button
               onClick={(e) => { e.stopPropagation(); onSwitch(c); }}
               style={{ background: 'rgba(245,158,11,0.18)', color: '#fcd34d', border: '1px solid rgba(245,158,11,0.45)', borderRadius: '8px', padding: '5px 12px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
             >⚙ Program</button>
+          )}
+          {onUngroup && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onUngroup(c); }}
+              style={{ background: 'rgba(99,102,241,0.18)', color: '#c7d2fe', border: '1px solid rgba(99,102,241,0.45)', borderRadius: '8px', padding: '5px 12px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
+            >Ungroup</button>
           )}
           {onRemove && (
             <button
@@ -444,10 +466,16 @@ export default function OneOnOnePickerScreen({ onPick }) {
                     </span>
                     {members.length >= 2 && (
                       editMode
-                        ? <button
-                            onClick={() => startGroup(name, members)}
-                            style={{ background: 'rgba(255,255,255,0.08)', color: '#cbd5e1', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '8px', padding: '5px 12px', fontSize: '12px', fontWeight: 800, cursor: 'pointer', letterSpacing: 0 }}
-                          >⚙ Workout</button>
+                        ? <span style={{ display: 'flex', gap: '6px' }}>
+                            <button
+                              onClick={() => startGroup(name, members)}
+                              style={{ background: 'rgba(255,255,255,0.08)', color: '#cbd5e1', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '8px', padding: '5px 12px', fontSize: '12px', fontWeight: 800, cursor: 'pointer', letterSpacing: 0 }}
+                            >⚙ Workout</button>
+                            <button
+                              onClick={() => disbandGroup(name, members)}
+                              style={{ background: 'rgba(239,68,68,0.18)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.45)', borderRadius: '8px', padding: '5px 12px', fontSize: '12px', fontWeight: 800, cursor: 'pointer', letterSpacing: 0 }}
+                            >Disband</button>
+                          </span>
                         : <button
                             onClick={() => (gcode ? trainGroup(name, members, gcode) : startGroup(name, members))}
                             style={{ background: 'rgba(245,158,11,0.18)', color: '#fcd34d', border: '1px solid rgba(245,158,11,0.45)', borderRadius: '8px', padding: '5px 12px', fontSize: '12px', fontWeight: 800, cursor: 'pointer', letterSpacing: 0 }}
@@ -455,7 +483,7 @@ export default function OneOnOnePickerScreen({ onPick }) {
                     )}
                   </div>
                   <div style={styles.list}>
-                    {members.map((c) => <ClientRow key={c.email} c={c} onClick={editMode ? undefined : () => load(c)} onRemove={editMode ? removeFromFolder : undefined} />)}
+                    {members.map((c) => <ClientRow key={c.email} c={c} onClick={editMode ? undefined : () => load(c)} onRemove={editMode ? removeFromFolder : undefined} onUngroup={editMode ? ungroupOne : undefined} />)}
                   </div>
                 </div>
                 );
@@ -480,7 +508,7 @@ export default function OneOnOnePickerScreen({ onPick }) {
               <button style={styles.ghostBtn} onClick={() => setEditMode((v) => !v)}>{editMode ? '✓ Done' : '✏️ Edit'}</button>
             )}
           </div>
-          {editMode && <p style={{ ...styles.sub, color: '#fcd34d', marginTop: '10px' }}>Tap “⚙ Program” to switch a client to a different program, or “Remove” to unpin them (they keep their program).</p>}
+          {editMode && <p style={{ ...styles.sub, color: '#fcd34d', marginTop: '10px' }}>“⚙ Program” = switch a client's program · “Ungroup”/“Disband” = take someone out of a group (they stay a client) · “Remove” = unpin entirely (keeps their program).</p>}
         </>
       )}
 
