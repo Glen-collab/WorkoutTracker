@@ -194,9 +194,15 @@ export default function App() {
   // --- Helpers ---
 
   const initializeTrackingFromSaved = useCallback((saved) => {
-    if (!saved?.data?.blocks) return;
+    // The backend returns the saved workout as { blocks: [...] } (the raw
+    // workout_data), while the local-history fallback wraps it as
+    // { data: { blocks } }. Accept BOTH — reading only `.data.blocks` meant a
+    // server-restored workout (e.g. opening a logged day on a 2nd device with no
+    // localStorage cache) silently rendered BLANK. (Fixed 2026-06-22.)
+    const blocks = saved?.data?.blocks || saved?.blocks;
+    if (!blocks) return;
     const newTracking = {};
-    saved.data.blocks.forEach((block, blockIndex) => {
+    blocks.forEach((block, blockIndex) => {
       // Restore the per-block note ("Notes for this block") on reopen.
       if (block.clientNotes) {
         newTracking[`block-notes-${blockIndex}`] = block.clientNotes;
@@ -553,7 +559,13 @@ export default function App() {
               requested_day: curDay,
             });
             if (prevResult.success && prevResult.data && prevResult.data.savedWorkout) {
-              prevWorkout = prevResult.data.savedWorkout;
+              // Normalize to the { data: { blocks } } shape the local-history
+              // fallback (and all consumers — BlockCard/ProgramView "last week
+              // you did X", carry-over) expect. The backend returns the raw
+              // { blocks } object, so without this wrap every .data.blocks reader
+              // silently saw nothing — no carry-over, no prev-week display.
+              const sw = prevResult.data.savedWorkout;
+              prevWorkout = sw?.data?.blocks ? sw : { data: sw };
             }
           } catch { /* fall through to local fallback */ }
 
@@ -576,9 +588,14 @@ export default function App() {
           // stomps on data the trainer already entered this week — no need to
           // gate on "fresh week". Reps come from the prescribed stepper, so we
           // carry weights + arrows only.
-          if (prevWorkout?.data?.blocks && prog?.blocks) {
+          // Same dual-shape handling as initializeTrackingFromSaved: backend
+          // prev week = { blocks }, local-history fallback = { data: { blocks } }.
+          // Reading only `.data.blocks` is why backend-sourced carry-over never
+          // fired ("the numbers don't carry over"). (Fixed 2026-06-22.)
+          const prevBlocks = prevWorkout?.data?.blocks || prevWorkout?.blocks;
+          if (prevBlocks && prog?.blocks) {
             const prevByName = {};
-            prevWorkout.data.blocks.forEach((block) => {
+            prevBlocks.forEach((block) => {
               (block.exercises || []).forEach((ex) => {
                 const key = (ex.name || ex.prescribedName || '').trim().toLowerCase();
                 if (key && !prevByName[key]) prevByName[key] = ex;
