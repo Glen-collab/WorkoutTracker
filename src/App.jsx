@@ -233,6 +233,13 @@ export default function App() {
           newTracking[`${blockIndex}-${exIndex}-null-note`] = ex.clientNote;
         }
 
+        // Restore the recommendation ARROW (up/same/down) set for this exercise
+        // so reopening a logged day shows the arrow you picked (was dropped on
+        // reopen — only weights/reps/notes came back). (2026-06-22)
+        if (ex.recommendation) {
+          newTracking[`rec-${blockIndex}-${exIndex}`] = ex.recommendation;
+        }
+
         // Legacy format: sets as array of objects with weight/reps
         if (Array.isArray(ex.sets) && ex.sets.length > 0 && typeof ex.sets[0] === 'object') {
           ex.sets.forEach((set, setIndex) => {
@@ -1141,7 +1148,10 @@ export default function App() {
               percentages: ex.percentages || [],
               repsPerSet: ex.repsPerSet || [],
               scheme: ex.schemeName || ex.scheme || '',
-              recommendation: recommendations[`${blockIndex}-${exIndex}`] || null,
+              // Fall back to the arrow stored in trackingData (set via tap OR
+              // restored from a reopened log) so a re-log never drops the arrow.
+              recommendation: recommendations[`${blockIndex}-${exIndex}`]
+                || trackingData[`rec-${blockIndex}-${exIndex}`] || null,
               // Conditioning/cardio fields
               targetDuration: ex.duration || '',
               targetDistance: ex.distance || '',
