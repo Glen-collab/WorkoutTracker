@@ -476,28 +476,40 @@ export default function App() {
         // Track whether this week starts truly blank (no logged workout, no
         // autosave). Only then do we carry last week's numbers/arrows forward —
         // we never stomp on data the user already entered this week.
+        //
+        // PRECEDENCE (fixed 2026-06-22): the localStorage autosave is the live
+        // WORKING COPY on this device — it must WIN over the server's saved log.
+        // Previously the server savedWorkout always won, so numbers typed but
+        // not yet re-logged got erased the moment you navigated away and back
+        // (W3D1 → W2 → W3D1 = wiped). Now: local working copy first, then the
+        // server log (new device / cleared cache), then blank.
         let currentWeekIsFresh = false;
-        if (result.data.savedWorkout) {
+        const week = requestedWeek || result.data.userPosition?.currentWeek || 1;
+        const day = requestedDay || result.data.userPosition?.currentDay || 1;
+        const autoKey = `gwt_tracking_${u.accessCode}_${week}_${day}`;
+        let autosaved = null;
+        try { autosaved = localStorage.getItem(autoKey); } catch { autosaved = null; }
+        let parsedAuto = null;
+        if (autosaved) { try { parsedAuto = JSON.parse(autosaved); } catch { parsedAuto = null; } }
+        // A working copy "has content" if it holds any non-empty value (don't let
+        // a stale empty {} shadow a real server log).
+        const autoHasContent = parsedAuto && Object.values(parsedAuto).some(
+          (v) => v !== '' && v != null && v !== false
+        );
+
+        if (autoHasContent) {
+          // Live working copy on THIS device wins — preserves in-progress edits
+          // across navigation AND re-shows previously entered numbers.
+          setSavedWorkout(result.data.savedWorkout || null);
+          setTrackingData(parsedAuto);
+        } else if (result.data.savedWorkout) {
+          // No local copy (fresh device / cleared cache) → restore the server log.
           setSavedWorkout(result.data.savedWorkout);
           initializeTrackingFromSaved(result.data.savedWorkout);
         } else {
           setSavedWorkout(null);
-          // Try to restore autosaved tracking data from localStorage
-          const week = requestedWeek || result.data.userPosition?.currentWeek || 1;
-          const day = requestedDay || result.data.userPosition?.currentDay || 1;
-          const autoKey = `gwt_tracking_${u.accessCode}_${week}_${day}`;
-          try {
-            const autosaved = localStorage.getItem(autoKey);
-            if (autosaved) {
-              setTrackingData(JSON.parse(autosaved));
-            } else {
-              setTrackingData({});
-              currentWeekIsFresh = true;
-            }
-          } catch {
-            setTrackingData({});
-            currentWeekIsFresh = true;
-          }
+          setTrackingData({});
+          currentWeekIsFresh = true;
         }
 
         // Check for custom override
