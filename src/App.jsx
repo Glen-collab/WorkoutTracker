@@ -525,6 +525,10 @@ export default function App() {
           currentWeekIsFresh = true;
         }
 
+        // Pre-fill the bodyweight box with what was recorded that day (so
+        // reopening a logged day shows the weigh-in); blank on a fresh day.
+        setTodayWeight(result.data.bodyWeight != null ? String(result.data.bodyWeight) : '');
+
         // Check for custom override
         try {
           const overrideResult = await api.loadUserOverride({
@@ -1535,6 +1539,7 @@ export default function App() {
           accessCode={user.accessCode}
           getWeeklyStats={api.getWeeklyStats}
           getSessionNotes={api.getSessionNotes}
+          getBodyweightHistory={api.getBodyweightHistory}
           travelMode={travelMode}
           travelEquipment={travelEquipment}
           travelDay={travelDay}

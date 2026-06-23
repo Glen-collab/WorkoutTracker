@@ -6,6 +6,7 @@ import DailyTonnage, { calcBlockTonnage, calcCardio, getDefaultWeight } from './
 import WeeklyStatsCard from './WeeklyStatsCard';
 import ChallengeCard from './ChallengeCard';
 import ScratchPadCard from './ScratchPadCard';
+import BodyweightChart from './BodyweightChart';
 
 // ── First-Time Walkthrough ──
 function WelcomeWalkthrough({ userName, onDismiss }) {
@@ -182,6 +183,7 @@ export default function ProgramView({
   accessCode,
   getWeeklyStats,
   getSessionNotes,
+  getBodyweightHistory,
   travelMode,
   travelEquipment,
   travelDay,
@@ -328,6 +330,16 @@ export default function ProgramView({
           />
         )}
 
+        {isOneOnOne && !travelMode && getBodyweightHistory && (
+          <BodyweightChart
+            accessCode={accessCode}
+            userEmail={userEmail}
+            getBodyweightHistory={getBodyweightHistory}
+            liveWeight={todayWeight}
+            refreshKey={savedWorkout ? 'saved' : 'fresh'}
+          />
+        )}
+
         {savedWorkout && (
           <div style={s.savedMsg}>
             {'\uD83D\uDCCA'} Viewing previously logged workout from{' '}
@@ -335,7 +347,7 @@ export default function ProgramView({
           </div>
         )}
 
-        {!savedWorkout && onChangeTodayWeight && (
+        {onChangeTodayWeight && (
           <div style={{
             background: 'rgba(255,255,255,0.06)',
             border: '1px solid rgba(255,255,255,0.18)',
@@ -349,7 +361,7 @@ export default function ProgramView({
           }}>
             <span style={{ fontSize: '18px' }}>{'\u2696\uFE0F'}</span>
             <label style={{ flex: 1, fontSize: '13px', opacity: 0.85 }}>
-              Today's weight (optional)
+              {savedWorkout ? 'Bodyweight (lbs)' : "Today's weight (optional)"}
             </label>
             <input
               type="number"
