@@ -101,6 +101,18 @@ export default function App() {
   // Optional bodyweight at workout time — feeds workout_logs.body_weight_lbs
   // when the user logs the workout. Per-workout, resets after log.
   const [todayWeight, setTodayWeight] = useState('');
+  // Autosave the typed bodyweight per day (like the workout numbers) so a
+  // typed-but-unlogged weight survives navigating away and back; on load we
+  // prefer this local value over the server-logged one.
+  const bwKey = (acc, wk, dy) => `gwt_bw_${acc}_${wk}_${dy}`;
+  const handleChangeTodayWeight = useCallback((value) => {
+    setTodayWeight(value);
+    try {
+      const k = bwKey(userRef.current?.accessCode, currentWeekRef.current, currentDayRef.current);
+      if (value) localStorage.setItem(k, String(value));
+      else localStorage.removeItem(k);
+    } catch { /* storage unavailable — non-fatal */ }
+  }, []);
 
   // Pain areas for questionnaire
   const [painAreas, setPainAreas] = useState([]);
@@ -525,9 +537,15 @@ export default function App() {
           currentWeekIsFresh = true;
         }
 
-        // Pre-fill the bodyweight box with what was recorded that day (so
-        // reopening a logged day shows the weigh-in); blank on a fresh day.
-        setTodayWeight(result.data.bodyWeight != null ? String(result.data.bodyWeight) : '');
+        // Pre-fill the bodyweight box: a typed-but-unlogged local value wins
+        // (survives navigation, like the numbers), else the server-recorded
+        // weigh-in for that day, else blank.
+        let localBw = null;
+        try { localBw = localStorage.getItem(bwKey(u.accessCode, week, day)); } catch { localBw = null; }
+        setTodayWeight(
+          (localBw != null && localBw !== '') ? localBw
+          : (result.data.bodyWeight != null ? String(result.data.bodyWeight) : '')
+        );
 
         // Check for custom override
         try {
@@ -1366,6 +1384,9 @@ export default function App() {
         try {
           const autoKey = `gwt_tracking_${user.accessCode}_${currentWeek}_${currentDay}`;
           localStorage.removeItem(autoKey);
+          // Bodyweight is now persisted server-side for this day → clear its
+          // local working copy so the logged value is the source of truth.
+          localStorage.removeItem(bwKey(user.accessCode, currentWeek, currentDay));
         } catch {}
 
         setLastVolumeStats(volumeStats);
@@ -1546,7 +1567,7 @@ export default function App() {
           travelTotalDays={travelTotalDays}
           onExitTravelMode={handleExitTravelMode}
           todayWeight={todayWeight}
-          onChangeTodayWeight={setTodayWeight}
+          onChangeTodayWeight={handleChangeTodayWeight}
           isOneOnOne={isOneOnOne}
           groupMembers={groupMembers}
         />
