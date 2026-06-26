@@ -512,6 +512,7 @@ export default function ProgramView({
           totalWeeks={totalWeeks}
           getWeeklyStats={getWeeklyStats}
           liveStats={liveStats}
+          dayBlocks={blocks}
         />
 
         <div style={s.actionBar}>

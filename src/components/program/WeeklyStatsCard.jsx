@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { cnsLoadForDay } from '../../utils/cnsLoadCalc';
 
 const s = {
   card: {
@@ -115,7 +116,7 @@ const GRAPH_METRICS = [
   { key: 'cardio_miles', label: 'Distance (mi)', color: '#3b82f6', suffix: ' mi' },
 ];
 
-export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, daysPerWeek, totalWeeks, getWeeklyStats, liveStats }) {
+export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, daysPerWeek, totalWeeks, getWeeklyStats, liveStats, dayBlocks }) {
   const [weeklyData, setWeeklyData] = useState([]);
   const [graphMetric, setGraphMetric] = useState('tonnage');
   const [loaded, setLoaded] = useState(false);
@@ -156,6 +157,13 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
 
   const currentStats = allWeeks.find(w => w.week === currentWeek);
 
+  // Today's neural cost, computed from the day's prescribed blocks (same engine
+  // as the builder's ⚡ CNS Load view). The athlete sees what today's session
+  // demands of the nervous system, right next to tonnage.
+  const cnsToday = (() => {
+    try { return cnsLoadForDay(dayBlocks || []).total; } catch { return 0; }
+  })();
+
   if (!loaded || (weeklyData.length === 0 && !currentStats)) return null;
 
   const metric = GRAPH_METRICS.find(m => m.key === graphMetric) || GRAPH_METRICS[0];
@@ -171,6 +179,13 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
             {currentStats.workouts} / {daysPerWeek || '?'} workouts completed
           </div>
           <div style={s.row}>
+            {cnsToday > 0 && (
+              <div style={{ ...s.stat, background: 'linear-gradient(135deg, rgba(220,38,38,0.25), rgba(245,158,11,0.25))' }}>
+                <div style={s.statLabel}>{'⚡'} CNS LOAD</div>
+                <div style={s.statValue}>{cnsToday.toLocaleString()}</div>
+                <div style={{ fontSize: '8px', opacity: 0.6, marginTop: '2px' }}>today</div>
+              </div>
+            )}
             {currentStats.tonnage > 0 && (
               <div style={s.stat}>
                 <div style={s.statLabel}>TONNAGE</div>

@@ -332,9 +332,77 @@ export default function ExerciseCard({
   const clientNote = trackingData?.[clientNoteKey] || '';
   const [noteOpen, setNoteOpen] = useState(false);
 
+  // Athlete-side RPE (1-10). One value per exercise effort, mirroring the single
+  // Target RPE the coach set in the builder. The gap between the two is what
+  // drives the fatigue flag (ran hot) and the retest-ready flag (gas in tank).
+  const RPE_BTN_TONE = (n) =>
+    n <= 3 ? { bg: '#e8f5e9', br: '#66bb6a', fg: '#2e7d32' }
+      : n <= 6 ? { bg: '#e3f2fd', br: '#42a5f5', fg: '#1565c0' }
+      : n <= 8 ? { bg: '#fff3e0', br: '#ffa726', fg: '#e65100' }
+      : { bg: '#ffebee', br: '#ef5350', fg: '#c62828' };
+  const renderActualRpe = () => {
+    const target = ex.targetRpe != null && ex.targetRpe !== '' ? parseInt(ex.targetRpe, 10) : null;
+    // Show for real efforts, or any time the coach prescribed a target.
+    const showRpe = target != null || isStrength || isMovement || isCircuit;
+    if (!showRpe) return null;
+    const actual = getTrack(null, 'actualRpe');
+    const actualNum = actual ? parseInt(actual, 10) : null;
+    let flag = null;
+    if (target != null && actualNum != null) {
+      const gap = actualNum - target;
+      if (gap >= 2) flag = { text: `🔥 Ran hotter than the ${target} target — flag for fatigue`, color: '#c62828', bg: '#ffebee' };
+      else if (gap <= -2) flag = { text: `💚 Easier than the ${target} target — gas left in the tank`, color: '#2e7d32', bg: '#e8f5e9' };
+      else flag = { text: `✅ Right on the ${target} target`, color: '#1565c0', bg: '#e3f2fd' };
+    }
+    return (
+      <div style={{ marginTop: '10px', marginBottom: '4px' }}>
+        <div style={{ fontSize: '13px', fontWeight: 600, color: '#555', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+          How hard was that? <span style={{ color: '#999', fontWeight: 500 }}>(RPE 1–10)</span>
+          {target != null && (
+            <span style={{ background: '#fef2f2', color: '#b91c1c', borderRadius: '6px', padding: '2px 8px', fontSize: '12px', fontWeight: 700 }}>
+              Coach target: {target}
+            </span>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => {
+            const on = actualNum === n;
+            const tone = RPE_BTN_TONE(n);
+            return (
+              <button
+                key={n}
+                onClick={() => !inputLocked && onUpdateTracking(blockIndex, exIndex, null, 'actualRpe', on ? '' : String(n))}
+                disabled={inputLocked}
+                style={{
+                  width: '30px', height: '34px', borderRadius: '7px',
+                  border: `2px solid ${on ? tone.br : '#e0e0e0'}`,
+                  background: on ? tone.br : tone.bg,
+                  color: on ? '#fff' : tone.fg,
+                  fontSize: '14px', fontWeight: 700,
+                  cursor: inputLocked ? 'not-allowed' : 'pointer',
+                  opacity: inputLocked && !on ? 0.5 : 1,
+                }}
+                title={n === 10 ? 'Max effort' : `RPE ${n}`}
+              >
+                {n}
+              </button>
+            );
+          })}
+        </div>
+        {flag && (
+          <div style={{ marginTop: '6px', background: flag.bg, color: flag.color, borderRadius: '8px', padding: '6px 10px', fontSize: '12px', fontWeight: 600 }}>
+            {flag.text}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderMarkButton = (extraStyle) => {
     return (
       <>
+        {/* Athlete RPE — how hard the effort actually felt */}
+        {renderActualRpe()}
         {/* Client notes per exercise */}
         <div style={{ marginTop: '8px', marginBottom: '6px' }}>
           {!noteOpen && !clientNote ? (
