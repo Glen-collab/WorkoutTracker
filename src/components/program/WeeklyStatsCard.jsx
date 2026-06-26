@@ -110,6 +110,7 @@ const s = {
 
 const GRAPH_METRICS = [
   { key: 'tonnage', label: 'Tonnage (lbs)', color: '#667eea', suffix: '' },
+  { key: 'cns_load', label: '⚡ CNS Load', color: '#dc2626', suffix: '' },
   { key: 'est_calories', label: 'Calories', color: '#ef4444', suffix: '' },
   { key: 'core_crunches', label: 'Core (reps)', color: '#10b981', suffix: '' },
   { key: 'cardio_minutes', label: 'Time (min)', color: '#f59e0b', suffix: ' min' },
@@ -134,12 +135,19 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
 
+  // Today's neural cost, computed from the day's prescribed blocks (same engine
+  // as the builder's ⚡ CNS Load view). Used both as the "today" pill and as the
+  // current-week point on the CNS graph line.
+  const cnsToday = (() => {
+    try { return cnsLoadForDay(dayBlocks || []).total; } catch { return 0; }
+  })();
+
   // Build ALL weeks array (1 to totalWeeks), merging in actual data
   const numWeeks = totalWeeks || Math.max(currentWeek, ...weeklyData.map(w => w.week), 4);
   const allWeeks = [];
   for (let w = 1; w <= numWeeks; w++) {
     const existing = weeklyData.find(d => d.week === w);
-    let weekData = existing || { week: w, workouts: 0, tonnage: 0, core_crunches: 0, cardio_minutes: 0, cardio_miles: 0, est_calories: 0 };
+    let weekData = existing || { week: w, workouts: 0, tonnage: 0, core_crunches: 0, cardio_minutes: 0, cardio_miles: 0, est_calories: 0, cns_load: 0 };
 
     // Merge live stats for current week (add current session's progress)
     if (w === currentWeek && liveStats) {
@@ -150,19 +158,15 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
         cardio_minutes: (weekData.cardio_minutes || 0) + (liveStats.cardioMinutes || 0),
         cardio_miles: (weekData.cardio_miles || 0) + (liveStats.cardioMiles || 0),
         est_calories: (weekData.est_calories || 0) + (liveStats.estCalories || 0),
+        // Today's prescribed CNS load adds onto whatever's logged this week so
+        // the current point reflects the session in progress.
+        cns_load: (weekData.cns_load || 0) + cnsToday,
       };
     }
     allWeeks.push(weekData);
   }
 
   const currentStats = allWeeks.find(w => w.week === currentWeek);
-
-  // Today's neural cost, computed from the day's prescribed blocks (same engine
-  // as the builder's ⚡ CNS Load view). The athlete sees what today's session
-  // demands of the nervous system, right next to tonnage.
-  const cnsToday = (() => {
-    try { return cnsLoadForDay(dayBlocks || []).total; } catch { return 0; }
-  })();
 
   if (!loaded || (weeklyData.length === 0 && !currentStats)) return null;
 

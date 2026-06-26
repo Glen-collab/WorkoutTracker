@@ -12,6 +12,7 @@ import CompletionModal from './components/modals/CompletionModal';
 import CongratulationsModal from './components/modals/CongratulationsModal';
 import SessionRecapModal from './components/modals/SessionRecapModal';
 import { appendScratchpadNote } from './utils/scratchpad';
+import { cnsLoadForDay } from './utils/cnsLoadCalc';
 import WeeklySummaryModal from './components/modals/WeeklySummaryModal';
 import TestYourMight, { getWeekConfig } from './components/game/TestYourMight';
 import WorkoutChatbot from './components/chatbot/WorkoutChatbot';
@@ -1308,12 +1309,18 @@ export default function App() {
       // Total: warmup + cooldown + strength + tonnage bonus + bodyweight + cardio (per-exercise MET-based)
       const estCalories = Math.round(warmupCal + cooldownCal + strengthCal + tonnageBonus + totalBwCalories + totalCardioCal);
 
+      // Neural load of the prescribed session — stored in volume_stats (JSON,
+      // no migration) so get-weekly-stats can sum it into a cross-week CNS line.
+      let cnsLoad = 0;
+      try { cnsLoad = cnsLoadForDay(program?.blocks || []).total; } catch { cnsLoad = 0; }
+
       const volumeStats = {
         tonnage: Math.round(totalTonnage),
         core_crunches: Math.round(totalCore),
         cardio_minutes: Math.round(totalCardioMin * 10) / 10,
         cardio_miles: Math.round(totalCardioMiles * 100) / 100,
         est_calories: estCalories,
+        cns_load: cnsLoad,
       };
 
       let result;
