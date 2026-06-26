@@ -1190,6 +1190,10 @@ export default function App() {
               qualifier: ex.qualifier || '',
               notes: ex.notes || '',
               clientNote: trackingData[`${blockIndex}-${exIndex}-null-note`] || '',
+              // RPE: what the coach prescribed vs what the athlete reported —
+              // the gap is the fatigue / retest signal back to the coach.
+              targetRpe: ex.targetRpe || '',
+              actualRpe: trackingData[`${blockIndex}-${exIndex}-null-actualRpe`] || '',
             };
 
             return result;

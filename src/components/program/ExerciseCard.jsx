@@ -342,9 +342,9 @@ export default function ExerciseCard({
       : { bg: '#ffebee', br: '#ef5350', fg: '#c62828' };
   const renderActualRpe = () => {
     const target = ex.targetRpe != null && ex.targetRpe !== '' ? parseInt(ex.targetRpe, 10) : null;
-    // Show for real efforts, or any time the coach prescribed a target.
-    const showRpe = target != null || isStrength || isMovement || isCircuit;
-    if (!showRpe) return null;
+    // Only show when the coach actually prescribed a Target RPE in the builder —
+    // same opt-in logic as distance/duration/speed (blank in builder = hidden).
+    if (target == null) return null;
     const actual = getTrack(null, 'actualRpe');
     const actualNum = actual ? parseInt(actual, 10) : null;
     let flag = null;
