@@ -13,6 +13,7 @@ import CongratulationsModal from './components/modals/CongratulationsModal';
 import SessionRecapModal from './components/modals/SessionRecapModal';
 import { appendScratchpadNote } from './utils/scratchpad';
 import { cnsLoadForDay } from './utils/cnsLoadCalc';
+import { stepVisibleDay, getVisibleDays } from './utils/visibleDays';
 import WeeklySummaryModal from './components/modals/WeeklySummaryModal';
 import TestYourMight, { getWeekConfig } from './components/game/TestYourMight';
 import WorkoutChatbot from './components/chatbot/WorkoutChatbot';
@@ -87,6 +88,7 @@ export default function App() {
     currentWeek, setCurrentWeek,
     currentDay, setCurrentDay,
     daysPerWeek, setDaysPerWeek,
+    hiddenDays, setHiddenDays,
     totalWeeks, setTotalWeeks,
     savedWorkout, setSavedWorkout,
     previousWeekWorkout, setPreviousWeekWorkout,
@@ -492,6 +494,7 @@ export default function App() {
           }
         }
         if (prog.daysPerWeek) setDaysPerWeek(prog.daysPerWeek);
+        setHiddenDays(Array.isArray(prog.hiddenDays) ? prog.hiddenDays : []);
         if (prog.totalWeeks) setTotalWeeks(prog.totalWeeks);
 
         // Store user name from DB for returning users
@@ -775,6 +778,7 @@ export default function App() {
         setCurrentWeek(1);
         setCurrentDay(1);
         setDaysPerWeek(mockProgram.daysPerWeek);
+        setHiddenDays(Array.isArray(mockProgram.hiddenDays) ? mockProgram.hiddenDays : []);
         setTotalWeeks(mockProgram.totalWeeks);
         setSavedWorkout(null);
         setPreviousWeekWorkout(null);
@@ -798,6 +802,7 @@ export default function App() {
       currentWeek,
       currentDay,
       daysPerWeek,
+      hiddenDays,
       totalWeeks,
       savedWorkout,
       trackingData,
@@ -839,6 +844,7 @@ export default function App() {
       setTravelTotalDays(filtered.length);
       setTravelDay(1);
       setTravelMode(true);
+      setHiddenDays([]); // travel days are sequential; hidden-day filtering doesn't apply
 
       // Load first day's blocks into the program
       const firstDay = filtered[0];
@@ -891,6 +897,7 @@ export default function App() {
       setCurrentWeek(savedProgramBeforeTravel.currentWeek);
       setCurrentDay(savedProgramBeforeTravel.currentDay);
       setDaysPerWeek(savedProgramBeforeTravel.daysPerWeek);
+      setHiddenDays(Array.isArray(savedProgramBeforeTravel.hiddenDays) ? savedProgramBeforeTravel.hiddenDays : []);
       setTotalWeeks(savedProgramBeforeTravel.totalWeeks);
       setSavedWorkout(savedProgramBeforeTravel.savedWorkout);
       setTrackingData(savedProgramBeforeTravel.trackingData);
@@ -1031,13 +1038,11 @@ export default function App() {
 
     if (!daysPerWeek || !totalWeeks) return;
 
-    let newWeek = currentWeek;
-    let newDay = currentDay + direction;
-
-    if (newDay > daysPerWeek) { newDay = 1; newWeek++; }
-    if (newDay < 1) { newDay = daysPerWeek; newWeek--; }
-    if (newWeek < 1) return;
-    if (newWeek > totalWeeks) return;
+    // Skip hidden days when stepping forward/back.
+    const next = stepVisibleDay(currentWeek, currentDay, direction, daysPerWeek, hiddenDays, totalWeeks);
+    if (!next) return;
+    const newWeek = next.week;
+    const newDay = next.day;
 
     setCurrentWeek(newWeek);
     setCurrentDay(newDay);
@@ -1047,7 +1052,7 @@ export default function App() {
     if (!isMockMode) {
       await handleLoadProgramFromAPI(newWeek, newDay);
     }
-  }, [currentWeek, currentDay, daysPerWeek, totalWeeks, isMockMode, travelMode, handleTravelNavigate, setCurrentWeek, setCurrentDay, setRecommendations, handleLoadProgramFromAPI]);
+  }, [currentWeek, currentDay, daysPerWeek, hiddenDays, totalWeeks, isMockMode, travelMode, handleTravelNavigate, setCurrentWeek, setCurrentDay, setRecommendations, handleLoadProgramFromAPI]);
 
   const handleNavigateToDay = useCallback(async (week, day) => {
     // Travel mode: navigate between travel days
@@ -1436,8 +1441,9 @@ export default function App() {
           setCumulativeWeeks(result.data.cumulative_weeks);
         }
 
-        // If last day of week, set up weekly summary + game flow (triggered on congrats close)
-        if (currentDay === daysPerWeek) {
+        // If last (visible) day of week, set up weekly summary + game flow (triggered on congrats close)
+        const visibleDaysThisWeek = getVisibleDays(daysPerWeek, hiddenDays);
+        if (currentDay === visibleDaysThisWeek[visibleDaysThisWeek.length - 1]) {
           // Use cumulative weeks for game progression (cross-program continuity)
           // The API just incremented it, so use the returned value
           const newCumWeeks = result.data?.cumulative_weeks ?? (cumulativeWeeks + 1);
@@ -1450,7 +1456,7 @@ export default function App() {
     } catch (err) {
       console.error('Failed to log workout:', err);
     }
-  }, [currentWeek, currentDay, program, trackingData, recommendations, api, user, daysPerWeek, totalWeeks, maxes, profile, cumulativeWeeks, travelMode, travelEquipment, travelDay, travelTotalDays, handleTravelNavigate, setCurrentWeek, setCurrentDay, setRecommendations, handleLoadProgramFromAPI, todayWeight]);
+  }, [currentWeek, currentDay, program, trackingData, recommendations, api, user, daysPerWeek, hiddenDays, totalWeeks, maxes, profile, cumulativeWeeks, travelMode, travelEquipment, travelDay, travelTotalDays, handleTravelNavigate, setCurrentWeek, setCurrentDay, setRecommendations, handleLoadProgramFromAPI, todayWeight]);
 
   const handleSubmitCompletion = useCallback(async (completionData) => {
     try {
@@ -1549,6 +1555,7 @@ export default function App() {
           currentWeek={currentWeek}
           currentDay={currentDay}
           daysPerWeek={daysPerWeek}
+          hiddenDays={hiddenDays}
           totalWeeks={totalWeeks}
           maxes={maxes}
           savedWorkout={savedWorkout}
@@ -1779,7 +1786,7 @@ export default function App() {
         weekNumber={gameWeek}
         accessCode={user.accessCode}
         userEmail={user.email}
-        daysPerWeek={daysPerWeek}
+        daysPerWeek={getVisibleDays(daysPerWeek, hiddenDays).length}
         getWeeklyStats={api.getWeeklyStats}
       />
       {showGamePrompt && (

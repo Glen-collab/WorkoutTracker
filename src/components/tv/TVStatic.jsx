@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { getVisibleDays } from '../../utils/visibleDays';
 
 // ── Unit-safe formatter ──
 // Some older programs stored units inside the value field ("60s each side",
@@ -391,11 +392,12 @@ export default function TVStatic() {
     const blocks1 = data.program?.blocks || [];
     const newAllBlocks = { [`${week}-${day}`]: blocks1 };
 
-    // Load the next day too
-    let day2 = day + 1;
-    let week2 = week;
-    const dpw = data.program?.daysPerWeek || 3;
-    if (day2 > dpw) { day2 = 1; week2 = week + 1; }
+    // Load the next *visible* day too (skip hidden days)
+    const vd = getVisibleDays(data.program?.daysPerWeek, data.program?.hiddenDays);
+    const idx = vd.indexOf(day);
+    let day2, week2;
+    if (idx >= 0 && idx + 1 < vd.length) { day2 = vd[idx + 1]; week2 = week; }
+    else { day2 = vd[0]; week2 = week + 1; }
     const tw = data.program?.totalWeeks || 4;
     if (week2 <= tw) {
       try {
@@ -419,17 +421,17 @@ export default function TVStatic() {
 
   // Navigate weeks
   const navigateWeek = useCallback(async (dir) => {
-    const dpw = program?.daysPerWeek || 3;
     const tw = program?.totalWeeks || 4;
+    const vd = getVisibleDays(program?.daysPerWeek, program?.hiddenDays);
     const newWeek = currentWeek + dir;
     if (newWeek < 1 || newWeek > tw) return;
 
     setCurrentWeek(newWeek);
-    setStartDay(1);
+    setStartDay(vd[0]);
 
     const newBlocks = {};
-    // Load day 1 and day 2 for the new week
-    for (let d = 1; d <= Math.min(2, dpw); d++) {
+    // Load the first two visible days of the new week
+    for (const d of vd.slice(0, 2)) {
       try {
         const res = await fetch(API_BASE + 'load-program.php', {
           method: 'POST',
@@ -450,23 +452,27 @@ export default function TVStatic() {
 
   // Navigate days within the week
   const navigateDays = useCallback(async (dir) => {
-    const dpw = program?.daysPerWeek || 3;
     const tw = program?.totalWeeks || 4;
-    let newStart = startDay + (dir * 2); // shift by 2 since we show 2 days
+    const vd = getVisibleDays(program?.daysPerWeek, program?.hiddenDays);
+    let idx = vd.indexOf(startDay);
+    if (idx < 0) idx = 0;
+    let newIdx = idx + (dir * 2); // shift by 2 since we show 2 days
     let newWeek = currentWeek;
 
-    if (newStart > dpw) { newStart = 1; newWeek++; }
-    if (newStart < 1) { newWeek--; newStart = Math.max(1, dpw - 1); }
-    // Hit the start of the program → clamp to Week 1 Day 1 (don't disappear).
-    if (newWeek < 1) { newWeek = 1; newStart = 1; }
+    if (newIdx >= vd.length) { newIdx = 0; newWeek++; }
+    if (newIdx < 0) { newWeek--; newIdx = Math.max(0, vd.length - 2); }
+    // Hit the start of the program → clamp to the first visible day of Week 1.
+    if (newWeek < 1) { newWeek = 1; newIdx = 0; }
     // Past the end of the program → stay where we are.
     if (newWeek > tw) return;
 
+    const newStart = vd[newIdx];
     setCurrentWeek(newWeek);
     setStartDay(newStart);
 
+    const toLoad = [newStart, vd[newIdx + 1]].filter((d) => d != null);
     const newBlocks = {};
-    for (let d = newStart; d <= Math.min(newStart + 1, dpw); d++) {
+    for (const d of toLoad) {
       try {
         const res = await fetch(API_BASE + 'load-program.php', {
           method: 'POST',
@@ -757,9 +763,10 @@ export default function TVStatic() {
   // already loaded.
   useEffect(() => {
     if (!program || !code) return;
-    const dpw = program?.daysPerWeek || 6;
+    const vd = getVisibleDays(program?.daysPerWeek, program?.hiddenDays);
+    const idx = vd.indexOf(startDay);
     const targetDays = [startDay];
-    if (startDay + 1 <= dpw) targetDays.push(startDay + 1);
+    if (idx >= 0 && idx + 1 < vd.length) targetDays.push(vd[idx + 1]);
     const missing = targetDays.filter((d) => !allBlocks[`${currentWeek}-${d}`]);
     if (missing.length === 0) return;
     let cancelled = false;
@@ -873,10 +880,12 @@ export default function TVStatic() {
     );
   }
 
-  const dpw = program?.daysPerWeek || 3;
   const tw = program?.totalWeeks || 4;
-  const day1 = startDay;
-  const day2 = startDay + 1 <= dpw ? startDay + 1 : null;
+  // Show two consecutive *visible* days (hidden days are skipped on the wall).
+  const visibleDays = getVisibleDays(program?.daysPerWeek, program?.hiddenDays);
+  const day1 = visibleDays.includes(startDay) ? startDay : visibleDays[0];
+  const idx1 = visibleDays.indexOf(day1);
+  const day2 = idx1 + 1 < visibleDays.length ? visibleDays[idx1 + 1] : null;
 
   const blocks1 = allBlocks[`${currentWeek}-${day1}`] || [];
   const blocks2 = day2 ? (allBlocks[`${currentWeek}-${day2}`] || []) : null;

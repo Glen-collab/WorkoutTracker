@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { getBlockTypeName, getBlockIcon, get1RM, calculateWeight } from '../../utils/trackerHelpers';
+import { stepVisibleDay, getVisibleDays } from '../../utils/visibleDays';
 
 const API_BASE = 'https://app.bestrongagain.com/api/workout/';
 
@@ -101,6 +102,7 @@ export default function KioskScreen() {
   const [currentWeek, setCurrentWeek] = useState(1);
   const [currentDay, setCurrentDay] = useState(1);
   const [daysPerWeek, setDaysPerWeek] = useState(4);
+  const [hiddenDays, setHiddenDays] = useState([]);
   const [totalWeeks, setTotalWeeks] = useState(4);
   const [trackingData, setTrackingData] = useState({});
   const [maxes, setMaxes] = useState({ bench: 0, squat: 0, deadlift: 0, clean: 0 });
@@ -209,6 +211,7 @@ export default function KioskScreen() {
           });
         }
         if (p.daysPerWeek) setDaysPerWeek(p.daysPerWeek);
+        setHiddenDays(Array.isArray(p.hiddenDays) ? p.hiddenDays : []);
         if (p.totalWeeks) setTotalWeeks(p.totalWeeks);
         // Restore saved workout tracking
         if (result.data.savedWorkout?.data?.blocks) {
@@ -249,22 +252,14 @@ export default function KioskScreen() {
   // ── Navigate day/week ──
   const navigateDay = useCallback((direction) => {
     if (!selectedProgram || !currentUser) return;
-    let newWeek = currentWeek;
-    let newDay = currentDay;
-    if (direction === 'next') {
-      if (newDay < daysPerWeek) { newDay++; }
-      else if (newWeek < totalWeeks) { newWeek++; newDay = 1; }
-      else return;
-    } else {
-      if (newDay > 1) { newDay--; }
-      else if (newWeek > 1) { newWeek--; newDay = daysPerWeek; }
-      else return;
-    }
-    setCurrentWeek(newWeek);
-    setCurrentDay(newDay);
+    // Step over visible days only (skip days the coach hid).
+    const next = stepVisibleDay(currentWeek, currentDay, direction === 'next' ? 1 : -1, daysPerWeek, hiddenDays, totalWeeks);
+    if (!next) return;
+    setCurrentWeek(next.week);
+    setCurrentDay(next.day);
     setTrackingData({});
-    loadProgramForUser(selectedProgram, currentUser, newWeek, newDay);
-  }, [selectedProgram, currentUser, currentWeek, currentDay, daysPerWeek, totalWeeks, loadProgramForUser]);
+    loadProgramForUser(selectedProgram, currentUser, next.week, next.day);
+  }, [selectedProgram, currentUser, currentWeek, currentDay, daysPerWeek, hiddenDays, totalWeeks, loadProgramForUser]);
 
   // ── Update tracking ──
   const handleUpdateTracking = useCallback((blockIndex, exIndex, setIndex, field, value) => {
@@ -354,6 +349,7 @@ export default function KioskScreen() {
         currentWeek={currentWeek}
         currentDay={currentDay}
         daysPerWeek={daysPerWeek}
+        hiddenDays={hiddenDays}
         totalWeeks={totalWeeks}
         trackingData={trackingData}
         maxes={maxes}
@@ -532,11 +528,14 @@ function HomeScreen({ config, loading, error, onSelectProgram, onOpenAdmin }) {
 // ════════════════════════════════════════════════
 function ProgramScreen({
   program, programData, currentUser, setCurrentUser,
-  currentWeek, currentDay, daysPerWeek, totalWeeks,
+  currentWeek, currentDay, daysPerWeek, hiddenDays = [], totalWeeks,
   trackingData, maxes, onUpdateTracking, onLogWorkout,
   onNavigateDay, onGoHome, loading, savingStatus,
   idleCountdown, onCancelIdle, onLoadProgram, selectedProgram,
 }) {
+  const kioskVisibleDays = getVisibleDays(daysPerWeek, hiddenDays);
+  const atFirstDay = currentWeek === 1 && currentDay === kioskVisibleDays[0];
+  const atLastDay = currentWeek === totalWeeks && currentDay === kioskVisibleDays[kioskVisibleDays.length - 1];
   const [showUserPicker, setShowUserPicker] = useState(!currentUser);
   const [users] = useState(loadUsers());
   const [newEmail, setNewEmail] = useState('');
@@ -685,16 +684,16 @@ function ProgramScreen({
       }}>
         <button
           onClick={() => onNavigateDay('prev')}
-          disabled={currentWeek === 1 && currentDay === 1}
+          disabled={atFirstDay}
           style={{
-            background: (currentWeek === 1 && currentDay === 1) ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.1)',
+            background: atFirstDay ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.1)',
             border: '1px solid rgba(255,255,255,0.2)',
             borderRadius: '10px',
             padding: '10px 24px',
-            color: (currentWeek === 1 && currentDay === 1) ? 'rgba(255,255,255,0.3)' : '#fff',
+            color: atFirstDay ? 'rgba(255,255,255,0.3)' : '#fff',
             fontSize: '18px',
             fontWeight: '600',
-            cursor: (currentWeek === 1 && currentDay === 1) ? 'default' : 'pointer',
+            cursor: atFirstDay ? 'default' : 'pointer',
             minHeight: '48px',
           }}
         >
@@ -705,16 +704,16 @@ function ProgramScreen({
         </span>
         <button
           onClick={() => onNavigateDay('next')}
-          disabled={currentWeek === totalWeeks && currentDay === daysPerWeek}
+          disabled={atLastDay}
           style={{
-            background: (currentWeek === totalWeeks && currentDay === daysPerWeek) ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.1)',
+            background: atLastDay ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.1)',
             border: '1px solid rgba(255,255,255,0.2)',
             borderRadius: '10px',
             padding: '10px 24px',
-            color: (currentWeek === totalWeeks && currentDay === daysPerWeek) ? 'rgba(255,255,255,0.3)' : '#fff',
+            color: atLastDay ? 'rgba(255,255,255,0.3)' : '#fff',
             fontSize: '18px',
             fontWeight: '600',
-            cursor: (currentWeek === totalWeeks && currentDay === daysPerWeek) ? 'default' : 'pointer',
+            cursor: atLastDay ? 'default' : 'pointer',
             minHeight: '48px',
           }}
         >

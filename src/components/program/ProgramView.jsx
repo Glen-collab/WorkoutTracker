@@ -7,6 +7,7 @@ import WeeklyStatsCard from './WeeklyStatsCard';
 import ChallengeCard from './ChallengeCard';
 import ScratchPadCard from './ScratchPadCard';
 import BodyweightChart from './BodyweightChart';
+import { getVisibleDays } from '../../utils/visibleDays';
 
 // ── First-Time Walkthrough ──
 function WelcomeWalkthrough({ userName, onDismiss }) {
@@ -161,6 +162,7 @@ export default function ProgramView({
   currentWeek,
   currentDay,
   daysPerWeek,
+  hiddenDays = [],
   totalWeeks,
   maxes,
   savedWorkout,
@@ -306,6 +308,7 @@ export default function ProgramView({
           currentWeek={travelMode ? 1 : currentWeek}
           currentDay={travelMode ? travelDay : currentDay}
           daysPerWeek={travelMode ? travelTotalDays : daysPerWeek}
+          hiddenDays={travelMode ? [] : hiddenDays}
           totalWeeks={travelMode ? 1 : totalWeeks}
           onNavigate={onNavigate}
           onNavigateToDay={onNavigateToDay}
@@ -508,7 +511,7 @@ export default function ProgramView({
           accessCode={accessCode}
           userEmail={userEmail}
           currentWeek={currentWeek}
-          daysPerWeek={daysPerWeek}
+          daysPerWeek={travelMode ? daysPerWeek : getVisibleDays(daysPerWeek, hiddenDays).length}
           totalWeeks={totalWeeks}
           getWeeklyStats={getWeeklyStats}
           liveStats={liveStats}

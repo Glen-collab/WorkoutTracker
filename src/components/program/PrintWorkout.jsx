@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getVisibleDays } from '../../utils/visibleDays';
 
 export default function PrintWorkout({ program, userName, currentWeek, daysPerWeek, userEmail, accessCode, onFetchDay }) {
   const [loading, setLoading] = useState(false);
@@ -9,9 +10,9 @@ export default function PrintWorkout({ program, userName, currentWeek, daysPerWe
   const handlePrint = async () => {
     setLoading(true);
     try {
-      // Fetch all days for the week
+      // Fetch all visible days for the week (skip days the coach hid)
       const dayData = [];
-      for (let d = 1; d <= daysPerWeek; d++) {
+      for (const d of getVisibleDays(daysPerWeek, program?.hiddenDays)) {
         const data = await onFetchDay(d);
         dayData.push({ day: d, ...data });
       }

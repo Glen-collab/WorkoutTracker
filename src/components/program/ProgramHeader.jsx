@@ -1,6 +1,7 @@
 import React from 'react';
 import CastButton from './CastButton';
 import DashboardButton from './DashboardButton';
+import { getVisibleDays } from '../../utils/visibleDays';
 
 const s = {
   card: {
@@ -96,6 +97,7 @@ export default function ProgramHeader({
   currentWeek,
   currentDay,
   daysPerWeek,
+  hiddenDays = [],
   totalWeeks,
   onNavigate,
   onNavigateToDay,
@@ -105,14 +107,15 @@ export default function ProgramHeader({
   groupMembers,
 }) {
   const isGroup = Array.isArray(groupMembers) && groupMembers.length > 0;
-  const showNav = totalWeeks > 1 || daysPerWeek > 1;
-  const days = Array.from({ length: daysPerWeek || 1 }, (_, i) => i + 1);
+  // Only show days the coach left visible (hidden days are dropped for the client).
+  const days = getVisibleDays(daysPerWeek, hiddenDays);
+  const showNav = totalWeeks > 1 || days.length > 1;
 
   const handleWeekChange = (dir) => {
     const newWeek = currentWeek + dir;
     if (newWeek < 1 || newWeek > totalWeeks) return;
-    // Navigate to day 1 of the new week
-    if (onNavigateToDay) onNavigateToDay(newWeek, 1);
+    // Navigate to the first visible day of the new week
+    if (onNavigateToDay) onNavigateToDay(newWeek, days[0]);
   };
 
   const handleDayClick = (day) => {

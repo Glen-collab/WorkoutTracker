@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { stepVisibleDay, isFirstVisibleDay, isLastVisibleDay } from '../utils/visibleDays';
 
 export default function useTrackerState() {
   // Screen flow
@@ -20,6 +21,7 @@ export default function useTrackerState() {
   const [currentWeek, setCurrentWeek] = useState(1);
   const [currentDay, setCurrentDay] = useState(1);
   const [daysPerWeek, setDaysPerWeek] = useState(null);
+  const [hiddenDays, setHiddenDays] = useState([]); // day numbers hidden from client + TV
   const [totalWeeks, setTotalWeeks] = useState(null);
 
   // Saved workout data
@@ -40,23 +42,17 @@ export default function useTrackerState() {
     }));
   }, []);
 
-  // Navigate days
+  // Navigate days (skips hidden days)
   const navigateDay = useCallback((direction) => {
     if (!daysPerWeek || !totalWeeks) return;
+    const next = stepVisibleDay(currentWeek, currentDay, direction, daysPerWeek, hiddenDays, totalWeeks);
+    if (!next) return;
+    setCurrentWeek(next.week);
+    setCurrentDay(next.day);
+  }, [currentWeek, currentDay, daysPerWeek, hiddenDays, totalWeeks]);
 
-    let newWeek = currentWeek;
-    let newDay = currentDay + direction;
-
-    if (newDay > daysPerWeek) { newDay = 1; newWeek++; }
-    if (newDay < 1) { newDay = daysPerWeek; newWeek--; }
-    if (newWeek < 1 || newWeek > totalWeeks) return;
-
-    setCurrentWeek(newWeek);
-    setCurrentDay(newDay);
-  }, [currentWeek, currentDay, daysPerWeek, totalWeeks]);
-
-  const isFirstDay = currentWeek === 1 && currentDay === 1;
-  const isLastDay = currentWeek === totalWeeks && currentDay === daysPerWeek;
+  const isFirstDay = isFirstVisibleDay(currentWeek, currentDay, daysPerWeek, hiddenDays);
+  const isLastDay = isLastVisibleDay(currentWeek, currentDay, daysPerWeek, hiddenDays, totalWeeks);
 
   // Reset to login
   const logout = useCallback(() => {
@@ -80,6 +76,7 @@ export default function useTrackerState() {
     currentWeek, setCurrentWeek,
     currentDay, setCurrentDay,
     daysPerWeek, setDaysPerWeek,
+    hiddenDays, setHiddenDays,
     totalWeeks, setTotalWeeks,
     savedWorkout, setSavedWorkout,
     previousWeekWorkout, setPreviousWeekWorkout,

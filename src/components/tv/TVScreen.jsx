@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { getBlockTypeName, getBlockIcon, get1RM, calculateWeight } from '../../utils/trackerHelpers';
 import { applyExerciseDefaults } from '../../data/exerciseDefaults';
+import { getVisibleDays } from '../../utils/visibleDays';
 import TVStatic from './TVStatic';
 
 const API_BASE = 'https://app.bestrongagain.com/api/workout/';
@@ -448,9 +449,9 @@ export default function TVScreen() {
   }
 
   const blocks = program?.blocks || [];
-  const daysPerWeek = program?.daysPerWeek || 1;
   const totalWeeks = program?.totalWeeks || 1;
-  const days = Array.from({ length: daysPerWeek }, (_, i) => i + 1);
+  const days = getVisibleDays(program?.daysPerWeek, program?.hiddenDays); // hidden days dropped from the TV
+  const daysPerWeek = days.length;
 
   // Separate blocks by type
   const themeBlock = blocks.find(b => b.type === 'theme' && b.themeText);
@@ -470,7 +471,7 @@ export default function TVScreen() {
           <span style={styles.userBadge}>{userName || 'Athlete'}</span>
         </div>
         <div style={styles.topBarRight}>
-          <span style={styles.weekDay}>Week {currentWeek}/{totalWeeks} &bull; Day {currentDay}/{daysPerWeek}</span>
+          <span style={styles.weekDay}>Week {currentWeek}/{totalWeeks} &bull; Day {Math.max(1, days.indexOf(currentDay) + 1)}/{daysPerWeek}</span>
           <div style={styles.dayPills}>
             {days.map(d => (
               <span key={d} style={d === currentDay ? styles.dayPillActive : styles.dayPill}>
