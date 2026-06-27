@@ -461,6 +461,55 @@ export function calcCardio(block, trackingData, blockIndex, weightKg) {
   return { minutes, miles, calories };
 }
 
+// Projected (prescribed) stats for a day's blocks — what the program PLANS,
+// before anything is logged. Reuses the exact live calc by feeding a synthetic
+// "everything complete, nothing typed" tracking map, so every number falls back
+// to prescribed values: % × the athlete's own 1RM (or the prescribed weight),
+// prescribed reps, prescribed durations/distances. This guarantees the
+// projection can never drift from the real logged math. Mirrors the logged
+// calorie formula (App.jsx log-workout) so a projected week flows seamlessly
+// into its actual once completed. Returns the same keys the weekly-stats API uses.
+export function projectDayStats(blocks, maxes, userWeight, gender) {
+  const list = Array.isArray(blocks) ? blocks : [];
+  const empty = { tonnage: 0, core_crunches: 0, cardio_minutes: 0, cardio_miles: 0, est_calories: 0 };
+  if (!list.length) return empty;
+
+  const effectiveWeight = userWeight > 0 ? userWeight : getDefaultWeight(gender);
+  const weightKg = effectiveWeight * 0.453592;
+
+  // Mark every exercise complete so the gated calc uses prescribed values.
+  const allComplete = {};
+  list.forEach((block, bi) => (block.exercises || []).forEach((_, ei) => { allComplete[`complete-${bi}-${ei}`] = true; }));
+
+  let ton = 0, core = 0, bwCal = 0, min = 0, mi = 0, cardioCal = 0;
+  let warmupEx = 0, cooldownEx = 0, completedEx = 0;
+  list.forEach((block, bi) => {
+    const type = block?.type || 'straight-set';
+    if (type === 'theme') return;
+    if (type === 'warmup' || type === 'mobility') { warmupEx += (block.exercises || []).length; return; }
+    if (type === 'cooldown') { cooldownEx += (block.exercises || []).length; return; }
+    const bt = calcBlockTonnage(block, maxes || {}, allComplete, bi, userWeight || 0, gender);
+    ton += bt.tonnage; core += bt.coreEquiv; bwCal += bt.bwCalories || 0;
+    const c = calcCardio(block, allComplete, bi, weightKg);
+    min += c.minutes; mi += c.miles; cardioCal += c.calories;
+    completedEx += (block.exercises || []).length;
+  });
+
+  const warmupCal = warmupEx * 4;
+  const cooldownCal = cooldownEx * 3;
+  const strengthCal = 6 * weightKg * ((completedEx * 3) / 60);
+  const tonnageBonus = (ton / 1000) * 10;
+  const est = Math.round(warmupCal + cooldownCal + strengthCal + tonnageBonus + bwCal + cardioCal);
+
+  return {
+    tonnage: Math.round(ton),
+    core_crunches: Math.round(core),
+    cardio_minutes: Math.round(min * 10) / 10,
+    cardio_miles: Math.round(mi * 100) / 100,
+    est_calories: est,
+  };
+}
+
 const s = {
   card: {
     background: '#fff',

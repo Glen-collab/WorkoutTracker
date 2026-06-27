@@ -516,6 +516,10 @@ export default function ProgramView({
           getWeeklyStats={getWeeklyStats}
           liveStats={liveStats}
           dayBlocks={blocks}
+          allWorkouts={program?.allWorkouts}
+          maxes={maxes}
+          userWeight={profile?.weight || 0}
+          userGender={profile?.gender || ''}
         />
 
         <div style={s.actionBar}>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { cnsLoadForDay } from '../../utils/cnsLoadCalc';
+import { projectDayStats } from './DailyTonnage';
 
 const s = {
   card: {
@@ -119,7 +120,7 @@ const GRAPH_METRICS = [
   { key: 'cardio_miles', label: 'Distance (mi)', color: '#3b82f6', suffix: ' mi' },
 ];
 
-export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, daysPerWeek, totalWeeks, getWeeklyStats, liveStats, dayBlocks }) {
+export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, daysPerWeek, totalWeeks, getWeeklyStats, liveStats, dayBlocks, allWorkouts, maxes, userWeight, userGender }) {
   const [weeklyData, setWeeklyData] = useState([]);
   const [graphMetric, setGraphMetric] = useState('tonnage');
   const [loaded, setLoaded] = useState(false);
@@ -146,6 +147,34 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
 
   // Build ALL weeks array (1 to totalWeeks), merging in actual data
   const numWeeks = totalWeeks || Math.max(currentWeek, ...weeklyData.map(w => w.week), 4);
+
+  // PROJECTION — the prescribed shape of the whole program before anything is
+  // logged, so the graph shows a roadmap instead of a flatline of zeros. For
+  // each week we sum the projected stats of its days (projectDayStats reuses the
+  // exact live math on prescribed weights/reps + the athlete's own 1RM/bodyweight,
+  // so it auto-scales powerlifter → beginner with no fudge factor). cns_load uses
+  // the same engine as the CNS view. Keyed by week → metric values.
+  const projectedByWeek = React.useMemo(() => {
+    const out = {};
+    if (!allWorkouts || typeof allWorkouts !== 'object') return out;
+    // Scan the program's actual day keys ("week-day") so hidden / sparse days
+    // are handled correctly instead of assuming a contiguous 1..daysPerWeek.
+    for (const key of Object.keys(allWorkouts)) {
+      const [wStr] = key.split('-');
+      const w = parseInt(wStr, 10);
+      if (!w || w > numWeeks) continue;
+      const blocks = allWorkouts[key];
+      if (!Array.isArray(blocks) || !blocks.length) continue;
+      const acc = out[w] || (out[w] = { tonnage: 0, core_crunches: 0, cardio_minutes: 0, cardio_miles: 0, est_calories: 0, cns_load: 0 });
+      const p = projectDayStats(blocks, maxes, userWeight, userGender);
+      acc.tonnage += p.tonnage; acc.core_crunches += p.core_crunches;
+      acc.cardio_minutes += p.cardio_minutes; acc.cardio_miles += p.cardio_miles;
+      acc.est_calories += p.est_calories;
+      try { acc.cns_load += cnsLoadForDay(blocks).total; } catch { /* skip */ }
+    }
+    return out;
+  }, [allWorkouts, numWeeks, maxes, userWeight, userGender]);
+
   const allWeeks = [];
   for (let w = 1; w <= numWeeks; w++) {
     const existing = weeklyData.find(d => d.week === w);
@@ -173,7 +202,13 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
   if (!loaded || (weeklyData.length === 0 && !currentStats)) return null;
 
   const metric = GRAPH_METRICS.find(m => m.key === graphMetric) || GRAPH_METRICS[0];
-  const maxVal = Math.max(...allWeeks.map(w => w[metric.key] || 0), 1);
+  // Scale to the bigger of logged actuals and the projected plan so the dashed
+  // projection line always fits inside the chart.
+  const maxVal = Math.max(
+    ...allWeeks.map(w => w[metric.key] || 0),
+    ...allWeeks.map(w => projectedByWeek[w.week]?.[metric.key] || 0),
+    1,
+  );
 
   return (
     <div style={s.card}>
@@ -234,6 +269,17 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
               </button>
             ))}
           </div>
+          {/* Legend: dashed = the program's plan, solid dot = what you've logged */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', marginBottom: '6px', fontSize: '10px', color: 'rgba(255,255,255,0.6)' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <svg width="18" height="6"><line x1="0" y1="3" x2="18" y2="3" stroke={metric.color} strokeWidth="2" strokeDasharray="3,2" opacity="0.7" /></svg>
+              projected
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <svg width="10" height="10"><circle cx="5" cy="5" r="4" fill={metric.color} stroke="#fff" strokeWidth="1" /></svg>
+              logged
+            </span>
+          </div>
           <div style={{ overflowX: allWeeks.length > 8 ? 'auto' : 'hidden', WebkitOverflowScrolling: 'touch', paddingBottom: '8px' }}>
             {(() => {
               const pad = { top: 20, right: 16, bottom: 28, left: 40 };
@@ -246,18 +292,29 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
               const h = 120;
               const innerW = w - pad.left - pad.right;
               const innerH = h - pad.top - pad.bottom;
-              const points = allWeeks.map((wk, i) => ({
-                x: pad.left + (allWeeks.length > 1 ? (i / (allWeeks.length - 1)) * innerW : innerW / 2),
-                y: pad.top + innerH - (maxVal > 0 ? ((wk[metric.key] || 0) / maxVal) * innerH : 0),
-                val: wk[metric.key] || 0,
-                week: wk.week,
-                hasData: wk.workouts > 0,
-              }));
-              const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
-              const areaPath = linePath + ` L${points[points.length - 1].x},${pad.top + innerH} L${points[0].x},${pad.top + innerH} Z`;
+              const yOf = (val) => pad.top + innerH - (maxVal > 0 ? (Math.max(0, val) / maxVal) * innerH : 0);
+              const points = allWeeks.map((wk, i) => {
+                const actual = wk[metric.key] || 0;
+                const proj = projectedByWeek[wk.week]?.[metric.key] || 0;
+                return {
+                  x: pad.left + (allWeeks.length > 1 ? (i / (allWeeks.length - 1)) * innerW : innerW / 2),
+                  actual, proj,
+                  yActual: yOf(actual),
+                  yProj: yOf(proj),
+                  week: wk.week,
+                  hasData: wk.workouts > 0,
+                };
+              });
+              // Dashed projection line spans the whole program (the plan).
+              const hasProjection = points.some(p => p.proj > 0);
+              const projPath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.yProj}`).join(' ');
+              // Solid actual line connects ONLY logged weeks (so unlogged future
+              // weeks don't drag the line down to zero — that was the flatline).
+              const logged = points.filter(p => p.hasData);
+              const actualPath = logged.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.yActual}`).join(' ');
               // Y-axis ticks
               const yTicks = [0, Math.round(maxVal / 2), Math.round(maxVal)];
-              const fmt = v => v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v;
+              const fmt = v => v >= 1000 ? `${(v / 1000).toFixed(1)}k` : Math.round(v);
 
               return (
                 <svg viewBox={`0 0 ${w} ${h}`} style={{ width: useScroll ? w : '100%', height: 'auto', minWidth: useScroll ? w : 'auto' }}>
@@ -271,19 +328,29 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
                       </g>
                     );
                   })}
-                  {/* Area fill */}
-                  <path d={areaPath} fill={`${metric.color}22`} />
-                  {/* Line */}
-                  <path d={linePath} fill="none" stroke={metric.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  {/* Dots + labels */}
+                  {/* Projected plan — dashed, faint */}
+                  {hasProjection && (
+                    <path d={projPath} fill="none" stroke={metric.color} strokeWidth="1.5" strokeDasharray="4,3" opacity="0.55" strokeLinecap="round" strokeLinejoin="round" />
+                  )}
+                  {/* Actual logged — solid, connecting logged weeks only */}
+                  {logged.length > 1 && (
+                    <path d={actualPath} fill="none" stroke={metric.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  )}
+                  {/* Hollow markers on projected (unlogged) weeks + solid dots on logged */}
                   {points.map((p, i) => (
                     <g key={i}>
-                      <circle cx={p.x} cy={p.y} r={p.week === currentWeek ? 5 : 4}
-                        fill={p.week === currentWeek ? '#FFD700' : p.hasData ? metric.color : 'rgba(255,255,255,0.2)'}
-                        stroke={p.week === currentWeek ? '#FFD700' : p.hasData ? '#fff' : 'rgba(255,255,255,0.3)'}
-                        strokeWidth="1" />
-                      {p.val > 0 && (
-                        <text x={p.x} y={p.y - 8} fill="rgba(255,255,255,0.8)" fontSize="8" textAnchor="middle" fontWeight="600">{fmt(p.val)}</text>
+                      {p.hasData ? (
+                        <circle cx={p.x} cy={p.yActual} r={p.week === currentWeek ? 5 : 4}
+                          fill={p.week === currentWeek ? '#FFD700' : metric.color}
+                          stroke="#fff" strokeWidth="1" />
+                      ) : (
+                        hasProjection && (
+                          <circle cx={p.x} cy={p.yProj} r={p.week === currentWeek ? 4 : 3}
+                            fill="#1a1a2e" stroke={metric.color} strokeWidth="1.5" opacity="0.8" />
+                        )
+                      )}
+                      {p.hasData && p.actual > 0 && (
+                        <text x={p.x} y={p.yActual - 8} fill="rgba(255,255,255,0.85)" fontSize="8" textAnchor="middle" fontWeight="600">{fmt(p.actual)}</text>
                       )}
                       <text x={p.x} y={h - 6} fill={p.week === currentWeek ? '#FFD700' : p.hasData ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.4)'} fontSize="9" textAnchor="middle" fontWeight={p.week === currentWeek ? 'bold' : 'normal'}>
                         W{p.week}
