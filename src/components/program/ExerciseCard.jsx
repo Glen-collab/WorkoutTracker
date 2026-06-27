@@ -1388,9 +1388,24 @@ export default function ExerciseCard({
     // Check if this is a cardio-type conditioning exercise (has duration or distance)
     const hasCardioFields = ex.duration || ex.distance;
 
+    // Sprint %PB target time prescribed by the coach (baked in the builder).
+    const sprintTarget = ex.sprintTargetTime ? String(ex.sprintTargetTime) : '';
+
     return (
       <>
         {renderSwapButton()}
+        {sprintTarget && (
+          <div style={{
+            display: 'inline-block', background: 'linear-gradient(135deg, #dc2626, #f59e0b)',
+            color: '#fff', borderRadius: '10px', padding: '8px 14px', fontWeight: 800,
+            fontSize: '15px', margin: '2px 0 10px',
+          }}>
+            🏃 Target: {sprintTarget}{sprintTarget.includes(':') ? '' : 's'}
+            <span style={{ fontSize: '11px', fontWeight: 600, opacity: 0.85, marginLeft: '8px' }}>
+              {ex.distance ? `${ex.distance} ${distUnit}` : ''}{ex.targetPct ? ` @ ${ex.targetPct}% PB` : ''}
+            </span>
+          </div>
+        )}
         {details.length > 0 && (
           <div style={s.pillGrid}>
             {details.map((d, i) => (
