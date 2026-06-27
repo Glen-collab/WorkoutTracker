@@ -5,6 +5,7 @@ import { getMotivationalMessage } from '../../data/exerciseMotivation';
 import { isFunctional } from './DailyTonnage';
 import { applyExerciseDefaults } from '../../data/exerciseDefaults';
 import SWAP_INDEX from '../../data/exerciseSwapIndex.json';
+import { computeTargetTime, SPRINT_DISTANCE_BY_KEY } from '../../utils/sprintTargets';
 
 // name -> swap-index entry, built once. Lets a strength exercise find its
 // muscle category to suggest same-muscle substitutes.
@@ -249,6 +250,8 @@ export default function ExerciseCard({
   previousExerciseData,
   trackingData,
   onUpdateTracking,
+  sprintPBs,
+  onSaveSprintPB,
   onMarkComplete,
   onSetRecommendation,
   prefillReps,
@@ -1388,24 +1391,49 @@ export default function ExerciseCard({
     // Check if this is a cardio-type conditioning exercise (has duration or distance)
     const hasCardioFields = ex.duration || ex.distance;
 
-    // Sprint %PB target time prescribed by the coach (baked in the builder).
-    const sprintTarget = ex.sprintTargetTime ? String(ex.sprintTargetTime) : '';
+    // Sprint %PB — the coach prescribes distance + %, each athlete's TARGET is
+    // computed from THEIR own PB (one template, every kid sees their own number).
+    const isSprintPrescribed = !!(ex.sprintDistance && ex.targetPct);
 
     return (
       <>
         {renderSwapButton()}
-        {sprintTarget && (
-          <div style={{
-            display: 'inline-block', background: 'linear-gradient(135deg, #dc2626, #f59e0b)',
-            color: '#fff', borderRadius: '10px', padding: '8px 14px', fontWeight: 800,
-            fontSize: '15px', margin: '2px 0 10px',
-          }}>
-            🏃 Target: {sprintTarget}{sprintTarget.includes(':') ? '' : 's'}
-            <span style={{ fontSize: '11px', fontWeight: 600, opacity: 0.85, marginLeft: '8px' }}>
-              {ex.distance ? `${ex.distance} ${distUnit}` : ''}{ex.targetPct ? ` @ ${ex.targetPct}% PB` : ''}
-            </span>
-          </div>
-        )}
+        {isSprintPrescribed && (() => {
+          const dKey = ex.sprintDistance;
+          const dLabel = SPRINT_DISTANCE_BY_KEY[dKey]?.label || dKey;
+          const myPB = (sprintPBs && sprintPBs[dKey]) || '';
+          const target = computeTargetTime(myPB, ex.targetPct);
+          return (
+            <div style={{ border: '2px solid #dc2626', borderRadius: '12px', padding: '12px', marginBottom: '12px', background: 'linear-gradient(135deg, #fff5f5, #fff)' }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#b91c1c', marginBottom: '8px' }}>
+                🏃 {ex.setsCount || ex.sets || ''}{(ex.setsCount || ex.sets) ? ' × ' : ''}{dLabel} · target {ex.targetPct}% of your PB
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 600, color: '#6b7280' }}>Your {dLabel} PB</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="e.g. 4.70"
+                    value={myPB}
+                    onChange={(e) => onSaveSprintPB && onSaveSprintPB(dKey, e.target.value)}
+                    style={{ width: '90px', padding: '8px 10px', border: '2px solid #dc2626', borderRadius: '8px', fontSize: '15px', fontWeight: 700, textAlign: 'center', color: '#b91c1c', outline: 'none' }}
+                  />
+                </div>
+                <div style={{ fontSize: '22px', color: '#d1d5db', fontWeight: 800 }}>→</div>
+                {target ? (
+                  <div style={{ background: 'linear-gradient(135deg, #dc2626, #f59e0b)', color: '#fff', borderRadius: '10px', padding: '8px 16px', fontWeight: 800, fontSize: '18px' }}>
+                    🎯 {target}{target.includes(':') ? '' : 's'}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '12px', color: '#9ca3af', maxWidth: '160px' }}>
+                    Enter your {dLabel} best time and your target pace shows up.
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
         {details.length > 0 && (
           <div style={s.pillGrid}>
             {details.map((d, i) => (

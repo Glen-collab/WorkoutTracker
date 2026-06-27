@@ -179,6 +179,8 @@ export default function ProgramView({
   onLogout,
   trackingData,
   onUpdateTracking,
+  sprintPBs,
+  onSaveSprintPB,
   profile,
   onUpdateProfile,
   onSaveStats,
@@ -404,6 +406,8 @@ export default function ProgramView({
             previousWeekWorkout={previousWeekWorkout}
             trackingData={trackingData}
             onUpdateTracking={onUpdateTracking}
+            sprintPBs={sprintPBs}
+            onSaveSprintPB={onSaveSprintPB}
             onMarkComplete={() => {}}
             onSetRecommendation={onSetRecommendation}
             recommendations={recommendations}

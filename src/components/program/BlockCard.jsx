@@ -137,6 +137,8 @@ export default function BlockCard({
   previousWeekWorkout,    // full prev-week workout for name-based search
   trackingData,
   onUpdateTracking,
+  sprintPBs,
+  onSaveSprintPB,
   onMarkComplete,
   onSetRecommendation,
   recommendations,
@@ -198,6 +200,8 @@ export default function BlockCard({
                 previousExerciseData={prev}
                 trackingData={trackingData}
                 onUpdateTracking={onUpdateTracking}
+                sprintPBs={sprintPBs}
+                onSaveSprintPB={onSaveSprintPB}
                 onMarkComplete={onMarkComplete}
                 onSetRecommendation={onSetRecommendation}
                 prefillReps={prefillReps}

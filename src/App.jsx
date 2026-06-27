@@ -81,6 +81,7 @@ export default function App() {
     screen, setScreen,
     user, setUser,
     maxes, setMaxes,
+    sprintPBs, setSprintPBs,
     profile, setProfile,
     consentAccepted, setConsentAccepted,
     consentTimestamp, setConsentTimestamp,
@@ -367,6 +368,21 @@ export default function App() {
     }).catch(() => {});
   }, [api, setProfile, setMaxes]);
 
+  // Save one sprint PB to the athlete's account. Updates state immediately so
+  // the target time recalcs live, then persists (backend merges by distance so
+  // one update never clobbers the others).
+  const handleSaveSprintPB = useCallback((distanceKey, value) => {
+    if (!distanceKey) return;
+    setSprintPBs(prev => ({ ...prev, [distanceKey]: value }));
+    const u = userRef.current;
+    if (!u?.accessCode || !u?.email) return;
+    api.updateUserStats({
+      accessCode: u.accessCode,
+      email: u.email,
+      sprintPBs: { [distanceKey]: value },
+    }).catch(() => {});
+  }, [api, setSprintPBs]);
+
   const handleLoadProgramFromAPI = useCallback(async (requestedWeek, requestedDay, directData) => {
     // Use directly-passed data if available (avoids race condition with refs on first login)
     const u = directData?.user || userRef.current;
@@ -488,6 +504,10 @@ export default function App() {
             weight: prev.weight || parseFloat(pos.weightLbs) || '',
             age: prev.age || parseInt(pos.age) || '',
           }));
+          // Per-athlete sprint PBs from their account (server is source of truth).
+          if (pos.sprintPBs && typeof pos.sprintPBs === 'object') {
+            setSprintPBs(pos.sprintPBs);
+          }
           // Load cumulative weeks for cross-program game progression
           if (pos.cumulativeWeeks !== undefined) {
             setCumulativeWeeks(parseInt(pos.cumulativeWeeks) || 0);
@@ -1572,6 +1592,8 @@ export default function App() {
           onLogout={logout}
           trackingData={trackingData}
           onUpdateTracking={handleUpdateTracking}
+          sprintPBs={sprintPBs}
+          onSaveSprintPB={handleSaveSprintPB}
           profile={profile}
           onUpdateProfile={setProfile}
           onSaveStats={handleSaveStats}

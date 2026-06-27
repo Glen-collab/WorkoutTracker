@@ -10,6 +10,9 @@ export default function useTrackerState() {
     name: '', email: '', accessCode: '', isReturningUser: false
   });
   const [maxes, setMaxes] = useState({ bench: 0, squat: 0, deadlift: 0, clean: 0 });
+  // Per-athlete sprint PBs (best time per distance) — drives the %PB target
+  // times. Loaded from the user's account, edited inline in sprint blocks.
+  const [sprintPBs, setSprintPBs] = useState({});
   const [profile, setProfile] = useState({ height: '', weight: '', age: '' });
 
   // Consent
@@ -69,6 +72,7 @@ export default function useTrackerState() {
     screen, setScreen,
     user, setUser,
     maxes, setMaxes,
+    sprintPBs, setSprintPBs,
     profile, setProfile,
     consentAccepted, setConsentAccepted,
     consentTimestamp, setConsentTimestamp,
