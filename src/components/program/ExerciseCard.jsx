@@ -1438,6 +1438,30 @@ export default function ExerciseCard({
                   </div>
                 )}
               </div>
+              {/* What the athlete actually ran — one box per rep. Flows to the
+                  coach email so Glen sees target vs actual per sprint. */}
+              {(() => {
+                const n = Math.min(parseInt(ex.setsCount || ex.sets) || 1, 12);
+                return (
+                  <div style={{ marginTop: '12px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', marginBottom: '5px' }}>Your times (sec)</div>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      {Array.from({ length: n }).map((_, si) => (
+                        <input
+                          key={si}
+                          type="text"
+                          inputMode="decimal"
+                          placeholder={`#${si + 1}`}
+                          value={getTrack(si, 'sprintTime')}
+                          onChange={(e) => onUpdateTracking(blockIndex, exIndex, si, 'sprintTime', e.target.value)}
+                          style={{ width: '54px', padding: '8px 4px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', fontWeight: 600, textAlign: 'center', ...lockStyle }}
+                          readOnly={inputLocked}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           );
         })()}

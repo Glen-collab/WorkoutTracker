@@ -13,6 +13,7 @@ import CongratulationsModal from './components/modals/CongratulationsModal';
 import SessionRecapModal from './components/modals/SessionRecapModal';
 import { appendScratchpadNote } from './utils/scratchpad';
 import { cnsLoadForDay } from './utils/cnsLoadCalc';
+import { computeTargetTime } from './utils/sprintTargets';
 import { stepVisibleDay, getVisibleDays } from './utils/visibleDays';
 import WeeklySummaryModal from './components/modals/WeeklySummaryModal';
 import TestYourMight, { getWeekConfig } from './components/game/TestYourMight';
@@ -1219,6 +1220,25 @@ export default function App() {
               // the gap is the fatigue / retest signal back to the coach.
               targetRpe: ex.targetRpe || '',
               actualRpe: trackingData[`${blockIndex}-${exIndex}-null-actualRpe`] || '',
+              // Sprint %PB: the prescription + the athlete's own PB/target + what
+              // they actually ran (per rep), so the coach email shows target vs
+              // actual per sprint.
+              ...(ex.sprintDistance ? (() => {
+                const n = parseInt(ex.setsCount || ex.sets) || setsCount || 1;
+                const times = [];
+                for (let si = 0; si < n; si++) {
+                  const t = trackingData[`${blockIndex}-${exIndex}-${si}-sprintTime`];
+                  if (t != null && String(t).trim() !== '') times.push(t);
+                }
+                const pb = (sprintPBs && sprintPBs[ex.sprintDistance]) || '';
+                return {
+                  sprintDistance: ex.sprintDistance,
+                  targetPct: ex.targetPct || '',
+                  sprintPB: pb,
+                  sprintTarget: computeTargetTime(pb, ex.targetPct),
+                  sprintTimes: times,
+                };
+              })() : {}),
             };
 
             return result;
@@ -1476,7 +1496,7 @@ export default function App() {
     } catch (err) {
       console.error('Failed to log workout:', err);
     }
-  }, [currentWeek, currentDay, program, trackingData, recommendations, api, user, daysPerWeek, hiddenDays, totalWeeks, maxes, profile, cumulativeWeeks, travelMode, travelEquipment, travelDay, travelTotalDays, handleTravelNavigate, setCurrentWeek, setCurrentDay, setRecommendations, handleLoadProgramFromAPI, todayWeight]);
+  }, [currentWeek, currentDay, program, trackingData, recommendations, api, user, daysPerWeek, hiddenDays, totalWeeks, maxes, profile, sprintPBs, cumulativeWeeks, travelMode, travelEquipment, travelDay, travelTotalDays, handleTravelNavigate, setCurrentWeek, setCurrentDay, setRecommendations, handleLoadProgramFromAPI, todayWeight]);
 
   const handleSubmitCompletion = useCallback(async (completionData) => {
     try {
