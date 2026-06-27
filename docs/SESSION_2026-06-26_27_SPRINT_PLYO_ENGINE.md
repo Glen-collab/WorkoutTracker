@@ -59,10 +59,11 @@ The graph was all zeros until something was logged. Now:
 ## Deploy notes
 - `workoutbuilder` + `WorkoutTracker`: every change pushed to `main` → Netlify auto-deploys.
 - `bsa-coach-platform`: `workout_api.py` deployed to EC2 by hand (backups `.bak-cns`, `.bak-rpe`).
-  **⚠️ The backend change is LIVE but NOT committed to git** — it's stacked on prior
-  uncommitted drift (email_log + bodyweight prefill). That repo needs a reconcile-commit when
-  you're ready to square git with live. Verified each deploy diffed to ONLY the new lines and
-  Polly Connect stayed active.
+  **✅ RESOLVED (Jun 27):** another session committed + pushed all the drift (my cns_load + RPE,
+  plus the older email_log / bodyweight / hiddenDays work — commits `0ec4665`, `b2b2627`, etc.).
+  Verified `workout_api.py`, `admin.py`, `kiosk.py` are **identical to live on EC2** → git = live.
+  Only untracked leftovers: `scripts/backup_programs.py` + `scripts/run_backup.sh` (RDS backup
+  tooling — commit when ready, not deploy-critical).
 
 ## NOT built yet (next up)
 - **%PB target-time engine** — coach-only PB entry (a "Sprint PBs" panel like Bench/Squat),
