@@ -259,6 +259,9 @@ export default function ExerciseCard({
   // Collapsed if marked complete, but allow manual expand
   const isMarkedComplete = trackingData?.[`complete-${blockIndex}-${exIndex}`] || false;
   const [forceExpanded, setForceExpanded] = useState(false);
+  // Local draft for the sprint PB input — updates the target live while typing,
+  // but only persists to the athlete's account on blur (not per keystroke).
+  const [sprintPbDraft, setSprintPbDraft] = useState(null);
   const collapsed = isMarkedComplete && !forceExpanded;
 
   const [showVideo, setShowVideo] = useState(false);
@@ -1401,7 +1404,10 @@ export default function ExerciseCard({
         {isSprintPrescribed && (() => {
           const dKey = ex.sprintDistance;
           const dLabel = SPRINT_DISTANCE_BY_KEY[dKey]?.label || dKey;
-          const myPB = (sprintPBs && sprintPBs[dKey]) || '';
+          const savedPB = (sprintPBs && sprintPBs[dKey]) || '';
+          // While typing, the draft drives the live target; falls back to the
+          // saved account value when not being edited.
+          const myPB = sprintPbDraft != null ? sprintPbDraft : savedPB;
           const target = computeTargetTime(myPB, ex.targetPct);
           return (
             <div style={{ border: '2px solid #dc2626', borderRadius: '12px', padding: '12px', marginBottom: '12px', background: 'linear-gradient(135deg, #fff5f5, #fff)' }}>
@@ -1416,7 +1422,8 @@ export default function ExerciseCard({
                     inputMode="decimal"
                     placeholder="e.g. 4.70"
                     value={myPB}
-                    onChange={(e) => onSaveSprintPB && onSaveSprintPB(dKey, e.target.value)}
+                    onChange={(e) => setSprintPbDraft(e.target.value)}
+                    onBlur={(e) => { if (onSaveSprintPB && e.target.value !== savedPB) onSaveSprintPB(dKey, e.target.value); setSprintPbDraft(null); }}
                     style={{ width: '90px', padding: '8px 10px', border: '2px solid #dc2626', borderRadius: '8px', fontSize: '15px', fontWeight: 700, textAlign: 'center', color: '#b91c1c', outline: 'none' }}
                   />
                 </div>
