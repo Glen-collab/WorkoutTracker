@@ -65,11 +65,54 @@ The graph was all zeros until something was logged. Now:
   Only untracked leftovers: `scripts/backup_programs.py` + `scripts/run_backup.sh` (RDS backup
   tooling — commit when ready, not deploy-critical).
 
-## NOT built yet (next up)
-- **%PB target-time engine** — coach-only PB entry (a "Sprint PBs" panel like Bench/Squat),
-  autofills **target time = PB ÷ %**, like the 1RM→%→weight logic. You confirmed the model;
-  awaiting the go to build.
-- Velocity-vs-RPE fatigue flag + retest-ready flag; ACWR injury-spike flag (have the RPE
-  round-trip now). v1 CNS coefficients are tunable once real weeks are logged.
+---
+
+## Part 2 — %PB engine + sprints end-to-end (Jun 27, all ✅ LIVE)
+
+### 5. Sprint %PB target times — the velocity twin of 1RM→%→weight
+- **Builder:** a collapsible **Sprint PBs** panel (next to Bench/Squat). Hybrid distance set
+  you picked: **10/40yd + 60/100/150/200/300/400m** (every velocity zone, keeps the 40-yd dash).
+  On any Movement row, a **🏃 Sprint** control: pick distance + Target % → shows target = PB ÷ %.
+  `utils/sprintTargets.js` holds the distances + math.
+- **PER-ATHLETE (the key fix):** one program → many kids → different PBs, so the target is NOT
+  baked per-program. The builder is your **template/guide**; each kid's target is computed in the
+  **tracker** from **their own PB**. 4.7 kid and 4.9 kid run the same program, see different targets.
+- **Server storage:** migration `004_sprint_pbs.sql` → `sprint_pbs` JSONB on `workout_user_position`
+  (same row as 1RMs). Kid enters their PB inline in the sprint block → saves to their **account**
+  (follows them across devices, visible to you later). `update-user-stats` merges per-distance.
+
+### 6. Blanket zone sprints (top of the Linear picker)
+- Pick the QUALITY, set your own sets/distance/rest: **Acceleration / Max Velocity / Speed
+  Endurance / Special Endurance / Tempo / Recovery**. Each pre-classified (zone + CNS) so the
+  engine works automatically.
+
+### 7. Sprint logging + the coach email
+- Tracker sprint block has a **"Your times (sec)"** row — one box per rep — so the athlete logs
+  what they ran. The coach **email** now shows per sprint:
+  `🏃 40 yd @ 95% · PB 4.70 → target 4.95s · ran 4.9, 5.0, 5.1` (prescription + their PB/target +
+  actual times). `build_workout_detail_html`.
+
+### Verification pass (Jun 27) — VERIFIED SOLID end-to-end
+- PB save+merge proven via the real endpoint + DB read-back (no clobber); per-kid target math
+  (4.70→4.95s, 4.90→5.16s); RPE email line + flags correct at all thresholds; backend git = live;
+  `sprint_pbs` column confirmed in RDS. Fixed during the pass: PB input now persists on **blur**
+  (was per keystroke). Only un-automatable check = an email physically landing in Glen's inbox.
+
+## Decisions locked this session
+- **RPE stays opt-in / minimal.** Kids won't reliably self-report; objective sprint **times** +
+  a conversation beat a 1–10. RPE earns its keep on **lifting** (no objective velocity) and remote
+  athletes. Don't build more RPE analytics. (memory: `feedback_rpe_deemphasis`)
+- **Hidden-day labels: KEEP raw numbers.** Navigation already skips hidden days (TV + remote do
+  just the visible days). The day *labels* show raw numbers with a gap (hide Day 4 → "…3, 5, 6, 7").
+  Glen chose to **keep** this — do NOT "collapse" the labels. It looks like a bug but is intended.
+- **Challenge:** "July 4th 5k challenge" (mm:ss, lower-better) starts **Mon 6/29** → won't show on
+  the tracker until then (backend only renders *active*, not *upcoming*). Working as designed.
+
+## Still NOT built (next up)
+- **Coach roster view of each kid's PBs** — the server storage now makes this possible (dashboard
+  or printable sheet). The natural next step.
+- Velocity-vs-RPE fatigue flag, ACWR injury-spike flag — deferred (RPE de-emphasized). v1 CNS
+  coefficients tunable once real weeks are logged. Optional: auto "ran X% off target — ask why"
+  flag off the objective times (preferred over self-reported RPE).
 
 _Full design + status also tracked in Claude's memory: `project_sprint_plyo_engine.md`._
