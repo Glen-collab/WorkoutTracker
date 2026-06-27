@@ -48,12 +48,13 @@ const s = {
   },
   tabRow: {
     display: 'flex',
+    flexWrap: 'wrap',
     justifyContent: 'center',
     gap: '6px',
     marginBottom: '12px',
   },
   tab: {
-    padding: '4px 12px',
+    padding: '5px 10px',
     borderRadius: '12px',
     fontSize: '11px',
     fontWeight: '600',
@@ -61,6 +62,7 @@ const s = {
     border: 'none',
     color: 'rgba(255,255,255,0.6)',
     background: 'rgba(255,255,255,0.05)',
+    whiteSpace: 'nowrap',
   },
   tabActive: {
     color: '#FFD700',
@@ -183,13 +185,6 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
             {currentStats.workouts} / {daysPerWeek || '?'} workouts completed
           </div>
           <div style={s.row}>
-            {cnsToday > 0 && (
-              <div style={{ ...s.stat, background: 'linear-gradient(135deg, rgba(220,38,38,0.25), rgba(245,158,11,0.25))' }}>
-                <div style={s.statLabel}>{'⚡'} CNS LOAD</div>
-                <div style={s.statValue}>{cnsToday.toLocaleString()}</div>
-                <div style={{ fontSize: '8px', opacity: 0.6, marginTop: '2px' }}>today</div>
-              </div>
-            )}
             {currentStats.tonnage > 0 && (
               <div style={s.stat}>
                 <div style={s.statLabel}>TONNAGE</div>
