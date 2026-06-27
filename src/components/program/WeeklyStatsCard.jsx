@@ -175,6 +175,24 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
     return out;
   }, [allWorkouts, numWeeks, maxes, userWeight, userGender]);
 
+  // Sticky projection — the future dashed roadmap should NEVER blink out as the
+  // athlete logs. After a workout the program briefly re-fetches; during that
+  // window allWorkouts can be momentarily empty, which would blank the plan.
+  // Cache the last good projection per program (by access code) and fall back to
+  // it whenever the live compute comes back empty, so the future line persists.
+  const projCacheRef = React.useRef({ key: null, data: {} });
+  const projection = React.useMemo(() => {
+    const key = `${accessCode || ''}|${numWeeks}`;
+    if (projectedByWeek && Object.keys(projectedByWeek).length > 0) {
+      projCacheRef.current = { key, data: projectedByWeek };
+      return projectedByWeek;
+    }
+    if (projCacheRef.current.key === key && Object.keys(projCacheRef.current.data).length > 0) {
+      return projCacheRef.current.data;
+    }
+    return projectedByWeek;
+  }, [projectedByWeek, accessCode, numWeeks]);
+
   const allWeeks = [];
   for (let w = 1; w <= numWeeks; w++) {
     const existing = weeklyData.find(d => d.week === w);
@@ -206,7 +224,7 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
   // projection line always fits inside the chart.
   const maxVal = Math.max(
     ...allWeeks.map(w => w[metric.key] || 0),
-    ...allWeeks.map(w => projectedByWeek[w.week]?.[metric.key] || 0),
+    ...allWeeks.map(w => projection[w.week]?.[metric.key] || 0),
     1,
   );
 
@@ -295,7 +313,7 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
               const yOf = (val) => pad.top + innerH - (maxVal > 0 ? (Math.max(0, val) / maxVal) * innerH : 0);
               const points = allWeeks.map((wk, i) => {
                 const actual = wk[metric.key] || 0;
-                const proj = projectedByWeek[wk.week]?.[metric.key] || 0;
+                const proj = projection[wk.week]?.[metric.key] || 0;
                 return {
                   x: pad.left + (allWeeks.length > 1 ? (i / (allWeeks.length - 1)) * innerW : innerW / 2),
                   actual, proj,
@@ -328,9 +346,10 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
                       </g>
                     );
                   })}
-                  {/* Projected plan — dashed, faint */}
+                  {/* Projected plan — dashed line across the WHOLE program, incl.
+                      future weeks, so the roadmap stays visible as weeks lock in */}
                   {hasProjection && (
-                    <path d={projPath} fill="none" stroke={metric.color} strokeWidth="1.5" strokeDasharray="4,3" opacity="0.55" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d={projPath} fill="none" stroke={metric.color} strokeWidth="1.75" strokeDasharray="5,3" opacity="0.7" strokeLinecap="round" strokeLinejoin="round" />
                   )}
                   {/* Actual logged — solid, connecting logged weeks only */}
                   {logged.length > 1 && (
