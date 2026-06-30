@@ -217,6 +217,26 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
 
   const currentStats = allWeeks.find(w => w.week === currentWeek);
 
+  // ACWR (acute:chronic) off the athlete's LOGGED weekly CNS — the live load-
+  // management flag. Uses weeks up to & incl. the current one; chronic = 4-week
+  // rolling average. Needs ≥2 weeks of real CNS history to mean anything.
+  const acwr = (() => {
+    const upto = allWeeks.filter(w => w.week <= currentWeek).map(w => Math.round(w.cns_load || 0));
+    const acute = upto[upto.length - 1] || 0;
+    const win = upto.slice(Math.max(0, upto.length - 4));
+    const chronic = win.length ? win.reduce((a, b) => a + b, 0) / win.length : 0;
+    const weeksWithLoad = upto.filter(v => v > 0).length;
+    return { acute, chronic: Math.round(chronic), ratio: chronic > 0 ? acute / chronic : 0, weeksWithLoad };
+  })();
+  const acwrZone = (() => {
+    if (acwr.weeksWithLoad < 2 || acwr.chronic <= 0) return null; // not enough history yet
+    const r = acwr.ratio;
+    if (r >= 1.5) return { label: 'SPIKE', emoji: '🔴', color: '#fca5a5' };
+    if (r >= 1.3) return { label: 'elevated', emoji: '🟠', color: '#fdba74' };
+    if (r >= 0.8) return { label: 'sweet spot', emoji: '🟢', color: '#86efac' };
+    return { label: 'unloading', emoji: '🔵', color: '#93c5fd' };
+  })();
+
   if (!loaded || (weeklyData.length === 0 && !currentStats)) return null;
 
   const metric = GRAPH_METRICS.find(m => m.key === graphMetric) || GRAPH_METRICS[0];
@@ -237,6 +257,15 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
           <div style={s.progress}>
             {currentStats.workouts} / {daysPerWeek || '?'} workouts completed
           </div>
+          {/* ACWR — live acute:chronic neural-load flag, off logged CNS history */}
+          {acwrZone && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', margin: '0 0 10px', padding: '8px 12px', borderRadius: '10px', background: 'rgba(255,255,255,0.06)', border: `1px solid ${acwrZone.color}55` }}
+              title={`Acute ${acwr.acute.toLocaleString()} ÷ chronic ${acwr.chronic.toLocaleString()} (4-wk avg) — ${acwrZone.label}`}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.5px' }}>⚖️ ACWR</span>
+              <span style={{ fontSize: '18px', fontWeight: 800, color: acwrZone.color }}>{acwr.ratio.toFixed(2)}</span>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: acwrZone.color }}>{acwrZone.emoji} {acwrZone.label}</span>
+            </div>
+          )}
           <div style={s.row}>
             {currentStats.tonnage > 0 && (
               <div style={s.stat}>
