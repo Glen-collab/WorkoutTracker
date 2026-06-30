@@ -142,7 +142,7 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
   // as the builder's ⚡ CNS Load view). Used both as the "today" pill and as the
   // current-week point on the CNS graph line.
   const cnsToday = (() => {
-    try { return cnsLoadForDay(dayBlocks || []).total; } catch { return 0; }
+    try { return cnsLoadForDay(dayBlocks || [], maxes).total; } catch { return 0; }
   })();
 
   // Build ALL weeks array (1 to totalWeeks), merging in actual data
@@ -170,7 +170,7 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
       acc.tonnage += p.tonnage; acc.core_crunches += p.core_crunches;
       acc.cardio_minutes += p.cardio_minutes; acc.cardio_miles += p.cardio_miles;
       acc.est_calories += p.est_calories;
-      try { acc.cns_load += cnsLoadForDay(blocks).total; } catch { /* skip */ }
+      try { acc.cns_load += cnsLoadForDay(blocks, maxes).total; } catch { /* skip */ }
     }
     return out;
   }, [allWorkouts, numWeeks, maxes, userWeight, userGender]);

@@ -1361,7 +1361,7 @@ export default function App() {
       // Neural load of the prescribed session — stored in volume_stats (JSON,
       // no migration) so get-weekly-stats can sum it into a cross-week CNS line.
       let cnsLoad = 0;
-      try { cnsLoad = cnsLoadForDay(program?.blocks || []).total; } catch { cnsLoad = 0; }
+      try { cnsLoad = cnsLoadForDay(program?.blocks || [], maxes).total; } catch { cnsLoad = 0; }
 
       const volumeStats = {
         tonnage: Math.round(totalTonnage),
