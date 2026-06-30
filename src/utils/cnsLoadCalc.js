@@ -19,10 +19,18 @@
 import { classifyMovement } from '../data/movementClassification.js';
 import { isCnsLift } from '../data/cnsLifts.js';
 
-const K = 100;          // INOL → comparable-to-movement units
-const INOL_CAP = 97;    // clamp %1RM so the denominator stays ≥ 3
-const CNS_FLOOR = 80;   // only reps ≥ this %1RM tax the CNS — below is volume work,
-                        // not a neural stressor (a 10×10 @ 65% pump day ≠ CNS day).
+const K = 100;          // INOL → unified neural-load units (lifting & movement)
+const INOL_CAP = 97;    // clamp intensity so the denominator stays ≥ 3
+const CNS_FLOOR = 80;   // only efforts ≥ this intensity% tax the CNS. Below is
+                        // volume/conditioning, not a neural stressor — a 10×10 @
+                        // 65% pump set OR a lateral-agility/tempo day → 0 CNS.
+
+// Sprints/jumps run on the SAME intensity model as lifting so both lines live on
+// one comparable scale. Intensity = the coach's %PB if set, else mapped from the
+// movement's CNS rating (the velocity zone's neural demand). The mapping lands
+// max-velocity/accel & shock plyos ABOVE the floor (they count) and agility /
+// tempo / recovery BELOW it (→ 0), exactly how a coach reads a week.
+const CNS_TO_INTENSITY = { 5: 95, 4: 88, 3: 82, 2: 74, 1: 64 };
 
 function totalReps(exercise) {
   if (exercise.isPercentageBased && Array.isArray(exercise.sets)) {
@@ -97,17 +105,22 @@ export function cnsLoadForExercise(exercise, maxes) {
 
   if (cls && cls.cns > 0) {
     const efforts = totalReps(exercise);
-    let load = 0, contacts = 0, distance = 0;
+    // Intensity: coach's %PB if set, else the zone's CNS rating mapped to a %.
+    const tp = parseFloat(exercise.targetPct);
+    const intensity = tp > 0 ? tp : (CNS_TO_INTENSITY[cls.cns] || 70);
+    let contacts = 0, distance = 0, effortCount;
     if (cls.driver === 'Distance') {
       const per = parseFloat(exercise.distance) || 0;
       distance = per * (efforts || 1);
-      load = distance > 0 ? cls.cns * (distance / 100) : cls.cns * efforts;
+      effortCount = distance > 0 ? distance / 100 : efforts;   // each 100 = 1 effort
     } else {
+      effortCount = efforts;
       if (cls.driver === 'Contacts') contacts = efforts;
-      load = cls.cns * efforts;
     }
+    // Same intensity-gated INOL as lifting → one comparable neural-load scale.
+    const load = intensity >= CNS_FLOOR ? (effortCount / (100 - Math.min(intensity, INOL_CAP))) * K : 0;
     const modality = /Plyo/.test(cls.type) ? 'jump' : /Sprint|Run/.test(cls.type) ? 'sprint' : /Agility|Technical|Drill/.test(cls.type) ? 'drill' : 'movement';
-    return { load, cns: cls.cns, modality, contacts, distance, peakPct: 0 };
+    return { load, cns: cls.cns, modality, contacts, distance, peakPct: intensity >= CNS_FLOOR ? intensity : 0 };
   }
 
   // Heavy barbell lift → intensity load. Everything else (accessories, complexes,
