@@ -21,6 +21,8 @@ import { isCnsLift } from '../data/cnsLifts.js';
 
 const K = 100;          // INOL → comparable-to-movement units
 const INOL_CAP = 97;    // clamp %1RM so the denominator stays ≥ 3
+const CNS_FLOOR = 80;   // only reps ≥ this %1RM tax the CNS — below is volume work,
+                        // not a neural stressor (a 10×10 @ 65% pump day ≠ CNS day).
 
 function totalReps(exercise) {
   if (exercise.isPercentageBased && Array.isArray(exercise.sets)) {
@@ -75,11 +77,14 @@ function liftSets(ex, maxes) {
 }
 
 // Heavy-lift neural load (INOL × K) + the peak %1RM hit (the max-effort signal).
+// Only sets in the neural zone (≥ CNS_FLOOR) add to load; lighter volume work
+// still reports its intensity to Peak % but doesn't count as CNS stress.
 function barbellCns(ex, maxes) {
   let inol = 0, peak = 0;
   for (const s of liftSets(ex, maxes)) {
-    inol += s.reps / (100 - Math.min(s.pct, INOL_CAP));
     if (s.pct > peak) peak = s.pct;
+    if (s.pct < CNS_FLOOR) continue;
+    inol += s.reps / (100 - Math.min(s.pct, INOL_CAP));
   }
   return { load: inol * K, peak };
 }
