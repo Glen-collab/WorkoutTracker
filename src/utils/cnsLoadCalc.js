@@ -170,5 +170,18 @@ export function cnsLoadForProgram(allWorkouts, totalWeeks, daysPerWeek, maxes) {
   const sorted = allDayLoads.slice().sort((a, b) => a - b);
   const highThreshold = sorted.length ? sorted[Math.floor(sorted.length * 0.66)] : Infinity;
   weeks.forEach((wk) => wk.days.forEach((d) => { d.intensity = d.total === 0 ? 'rest' : d.total >= highThreshold ? 'high' : 'low'; }));
+
+  // ACWR (Acute:Chronic Workload Ratio) on total CNS — the load-management flag.
+  // acute = this week; chronic = rolling average of the last 4 weeks (incl. this
+  // one). >1.5 = spike (overreach/risk), 0.8–1.3 = sweet spot, <0.8 = unloading
+  // (deload / supercompensation). Distinguishes a PLANNED overreach (spike then
+  // unload) from an accidental, un-recovered load jump.
+  weeks.forEach((wk, i) => {
+    const window = weeks.slice(Math.max(0, i - 3), i + 1).map((w) => w.total);
+    const chronic = window.reduce((a, b) => a + b, 0) / window.length;
+    wk.chronic = Math.round(chronic);
+    wk.acwr = chronic > 0 ? wk.total / chronic : 0;
+    wk.acwrHistory = window.length; // <2 = baseline still building
+  });
   return { weeks, highThreshold: Math.round(highThreshold) };
 }
