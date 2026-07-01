@@ -181,6 +181,7 @@ export default function ProgramView({
   onUpdateTracking,
   sprintPBs,
   onSaveSprintPB,
+  onSendSummary,
   profile,
   onUpdateProfile,
   onSaveStats,
@@ -332,6 +333,7 @@ export default function ProgramView({
             clientName={userName}
             userEmail={userEmail}
             getSessionNotes={getSessionNotes}
+            onSendSummary={onSendSummary}
           />
         )}
 

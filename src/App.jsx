@@ -384,6 +384,32 @@ export default function App() {
     }).catch(() => {});
   }, [api, setSprintPBs]);
 
+  // 1-on-1: email an AI summary (block or PT/doctor) to the current client.
+  // Reuses the session-recap pipe with summary-appropriate framing.
+  const handleSendSummaryToClient = useCallback(async (text, kind) => {
+    const u = userRef.current;
+    if (!u?.email || !text) return { sent: false, message: 'No client email or summary to send' };
+    const coachParam = new URLSearchParams(window.location.search).get('coach') || '';
+    const isPt = kind === 'pt';
+    try {
+      return await api.sendSessionRecap({
+        client_email: u.email,
+        client_name: u.name || 'there',
+        coach_name: 'Glen',
+        program_name: programRef.current?.name || 'Workout',
+        coach_notes: text,
+        coach: coachParam,
+        email_title: isPt ? 'Training Summary — for your PT / Doctor' : 'Your Training Summary',
+        email_intro: isPt
+          ? "here's a summary of your training you can share with your PT or doctor:"
+          : "here's a summary of your training block:",
+        email_subject: isPt ? 'Training summary for your PT / doctor' : 'Your training summary',
+      });
+    } catch (e) {
+      return { sent: false, message: e?.message || 'send failed' };
+    }
+  }, [api]);
+
   const handleLoadProgramFromAPI = useCallback(async (requestedWeek, requestedDay, directData) => {
     // Use directly-passed data if available (avoids race condition with refs on first login)
     const u = directData?.user || userRef.current;
@@ -1614,6 +1640,7 @@ export default function App() {
           onUpdateTracking={handleUpdateTracking}
           sprintPBs={sprintPBs}
           onSaveSprintPB={handleSaveSprintPB}
+          onSendSummary={handleSendSummaryToClient}
           profile={profile}
           onUpdateProfile={setProfile}
           onSaveStats={handleSaveStats}

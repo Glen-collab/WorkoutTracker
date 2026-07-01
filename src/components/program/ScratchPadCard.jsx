@@ -76,7 +76,7 @@ function buildPtSummaryPrompt(clientName, programName, notesText) {
 // trainer logs out a session; each entry is also editable here, and a quick
 // "add a note" appends one for today.
 
-export default function ScratchPadCard({ accessCode, programName, currentWeek, currentDay, totalWeeks, clientName, userEmail, getSessionNotes }) {
+export default function ScratchPadCard({ accessCode, programName, currentWeek, currentDay, totalWeeks, clientName, userEmail, getSessionNotes, onSendSummary }) {
   const [entries, setEntries] = useState([]);
   const [open, setOpen] = useState(true);
   const [editingIdx, setEditingIdx] = useState(-1);
@@ -87,6 +87,8 @@ export default function ScratchPadCard({ accessCode, programName, currentWeek, c
   const [summary, setSummary] = useState('');
   const [summaryErr, setSummaryErr] = useState('');
   const [summaryKind, setSummaryKind] = useState(''); // 'block' | 'pt'
+  const [sending, setSending] = useState(false);
+  const [sendMsg, setSendMsg] = useState('');
 
   // Show the block-summary button once they're in the last week (or if the
   // program length is unknown). The PT summary is available ANY time.
@@ -97,6 +99,7 @@ export default function ScratchPadCard({ accessCode, programName, currentWeek, c
     setSummaryErr('');
     setSummary('');
     setSummaryKind(kind);
+    setSendMsg('');
     try {
       const notesText = scratchpadToText(entries);
       const message = kind === 'pt'
@@ -130,6 +133,23 @@ export default function ScratchPadCard({ accessCode, programName, currentWeek, c
 
   const copySummary = () => {
     if (summary) navigator.clipboard?.writeText(summary).catch(() => {});
+  };
+
+  // Email the (edited) summary to the current client via the recap pipe.
+  const sendToClient = async () => {
+    if (!summary || !onSendSummary) return;
+    setSending(true);
+    setSendMsg('');
+    try {
+      const res = await onSendSummary(summary, summaryKind);
+      setSendMsg(res && res.sent === false
+        ? `✗ ${res.message || 'Did not send — check the client\'s email'}`
+        : `✓ Sent to ${clientName || 'the client'}`);
+    } catch (e) {
+      setSendMsg(`✗ ${e?.message || 'Send failed'}`);
+    } finally {
+      setSending(false);
+    }
   };
 
   // Re-read whenever we switch client/program/day (e.g. opening a new session).
@@ -280,8 +300,14 @@ export default function ScratchPadCard({ accessCode, programName, currentWeek, c
               />
               <div style={s.editRow}>
                 <button style={{ ...s.miniBtn, ...s.ghost }} onClick={copySummary}>Copy</button>
-                <button style={{ ...s.miniBtn, ...s.primary }} onClick={() => runSummaryOfKind(summaryKind)} disabled={summarizing}>Regenerate</button>
+                <button style={{ ...s.miniBtn, ...s.ghost }} onClick={() => runSummaryOfKind(summaryKind)} disabled={summarizing}>Regenerate</button>
+                {onSendSummary && (
+                  <button style={{ ...s.miniBtn, ...s.send }} onClick={sendToClient} disabled={sending}>
+                    {sending ? 'Sending…' : '✉️ Send to Client'}
+                  </button>
+                )}
               </div>
+              {sendMsg && <div style={{ ...s.sendMsg, color: sendMsg.startsWith('✓') ? '#15803d' : '#b91c1c' }}>{sendMsg}</div>}
             </div>
           )}
         </div>
@@ -313,5 +339,7 @@ const s = {
   summaryBtn: { width: '100%', padding: '11px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', color: '#fff', fontSize: 13.5, fontWeight: 800, cursor: 'pointer' },
   ptBtn: { width: '100%', padding: '11px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#0d9488,#0891b2)', color: '#fff', fontSize: 13.5, fontWeight: 800, cursor: 'pointer' },
   summaryTag: { fontSize: 11, fontWeight: 800, color: '#6d5fb3', marginBottom: 5, letterSpacing: 0.3 },
+  send: { background: 'linear-gradient(135deg,#0d9488,#0891b2)', color: '#fff' },
+  sendMsg: { marginTop: 6, fontSize: 12.5, fontWeight: 700, textAlign: 'right' },
   summaryErr: { marginTop: 8, padding: '8px 10px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', fontSize: 12.5 },
 };
