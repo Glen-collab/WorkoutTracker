@@ -39,6 +39,38 @@ function buildProgramSummaryPrompt(clientName, programName, notesText) {
   ].join('\n');
 }
 
+// A clinician-facing handoff — for when the client has a PT or doctor
+// appointment. Same running notes (which already fold in Glen's own logged
+// observations), but reframed for a medical provider: movement/load tolerance,
+// pain/symptom triggers seen in training, and the coach's professional eye.
+// Explicitly NOT a diagnosis — training observations for the clinician's review.
+function buildPtSummaryPrompt(clientName, programName, notesText) {
+  const who = (clientName && clientName.trim()) ? clientName.trim() : 'this client';
+  return [
+    `You are Coach Glen, a strength & conditioning coach, writing a concise handoff for ${who}'s physical therapist or physician ahead of an appointment.`,
+    `The reader is a CLINICIAN (PT / doctor). ${who} is your training client. Below are your day-by-day session notes from their training, which INCLUDE your own coaching observations.`,
+    '',
+    'SESSION NOTES:',
+    '"""',
+    notesText,
+    '"""',
+    '',
+    'Write a PT / DOCTOR SUMMARY using these exact section headers:',
+    '  1. TRAINING CONTEXT — who they are, what they train, how long/how often (only from the notes).',
+    '  2. MOVEMENT & LOAD TOLERANCE — what movements/loads/positions they handle well, and which ones they cannot yet load or have to regress.',
+    '  3. PAIN / SYMPTOMS OBSERVED IN TRAINING — any pain, discomfort, flare-ups, or guarding noted, WITH what movement/position triggered it and how it was managed. If none noted, say so.',
+    "  4. COACH'S OBSERVATIONS — your professional read: asymmetries, compensations, mobility/stability limits, patterns you see (this is the value only a coach can add).",
+    '  5. FOR YOUR ASSESSMENT — 2-4 specific things you would like the PT/doctor to evaluate or advise on, grounded in the notes.',
+    '',
+    'VOICE & RULES:',
+    '  - Professional, factual, and CONCISE — a clinician reading between patients. Real terminology (posterior chain, scapular control, valgus, dorsiflexion, etc.) is expected and welcome; no need to over-explain for this reader.',
+    '  - Report ONLY what is in the notes — do NOT invent symptoms, dates, or numbers.',
+    '  - You are a coach, NOT a medical provider: describe observations, do NOT diagnose or prescribe treatment. Frame section 5 as questions/requests, not orders.',
+    '  - End with one line: "These are training observations from a strength coach, shared to support your assessment — not a medical evaluation."',
+    '  - Output ONLY the summary.',
+  ].join('\n');
+}
+
 // Running coach scratch pad at the top of the 1-on-1 view. Shows every stamped
 // note logged for this program so far (piles up day to day). Auto-fed when the
 // trainer logs out a session; each entry is also editable here, and a quick
@@ -50,27 +82,31 @@ export default function ScratchPadCard({ accessCode, programName, currentWeek, c
   const [editingIdx, setEditingIdx] = useState(-1);
   const [draft, setDraft] = useState('');
 
-  // Program-end AI summary state
+  // AI summary state — 'kind' tracks which summary is showing (block vs PT).
   const [summarizing, setSummarizing] = useState(false);
   const [summary, setSummary] = useState('');
   const [summaryErr, setSummaryErr] = useState('');
+  const [summaryKind, setSummaryKind] = useState(''); // 'block' | 'pt'
 
-  // Show the summarize button once they're in the last week (or if the program
-  // length is unknown). Glen hits it when the client's done — even if they
-  // didn't train every day of that last week.
+  // Show the block-summary button once they're in the last week (or if the
+  // program length is unknown). The PT summary is available ANY time.
   const isLastWeek = !totalWeeks || (currentWeek && currentWeek >= totalWeeks);
 
-  const runSummary = async () => {
+  const runSummaryOfKind = async (kind) => {
     setSummarizing(true);
     setSummaryErr('');
     setSummary('');
+    setSummaryKind(kind);
     try {
       const notesText = scratchpadToText(entries);
+      const message = kind === 'pt'
+        ? buildPtSummaryPrompt(clientName, programName, notesText)
+        : buildProgramSummaryPrompt(clientName, programName, notesText);
       const res = await fetch(`${CHAT_API_BASE}/api/embed-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: buildProgramSummaryPrompt(clientName, programName, notesText),
+          message,
           // 'trainer_dashboard' routes to the chatbot's clean generate_summary()
           // path (bypasses the sales-funnel system prompt + compliance audit),
           // so the recap comes out direct instead of as a sales chat.
@@ -89,6 +125,8 @@ export default function ScratchPadCard({ accessCode, programName, currentWeek, c
       setSummarizing(false);
     }
   };
+  const runSummary = () => runSummaryOfKind('block');
+  const runPtSummary = () => runSummaryOfKind('pt');
 
   const copySummary = () => {
     if (summary) navigator.clipboard?.writeText(summary).catch(() => {});
@@ -215,26 +253,32 @@ export default function ScratchPadCard({ accessCode, programName, currentWeek, c
             <button style={s.addBtn} onClick={addToday}>＋ Add a note for today</button>
           )}
 
-          {/* Program-end AI summary — appears on the last week. Hit it when the
-              client wraps the block; it reads the whole sheet and recaps the
-              findings to inform the next program. */}
-          {isLastWeek && entries.length > 0 && (
+          {/* AI summaries. PT/Doctor recap is available ANY time (before an
+              appointment); the block recap appears on the last week. Both read
+              the whole notes sheet — including Glen's own logged observations. */}
+          {entries.length > 0 && (
             <div style={s.summaryWrap}>
-              <button style={s.summaryBtn} onClick={runSummary} disabled={summarizing}>
-                {summarizing ? '🧠 Summarizing the program…' : '🧠 Summarize this program for the next one'}
+              <button style={s.ptBtn} onClick={runPtSummary} disabled={summarizing}>
+                {summarizing && summaryKind === 'pt' ? '🩺 Writing the PT / Doctor summary…' : '🩺 Summary for PT / Doctor'}
               </button>
+              {isLastWeek && (
+                <button style={{ ...s.summaryBtn, marginTop: 8 }} onClick={runSummary} disabled={summarizing}>
+                  {summarizing && summaryKind === 'block' ? '🧠 Summarizing the program…' : '🧠 Summarize this program for the next one'}
+                </button>
+              )}
               {summaryErr && <div style={s.summaryErr}>{summaryErr}</div>}
               {summary && (
                 <div style={{ marginTop: 8 }}>
+                  <div style={s.summaryTag}>{summaryKind === 'pt' ? '🩺 PT / Doctor summary' : '🧠 Block summary'} — edit before you send</div>
                   <textarea
                     style={{ ...s.textarea, minHeight: 180 }}
                     value={summary}
                     onChange={(e) => setSummary(e.target.value)}
-                    rows={10}
+                    rows={12}
                   />
                   <div style={s.editRow}>
                     <button style={{ ...s.miniBtn, ...s.ghost }} onClick={copySummary}>Copy</button>
-                    <button style={{ ...s.miniBtn, ...s.primary }} onClick={runSummary} disabled={summarizing}>Regenerate</button>
+                    <button style={{ ...s.miniBtn, ...s.primary }} onClick={() => runSummaryOfKind(summaryKind)} disabled={summarizing}>Regenerate</button>
                   </div>
                 </div>
               )}
@@ -266,5 +310,7 @@ const s = {
   addBtn: { marginTop: 8, width: '100%', padding: '9px', borderRadius: 8, border: '1.5px dashed #c7c0e6', background: '#faf9ff', color: '#6d5fb3', fontSize: 13, fontWeight: 700, cursor: 'pointer' },
   summaryWrap: { marginTop: 12, paddingTop: 12, borderTop: '1px solid #efeafa' },
   summaryBtn: { width: '100%', padding: '11px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', color: '#fff', fontSize: 13.5, fontWeight: 800, cursor: 'pointer' },
+  ptBtn: { width: '100%', padding: '11px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#0d9488,#0891b2)', color: '#fff', fontSize: 13.5, fontWeight: 800, cursor: 'pointer' },
+  summaryTag: { fontSize: 11, fontWeight: 800, color: '#6d5fb3', marginBottom: 5, letterSpacing: 0.3 },
   summaryErr: { marginTop: 8, padding: '8px 10px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', fontSize: 12.5 },
 };
