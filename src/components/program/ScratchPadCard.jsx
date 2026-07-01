@@ -252,36 +252,36 @@ export default function ScratchPadCard({ accessCode, programName, currentWeek, c
           {editingIdx < 0 && (
             <button style={s.addBtn} onClick={addToday}>＋ Add a note for today</button>
           )}
+        </div>
+      )}
 
-          {/* AI summaries. PT/Doctor recap is available ANY time (before an
-              appointment); the block recap appears on the last week. Both read
-              the whole notes sheet — including Glen's own logged observations. */}
-          {entries.length > 0 && (
-            <div style={s.summaryWrap}>
-              <button style={s.ptBtn} onClick={runPtSummary} disabled={summarizing}>
-                {summarizing && summaryKind === 'pt' ? '🩺 Writing the PT / Doctor summary…' : '🩺 Summary for PT / Doctor'}
-              </button>
-              {isLastWeek && (
-                <button style={{ ...s.summaryBtn, marginTop: 8 }} onClick={runSummary} disabled={summarizing}>
-                  {summarizing && summaryKind === 'block' ? '🧠 Summarizing the program…' : '🧠 Summarize this program for the next one'}
-                </button>
-              )}
-              {summaryErr && <div style={s.summaryErr}>{summaryErr}</div>}
-              {summary && (
-                <div style={{ marginTop: 8 }}>
-                  <div style={s.summaryTag}>{summaryKind === 'pt' ? '🩺 PT / Doctor summary' : '🧠 Block summary'} — edit before you send</div>
-                  <textarea
-                    style={{ ...s.textarea, minHeight: 180 }}
-                    value={summary}
-                    onChange={(e) => setSummary(e.target.value)}
-                    rows={12}
-                  />
-                  <div style={s.editRow}>
-                    <button style={{ ...s.miniBtn, ...s.ghost }} onClick={copySummary}>Copy</button>
-                    <button style={{ ...s.miniBtn, ...s.primary }} onClick={() => runSummaryOfKind(summaryKind)} disabled={summarizing}>Regenerate</button>
-                  </div>
-                </div>
-              )}
+      {/* AI summaries live OUTSIDE the scrollable notes body so the generated
+          result shows full-size instead of clipped below the 280px fold.
+          PT/Doctor recap is available ANY time; the block recap on the last week. */}
+      {open && entries.length > 0 && (
+        <div style={s.summaryOuter}>
+          <button style={s.ptBtn} onClick={runPtSummary} disabled={summarizing}>
+            {summarizing && summaryKind === 'pt' ? '🩺 Writing the PT / Doctor summary…' : '🩺 Summary for PT / Doctor'}
+          </button>
+          {isLastWeek && (
+            <button style={{ ...s.summaryBtn, marginTop: 8 }} onClick={runSummary} disabled={summarizing}>
+              {summarizing && summaryKind === 'block' ? '🧠 Summarizing the program…' : '🧠 Summarize this program for the next one'}
+            </button>
+          )}
+          {summaryErr && <div style={s.summaryErr}>{summaryErr}</div>}
+          {summary && (
+            <div style={{ marginTop: 8 }}>
+              <div style={s.summaryTag}>{summaryKind === 'pt' ? '🩺 PT / Doctor summary' : '🧠 Block summary'} — edit before you send</div>
+              <textarea
+                style={{ ...s.textarea, minHeight: 180 }}
+                value={summary}
+                onChange={(e) => setSummary(e.target.value)}
+                rows={12}
+              />
+              <div style={s.editRow}>
+                <button style={{ ...s.miniBtn, ...s.ghost }} onClick={copySummary}>Copy</button>
+                <button style={{ ...s.miniBtn, ...s.primary }} onClick={() => runSummaryOfKind(summaryKind)} disabled={summarizing}>Regenerate</button>
+              </div>
             </div>
           )}
         </div>
@@ -309,6 +309,7 @@ const s = {
   primary: { background: 'linear-gradient(135deg,#667eea,#764ba2)', color: '#fff' },
   addBtn: { marginTop: 8, width: '100%', padding: '9px', borderRadius: 8, border: '1.5px dashed #c7c0e6', background: '#faf9ff', color: '#6d5fb3', fontSize: 13, fontWeight: 700, cursor: 'pointer' },
   summaryWrap: { marginTop: 12, paddingTop: 12, borderTop: '1px solid #efeafa' },
+  summaryOuter: { padding: '12px', borderTop: '1px solid #efeafa' },
   summaryBtn: { width: '100%', padding: '11px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', color: '#fff', fontSize: 13.5, fontWeight: 800, cursor: 'pointer' },
   ptBtn: { width: '100%', padding: '11px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#0d9488,#0891b2)', color: '#fff', fontSize: 13.5, fontWeight: 800, cursor: 'pointer' },
   summaryTag: { fontSize: 11, fontWeight: 800, color: '#6d5fb3', marginBottom: 5, letterSpacing: 0.3 },
