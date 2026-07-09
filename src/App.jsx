@@ -337,12 +337,14 @@ export default function App() {
   const currentWeekRef = useRef(currentWeek);
   const currentDayRef = useRef(currentDay);
   const programRef = useRef(program);
+  const exerciseSwapsRef = useRef(exerciseSwaps);
   useEffect(() => { userRef.current = user; }, [user]);
   useEffect(() => { maxesRef.current = maxes; }, [maxes]);
   useEffect(() => { profileRef.current = profile; }, [profile]);
   useEffect(() => { currentWeekRef.current = currentWeek; }, [currentWeek]);
   useEffect(() => { currentDayRef.current = currentDay; }, [currentDay]);
   useEffect(() => { programRef.current = program; }, [program]);
+  useEffect(() => { exerciseSwapsRef.current = exerciseSwaps; }, [exerciseSwaps]);
 
   // In-app save of body stats + 1RM maxes (from the Profile widget). Updates
   // local state immediately so prescribed weights recalc live, then persists
@@ -392,9 +394,24 @@ export default function App() {
   const handleSaveSwap = useCallback((prescribedName, swap) => {
     if (!prescribedName) return;
     const key = prescribedName.toLowerCase();
+    // Stamp the week/day the swap was made so it applies FORWARD only (past /
+    // completed weeks keep what was actually done). Preserve the original
+    // fromW/fromD when the SAME substitute is just having its reps adjusted, so
+    // tweaking reps later doesn't shift where the swap starts. A new substitute
+    // (different name) re-stamps from today.
+    let stamped = null;
+    if (swap) {
+      const prevSwap = exerciseSwapsRef.current?.[key];
+      const keep = prevSwap && prevSwap.name === swap.name && prevSwap.fromW;
+      stamped = {
+        ...swap,
+        fromW: keep ? prevSwap.fromW : (currentWeekRef.current || 1),
+        fromD: keep ? prevSwap.fromD : (currentDayRef.current || 1),
+      };
+    }
     setExerciseSwaps(prev => {
       const next = { ...prev };
-      if (swap) next[key] = swap; else delete next[key];
+      if (stamped) next[key] = stamped; else delete next[key];
       return next;
     });
     const u = userRef.current;
@@ -402,7 +419,7 @@ export default function App() {
     api.updateUserStats({
       accessCode: u.accessCode,
       email: u.email,
-      exerciseSwaps: { [key]: swap || null },
+      exerciseSwaps: { [key]: stamped || null },
     }).catch(() => {});
   }, [api, setExerciseSwaps]);
 
@@ -521,12 +538,23 @@ export default function App() {
         try {
           const swaps = result.data.userPosition?.exerciseSwaps;
           if (swaps && typeof swaps === 'object') {
+            // Apply a swap only from the day it was made FORWARD. The loaded
+            // day is what the backend resolved (userPosition.currentWeek/Day).
+            // Legacy swaps with no fromW apply everywhere (from the start).
+            const lw = parseInt(result.data.userPosition?.currentWeek) || 1;
+            const ld = parseInt(result.data.userPosition?.currentDay) || 1;
+            const applies = (s) => {
+              const fw = parseInt(s.fromW);
+              if (!fw) return true;
+              const fd = parseInt(s.fromD) || 1;
+              return lw > fw || (lw === fw && ld >= fd);
+            };
             if (Object.keys(swaps).length && Array.isArray(prog.blocks)) {
               for (const block of prog.blocks) {
                 if (!Array.isArray(block?.exercises)) continue;
                 for (const ex of block.exercises) {
                   const s = ex?.name ? swaps[ex.name.toLowerCase()] : null;
-                  if (s && s.name) {
+                  if (s && s.name && applies(s)) {
                     ex.swappedName = s.name;
                     if (s.video) ex.swappedVideo = s.video;
                     if (s.sets) ex.swappedSets = String(s.sets);
