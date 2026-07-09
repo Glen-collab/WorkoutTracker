@@ -36,6 +36,7 @@ function buildProgramSummaryPrompt(clientName, programName, notesText) {
     '  - The plain version is so the client (or their family) can follow it — clear and human, but NEVER dumbed-down or condescending. Do not talk down to anyone.',
     '',
     'Stay specific to what is actually in the notes — do NOT invent numbers or details that are not there. Output ONLY the summary.',
+    'LENGTH: cover all five sections and FINISH completely — never trail off. Keep each point crisp (the plain-language note is ONE short sentence, not a paragraph); tighten rather than pad. A complete, concise summary beats a long one that gets cut off.',
   ].join('\n');
 }
 
@@ -68,6 +69,7 @@ function buildPtSummaryPrompt(clientName, programName, notesText) {
     '  - You are a coach, NOT a medical provider: describe observations, do NOT diagnose or prescribe treatment. Frame section 5 as questions/requests, not orders.',
     '  - End with one line: "These are training observations from a strength coach, shared to support your assessment — not a medical evaluation."',
     '  - Output ONLY the summary.',
+    '  - LENGTH: keep each section to 1-3 tight sentences (or a couple short bullets) so the whole handoff fits on about a page and FINISHES completely — never trail off mid-section.',
   ].join('\n');
 }
 
