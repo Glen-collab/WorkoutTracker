@@ -254,6 +254,7 @@ export default function ExerciseCard({
   onSaveSprintPB,
   onMarkComplete,
   onSetRecommendation,
+  onSaveSwap,
   prefillReps,
 }) {
   // Collapsed if marked complete, but allow manual expand
@@ -265,6 +266,20 @@ export default function ExerciseCard({
   const collapsed = isMarkedComplete && !forceExpanded;
 
   const [showVideo, setShowVideo] = useState(false);
+
+  // Exercise swap state. Initialized from a PERSISTED swap stamped onto the
+  // exercise at program load (ex.swappedName/…) so it survives week navigation,
+  // and updated live when the client swaps this session. A swap may also carry
+  // a sets/reps override so a substituted movement runs its own scheme.
+  const [showSwap, setShowSwap] = useState(false);
+  const [swappedName, setSwappedName] = useState(exercise.swappedName || null);
+  const [swappedVideo, setSwappedVideo] = useState(exercise.swappedVideo || null);
+  const [swappedSets, setSwappedSets] = useState(exercise.swappedSets || null);
+  const [swappedReps, setSwappedReps] = useState(exercise.swappedReps || null);
+  const [swapSearch, setSwapSearch] = useState('');
+  const [showAllCat, setShowAllCat] = useState(false);
+  const [swapOwn, setSwapOwn] = useState('');
+
   const isStrength = ['straight-set', 'superset', 'triset'].includes(blockType);
   const isCardio = blockType === 'cardio';
   const isMovement = blockType === 'movement' || blockType === 'conditioning';
@@ -294,6 +309,20 @@ export default function ExerciseCard({
       }
       ex.setsCount = ex.sets.length;
       ex.sets = ex.sets.length;
+    }
+    // A swap with a sets/reps override runs the substituted movement as a plain
+    // sets × reps the client fills in — NOT the original's %1RM scheme (they're
+    // doing a different lift). Drop the percentage/per-set structure so the
+    // non-percentage renderer takes over with the new numbers.
+    if (swappedName && (swappedReps || swappedSets)) {
+      const cnt = parseInt(swappedSets, 10)
+        || (typeof ex.sets === 'number' ? ex.sets : parseInt(ex.setsCount)) || 3;
+      ex.setsCount = cnt;
+      ex.sets = cnt;
+      if (swappedReps) ex.reps = swappedReps;
+      ex.repsPerSet = null;
+      ex.percentages = null;
+      ex.isPercentageBased = false;
     }
     return ex;
   })();
@@ -1080,12 +1109,6 @@ export default function ExerciseCard({
     { name: 'Jog', icon: '\uD83C\uDFC3' },
     { name: 'Jump Rope', icon: '\u2B55' },
   ];
-  const [showSwap, setShowSwap] = useState(false);
-  const [swappedName, setSwappedName] = useState(null);
-  const [swappedVideo, setSwappedVideo] = useState(null);
-  const [swapSearch, setSwapSearch] = useState('');
-  const [showAllCat, setShowAllCat] = useState(false);
-  const [swapOwn, setSwapOwn] = useState('');
   const displayName = swappedName || ex.name;
   // The demo video follows the swap: a library substitute shows its own video;
   // a swap to something videoless (write-your-own) shows none rather than the
@@ -1097,16 +1120,34 @@ export default function ExerciseCard({
   const handleSwap = (newName, newVideo) => {
     setSwappedName(newName);
     setSwappedVideo(newVideo || null);
+    // A fresh swap starts on the prescribed scheme; the client can then adjust.
+    setSwappedSets(null);
+    setSwappedReps(null);
     onUpdateTracking(blockIndex, exIndex, null, 'swapped_exercise', newName);
+    // Persist per-athlete so it carries to next week (keyed by prescribed name).
+    if (onSaveSwap) onSaveSwap(exercise.name, { name: newName, video: newVideo || '', sets: '', reps: '' });
     setShowSwap(false);
     setSwapSearch('');
     setShowAllCat(false);
     setSwapOwn('');
   };
+  // Adjust the sets/reps of an ACTIVE swap (the substituted movement's scheme).
+  const saveSwapReps = (sets, reps) => {
+    const s = (sets || '').trim();
+    const r = (reps || '').trim();
+    setSwappedSets(s || null);
+    setSwappedReps(r || null);
+    if (onSaveSwap && swappedName) {
+      onSaveSwap(exercise.name, { name: swappedName, video: swappedVideo || '', sets: s, reps: r });
+    }
+  };
   const resetSwap = () => {
     setSwappedName(null);
     setSwappedVideo(null);
+    setSwappedSets(null);
+    setSwappedReps(null);
     onUpdateTracking(blockIndex, exIndex, null, 'swapped_exercise', '');
+    if (onSaveSwap) onSaveSwap(exercise.name, null); // null → revert to prescribed
   };
 
   const isConditioningExercise = blockType === 'conditioning' || blockType === 'cardio' || blockType === 'movement';
@@ -1183,6 +1224,27 @@ export default function ExerciseCard({
           <button onClick={resetSwap}
             style={{ marginLeft: '8px', background: 'none', border: 'none', color: '#9ca3af',
               fontSize: '12px', cursor: 'pointer', textDecoration: 'underline' }}>reset</button>
+        )}
+        {swappedName && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px',
+            fontSize: '12px', color: '#6b7280', flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 600 }}>Adjust:</span>
+            <input type="text" inputMode="numeric" value={swappedSets || ''}
+              onChange={(e) => setSwappedSets(e.target.value || null)}
+              onBlur={(e) => saveSwapReps(e.target.value, swappedReps || '')}
+              placeholder={String(ex.setsCount || '')}
+              style={{ width: '42px', padding: '5px 6px', border: '1px solid #d1d5db',
+                borderRadius: '6px', fontSize: '13px', textAlign: 'center' }} />
+            <span>sets ×</span>
+            <input type="text" value={swappedReps || ''}
+              onChange={(e) => setSwappedReps(e.target.value || null)}
+              onBlur={(e) => saveSwapReps(swappedSets || '', e.target.value)}
+              placeholder={String(ex.reps || '')}
+              style={{ width: '52px', padding: '5px 6px', border: '1px solid #d1d5db',
+                borderRadius: '6px', fontSize: '13px', textAlign: 'center' }} />
+            <span>reps</span>
+            <span style={{ color: '#9ca3af', fontSize: '11px' }}>(blank = keep prescribed)</span>
+          </div>
         )}
         {showSwap && (
           <div style={{ marginTop: '6px', border: '1px solid #e5e7eb', borderRadius: '10px',

@@ -83,6 +83,7 @@ export default function App() {
     user, setUser,
     maxes, setMaxes,
     sprintPBs, setSprintPBs,
+    exerciseSwaps, setExerciseSwaps,
     profile, setProfile,
     consentAccepted, setConsentAccepted,
     consentTimestamp, setConsentTimestamp,
@@ -384,6 +385,27 @@ export default function App() {
     }).catch(() => {});
   }, [api, setSprintPBs]);
 
+  // Persist an exercise swap per prescribed movement so it carries across weeks.
+  // `swap` = { name, video, sets, reps } to set, or null to REVERT to prescribed
+  // (backend removes the key). Keyed by lowercased prescribed name; optimistic
+  // local update + best-effort save (server merges the JSONB).
+  const handleSaveSwap = useCallback((prescribedName, swap) => {
+    if (!prescribedName) return;
+    const key = prescribedName.toLowerCase();
+    setExerciseSwaps(prev => {
+      const next = { ...prev };
+      if (swap) next[key] = swap; else delete next[key];
+      return next;
+    });
+    const u = userRef.current;
+    if (!u?.accessCode || !u?.email) return;
+    api.updateUserStats({
+      accessCode: u.accessCode,
+      email: u.email,
+      exerciseSwaps: { [key]: swap || null },
+    }).catch(() => {});
+  }, [api, setExerciseSwaps]);
+
   // 1-on-1: email an AI summary (block or PT/doctor) to the current client.
   // Reuses the session-recap pipe with summary-appropriate framing.
   const handleSendSummaryToClient = useCallback(async (text, kind) => {
@@ -490,6 +512,32 @@ export default function App() {
             }
           }
         } catch { /* fall back to bundled videos silently */ }
+
+        // Re-apply the athlete's persisted exercise swaps so a swap carries
+        // across weeks. Keyed by lowercased prescribed name. We stamp the
+        // substitute (name/video) + any sets/reps override onto the exercise;
+        // ExerciseCard initializes its swap state from these. Prescribed name is
+        // preserved as ex.name so logging still records "swapped from X".
+        try {
+          const swaps = result.data.userPosition?.exerciseSwaps;
+          if (swaps && typeof swaps === 'object') {
+            if (Object.keys(swaps).length && Array.isArray(prog.blocks)) {
+              for (const block of prog.blocks) {
+                if (!Array.isArray(block?.exercises)) continue;
+                for (const ex of block.exercises) {
+                  const s = ex?.name ? swaps[ex.name.toLowerCase()] : null;
+                  if (s && s.name) {
+                    ex.swappedName = s.name;
+                    if (s.video) ex.swappedVideo = s.video;
+                    if (s.sets) ex.swappedSets = String(s.sets);
+                    if (s.reps) ex.swappedReps = String(s.reps);
+                  }
+                }
+              }
+            }
+            setExerciseSwaps(swaps);
+          }
+        } catch { /* swaps are best-effort */ }
 
         // Fetch the coach's chatbot voice config so the tracker chatbot
         // speaks as THEIR coach (white-label). Falls back to default Glen
@@ -1198,7 +1246,9 @@ export default function App() {
             const isCompleted = trackingData[`complete-${blockIndex}-${exIndex}`] || false;
             // Client-entered name for "write your own" exercises + swapped cardio
             const customName = trackingData[`${blockIndex}-${exIndex}-null-custom_name`] || '';
-            const swappedName = trackingData[`${blockIndex}-${exIndex}-null-swapped_exercise`] || '';
+            // This-session swap (trackingData) OR a persisted swap stamped onto
+            // the exercise at load — either way the log records what they did.
+            const swappedName = trackingData[`${blockIndex}-${exIndex}-null-swapped_exercise`] || ex.swappedName || '';
 
             const result = {
               name: customName || swappedName || ex.name || 'Unknown Exercise',
@@ -1640,6 +1690,7 @@ export default function App() {
           onUpdateTracking={handleUpdateTracking}
           sprintPBs={sprintPBs}
           onSaveSprintPB={handleSaveSprintPB}
+          onSaveSwap={handleSaveSwap}
           onSendSummary={handleSendSummaryToClient}
           profile={profile}
           onUpdateProfile={setProfile}

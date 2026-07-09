@@ -13,6 +13,9 @@ export default function useTrackerState() {
   // Per-athlete sprint PBs (best time per distance) — drives the %PB target
   // times. Loaded from the user's account, edited inline in sprint blocks.
   const [sprintPBs, setSprintPBs] = useState({});
+  // Per-athlete exercise swaps that persist across weeks (prescribed name →
+  // { name, video, sets, reps }). Loaded from the server each program load.
+  const [exerciseSwaps, setExerciseSwaps] = useState({});
   const [profile, setProfile] = useState({ height: '', weight: '', age: '' });
 
   // Consent
@@ -73,6 +76,7 @@ export default function useTrackerState() {
     user, setUser,
     maxes, setMaxes,
     sprintPBs, setSprintPBs,
+    exerciseSwaps, setExerciseSwaps,
     profile, setProfile,
     consentAccepted, setConsentAccepted,
     consentTimestamp, setConsentTimestamp,

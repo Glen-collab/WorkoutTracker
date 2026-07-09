@@ -139,6 +139,7 @@ export default function BlockCard({
   onUpdateTracking,
   sprintPBs,
   onSaveSprintPB,
+  onSaveSwap,
   onMarkComplete,
   onSetRecommendation,
   recommendations,
@@ -202,6 +203,7 @@ export default function BlockCard({
                 onUpdateTracking={onUpdateTracking}
                 sprintPBs={sprintPBs}
                 onSaveSprintPB={onSaveSprintPB}
+                onSaveSwap={onSaveSwap}
                 onMarkComplete={onMarkComplete}
                 onSetRecommendation={onSetRecommendation}
                 prefillReps={prefillReps}

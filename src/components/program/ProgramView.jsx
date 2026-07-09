@@ -181,6 +181,7 @@ export default function ProgramView({
   onUpdateTracking,
   sprintPBs,
   onSaveSprintPB,
+  onSaveSwap,
   onSendSummary,
   profile,
   onUpdateProfile,
@@ -410,6 +411,7 @@ export default function ProgramView({
             onUpdateTracking={onUpdateTracking}
             sprintPBs={sprintPBs}
             onSaveSprintPB={onSaveSprintPB}
+            onSaveSwap={onSaveSwap}
             onMarkComplete={() => {}}
             onSetRecommendation={onSetRecommendation}
             recommendations={recommendations}
