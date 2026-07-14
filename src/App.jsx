@@ -664,15 +664,16 @@ export default function App() {
           currentWeekIsFresh = true;
         }
 
-        // Pre-fill the bodyweight box: a typed-but-unlogged local value wins
-        // (survives navigation, like the numbers), else the server-recorded
-        // weigh-in for that day, else blank.
+        // The bodyweight box is a FRESH entry each day — it must NOT carry the
+        // prior day's / prior session's weight (Glen: "it shouldn't carry over
+        // weight each day"). Only a value TYPED this session but not yet logged
+        // is restored (keyed per day, survives navigation). A day's recorded
+        // weigh-in lives on the trend chart (tap a point to read it) rather than
+        // pre-filling this box — so the coach always enters the current weight,
+        // and no phantom "today" point is drawn from a loaded past value.
         let localBw = null;
         try { localBw = localStorage.getItem(bwKey(u.accessCode, week, day)); } catch { localBw = null; }
-        setTodayWeight(
-          (localBw != null && localBw !== '') ? localBw
-          : (result.data.bodyWeight != null ? String(result.data.bodyWeight) : '')
-        );
+        setTodayWeight((localBw != null && localBw !== '') ? localBw : '');
 
         // Check for custom override
         try {
