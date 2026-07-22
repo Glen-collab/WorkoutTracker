@@ -240,6 +240,12 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
   if (!loaded || (weeklyData.length === 0 && !currentStats)) return null;
 
   const metric = GRAPH_METRICS.find(m => m.key === graphMetric) || GRAPH_METRICS[0];
+  // Does THIS metric actually have a projected line? Tonnage is ~0 for a
+  // bodyweight/athletic program (no barbell %s or entered weights), so the
+  // dashed line has nothing to draw even though the plan exists. Gate the
+  // "projected" legend on this so it never promises a line that isn't there
+  // (that mismatch read as a 1-on-1 bug — it's really the metric being empty).
+  const metricHasProjection = allWeeks.some(w => (projection[w.week]?.[metric.key] || 0) > 0);
   // Scale to the bigger of logged actuals and the projected plan so the dashed
   // projection line always fits inside the chart.
   const maxVal = Math.max(
@@ -318,10 +324,12 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
           </div>
           {/* Legend: dashed = the program's plan, solid dot = what you've logged */}
           <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', marginBottom: '6px', fontSize: '10px', color: 'rgba(255,255,255,0.6)' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-              <svg width="18" height="6"><line x1="0" y1="3" x2="18" y2="3" stroke={metric.color} strokeWidth="2" strokeDasharray="3,2" opacity="0.7" /></svg>
-              projected
-            </span>
+            {metricHasProjection && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <svg width="18" height="6"><line x1="0" y1="3" x2="18" y2="3" stroke={metric.color} strokeWidth="2" strokeDasharray="3,2" opacity="0.7" /></svg>
+                projected
+              </span>
+            )}
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
               <svg width="10" height="10"><circle cx="5" cy="5" r="4" fill={metric.color} stroke="#fff" strokeWidth="1" /></svg>
               logged

@@ -1075,6 +1075,13 @@ export default function App() {
         weight: formData.weight || '',
         age: formData.age || '',
       });
+    } else {
+      // No body stats in the incoming payload — 1-on-1 / kiosk client switch,
+      // or a returning user who left them blank. RESET instead of keeping the
+      // PREVIOUS client's: otherwise one client's weight/age/gender leaks onto
+      // the next (and gets sent to the backend, corrupting their stored row).
+      // The loaded client's own stored stats fill back in from the API response.
+      setProfile({ gender: '', height: '', weight: '', age: '' });
     }
 
     if (isReturningUser || isKioskStation || isOneOnOne) {
@@ -1083,7 +1090,10 @@ export default function App() {
       // tablet/iPad for every workout.
       const profileData = (formData.height || formData.weight || formData.age || formData.gender)
         ? { gender: formData.gender || '', height: formData.height || '', weight: formData.weight || '', age: formData.age || '' }
-        : profileRef.current;
+        // No stats passed → send empty (NOT the previous client's profileRef,
+        // which leaks/overwrites the loaded client's stored stats). The backend
+        // preserves the client's own values when we send nulls.
+        : { gender: '', height: '', weight: '', age: '' };
       // Pull week/day from URL in kiosk-station mode so the loaded program
       // jumps directly to the workout the TV is showing. In 1-on-1 mode the
       // picker passes the client's saved week/day so we resume where they
