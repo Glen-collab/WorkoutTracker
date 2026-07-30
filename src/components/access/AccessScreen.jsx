@@ -138,9 +138,12 @@ export default function AccessScreen({ onLoadProgram }) {
     try { localStorage.setItem(WELCOME_SEEN_KEY, 'true'); } catch {}
   };
 
-  // Wake up the backend while the user fills in the form (cold-start mitigation)
+  // Wake up the backend while the user fills in the form (cold-start mitigation).
+  // Must be the absolute Flask URL: a relative /api/* path goes through the
+  // Netlify proxy to the retired WordPress host and 403s, warming nothing.
+  // /api/health is GET-only and hits the DB, so it warms the connection pool too.
   useEffect(() => {
-    fetch('/api/load-program.php', { method: 'POST', body: '{}' }).catch(() => {});
+    fetch('https://app.bestrongagain.com/api/health').catch(() => {});
   }, []);
 
   const handleNewSubmit = (formData) => {
