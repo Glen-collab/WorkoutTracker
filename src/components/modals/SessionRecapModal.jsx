@@ -88,15 +88,18 @@ export default function SessionRecapModal({
     [items, program, trackingData]
   );
   const [notes, setNotes] = useState(prefill);
-  const [photos, setPhotos] = useState([]);              // solo: resized JPEG data URLs
+  // Solo: this client's reference photos. Group: the SHARED photo(s) — one shot
+  // of the whole crew that rides along on everyone's email, so the coach snaps
+  // it once instead of attaching the same picture to each person.
+  const [photos, setPhotos] = useState([]);              // resized JPEG data URLs
   const [memberNotes, setMemberNotes] = useState({});    // email -> private note (group)
   const [memberPhotos, setMemberPhotos] = useState({});  // email -> [photo urls] (group)
-  const [photoTarget, setPhotoTarget] = useState('solo');// 'solo' | member email
+  const [photoTarget, setPhotoTarget] = useState('shared');// 'shared' | member email
   const fileRef = useRef(null);
   useEffect(() => { if (isOpen) { setNotes(prefill); setPhotos([]); setMemberNotes({}); setMemberPhotos({}); } }, [isOpen, prefill]);
 
-  // One hidden file input shared by every "+ Photo" button; the target (solo or
-  // a member email) decides which photo bucket the picks land in.
+  // One hidden file input shared by every "+ Photo" button; the target (the
+  // shared bucket or a member email) decides which bucket the picks land in.
   const openPicker = (target) => { setPhotoTarget(target); fileRef.current?.click(); };
   const onPickPhotos = async (e) => {
     const files = Array.from(e.target.files || []);
@@ -106,7 +109,7 @@ export default function SessionRecapModal({
       if (!f.type.startsWith('image/')) continue;
       try {
         const url = await resizePhoto(f);
-        if (target === 'solo') setPhotos((p) => (p.length >= 6 ? p : [...p, url]));
+        if (target === 'shared') setPhotos((p) => (p.length >= 6 ? p : [...p, url]));
         else setMemberPhotos((mp) => { const cur = mp[target] || []; return cur.length >= 6 ? mp : { ...mp, [target]: [...cur, url] }; });
       } catch { /* skip */ }
     }
@@ -147,7 +150,7 @@ export default function SessionRecapModal({
         <div style={s.body}>
           {isGroup && (
             <div style={s.groupNote}>
-              👥 Each of the {groupMembers.length} gets the <b>shared note</b> below <b>plus only their own</b> private note — nobody sees anyone else's.
+              👥 Each of the {groupMembers.length} gets the <b>shared note + group photo</b> below <b>plus only their own</b> private note and photos — nobody sees anyone else's.
             </div>
           )}
           <div style={s.sectionLabel}>{isGroup ? 'Shared note — goes to everyone (the workout)' : `Notes ${prefill ? '(your exercise notes, edit or add more)' : ''}`}</div>
@@ -161,7 +164,11 @@ export default function SessionRecapModal({
 
           {isGroup ? (
             <>
-              <div style={{ ...s.sectionLabel, marginTop: 16 }}>🔒 Individual notes &amp; photos — private to each person</div>
+              {/* Shot of the whole crew — attached to everyone's email, taken once. */}
+              <div style={{ ...s.sectionLabel, marginTop: 14 }}>📸 Group photo — goes to everyone</div>
+              {renderPhotos(photos, 'shared', (idx) => setPhotos((p) => p.filter((_, j) => j !== idx)))}
+
+              <div style={{ ...s.sectionLabel, marginTop: 18 }}>🔒 Individual notes &amp; photos — private to each person</div>
               {groupMembers.map((m, i) => (
                 <div key={m.email || i} style={s.memberBlock}>
                   <div style={s.memberName}>✍️ {m.name || m.email}</div>
@@ -183,7 +190,7 @@ export default function SessionRecapModal({
           ) : (
             <>
               <div style={s.sectionLabel}>Reference photos (optional, emailed only)</div>
-              {renderPhotos(photos, 'solo', (idx) => setPhotos((p) => p.filter((_, j) => j !== idx)))}
+              {renderPhotos(photos, 'shared', (idx) => setPhotos((p) => p.filter((_, j) => j !== idx)))}
             </>
           )}
           <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={onPickPhotos} />

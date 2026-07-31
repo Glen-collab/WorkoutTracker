@@ -1869,6 +1869,11 @@ export default function App() {
               const personal = (memberNotes?.[r.email] || '').trim();
               const body = isGroup ? [notes, personal].filter(Boolean).join('\n\n') : notes;
               const personalPhotos = isGroup ? (memberPhotos?.[r.email] || []) : (photos || []);
+              // Group mode: `photos` is the SHARED bucket — one shot of the crew
+              // that rides along on every member's email. Sent as its own field
+              // so the backend names it group-photo-N and it can't crowd out
+              // anyone's personal shots. Solo mode has no shared bucket.
+              const sharedPhotos = isGroup ? (photos || []) : [];
               const who = (r.name || r.email).split(' ')[0] || r.email;
               try {
                 const res = await api.sendSessionRecap({
@@ -1881,6 +1886,7 @@ export default function App() {
                   items,
                   coach_notes: body,
                   photos: personalPhotos,
+                  group_photos: sharedPhotos,
                   coach: coachParam,
                 });
                 // The endpoint now reports the REAL send result (used to always
