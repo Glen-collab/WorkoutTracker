@@ -92,7 +92,7 @@ export const METRIC_INFO = {
       '🔴 Above 1.5 is a spike — over 50% more hard work than you are used to. This is the classic setup for a pulled something, and it is the one number in the app worth acting on.',
       '🔵 Below 0.8 is unloading — a deload. Backing off on purpose is how you cash in the work you already did.',
       'Read it as a story, not a snapshot. Red followed by blue is a planned peak into a recovery week, and that is a good thing. Red that stays red week after week is a load climb nobody planned — that is the one to fix.',
-      'It stays hidden until there are at least 2 weeks of real history, because before that the average it compares against does not mean anything yet.',
+      'Until you have logged 2 weeks it reads "building baseline" — the average it measures you against does not exist yet. And if your program has no near-max work in it at all, it stays hidden entirely, because there is no neural load to weigh.',
     ],
   },
 

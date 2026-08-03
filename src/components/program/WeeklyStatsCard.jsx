@@ -244,6 +244,19 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
     return { label: 'unloading', emoji: '🔵', color: '#93c5fd' };
   })();
 
+  // Does this PROGRAM ever produce neural load? ACWR needs 2 weeks of logged CNS
+  // before it means anything, and a fully hidden pill means nobody — athlete or
+  // visiting coach — ever learns the feature exists. But a program built from
+  // bodyweight, circuits and conditioning scores zero CNS forever, and parking a
+  // permanent "building baseline..." on that screen would read as broken rather
+  // than as waiting. So the placeholder is gated on the PLAN containing 80%+
+  // work, which the projection already tells us for free.
+  const planHasNeuralWork = React.useMemo(
+    () => cnsToday > 0 || Object.values(projection).some(p => (p?.cns_load || 0) > 0),
+    [projection, cnsToday],
+  );
+  const acwrWeeksNeeded = Math.max(0, 2 - acwr.weeksWithLoad);
+
   if (!loaded || (weeklyData.length === 0 && !currentStats)) return null;
 
   const metric = GRAPH_METRICS.find(m => m.key === graphMetric) || GRAPH_METRICS[0];
@@ -285,6 +298,21 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
               <span style={{ fontSize: '18px', fontWeight: 800, color: acwrZone.color }}>{acwr.ratio.toFixed(2)}</span>
               <span style={{ fontSize: '12px', fontWeight: 700, color: acwrZone.color }}>{acwrZone.emoji} {acwrZone.label}</span>
               <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', fontWeight: 700 }}>ⓘ</span>
+            </div>
+          )}
+          {/* Baseline still building — muted, and only on programs that will
+              actually produce a reading (see planHasNeuralWork). */}
+          {!acwrZone && planHasNeuralWork && (
+            <div
+              onClick={() => setInfoKey('acwr')}
+              role="button"
+              tabIndex={0}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: '7px', margin: '0 0 10px', padding: '7px 12px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', border: '1px dashed rgba(255,255,255,0.18)', cursor: 'pointer' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.5px' }}>⚖️ ACWR</span>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.55)' }}>building baseline</span>
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)' }}>
+                {acwrWeeksNeeded === 1 ? '1 more week' : 'needs 2 weeks'} ⓘ
+              </span>
             </div>
           )}
           <div style={s.row}>
