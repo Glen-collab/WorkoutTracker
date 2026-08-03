@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import MetricSheet, { InfoDot } from '../common/MetricSheet';
 
 const overlay = {
   position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -31,8 +32,14 @@ const statValue = {
   fontSize: '20px', fontWeight: '800',
 };
 
+// Makes a stat tile tappable without changing how it looks.
+const tappable = { position: 'relative', cursor: 'pointer' };
+
 export default function WeeklySummaryModal({ isOpen, onClose, weekNumber, accessCode, userEmail, daysPerWeek, getWeeklyStats }) {
   const [stats, setStats] = useState(null);
+  // Which stat's explainer sheet is open (null = closed). Sits above this
+  // modal's overlay (z 9999) on purpose.
+  const [infoKey, setInfoKey] = useState(null);
 
   const fetchStats = useCallback(async () => {
     if (!isOpen || !getWeeklyStats || !accessCode || !userEmail) return;
@@ -68,36 +75,42 @@ export default function WeeklySummaryModal({ isOpen, onClose, weekNumber, access
 
             <div style={grid}>
               {stats.tonnage > 0 && (
-                <div style={statBox}>
+                <div style={{ ...statBox, ...tappable }} onClick={() => setInfoKey('tonnage')} role="button" tabIndex={0}>
+                  <InfoDot dark />
                   <div style={statLabel}>TOTAL TONNAGE</div>
                   <div style={statValue}>{stats.tonnage.toLocaleString()} lbs</div>
                 </div>
               )}
               {stats.core_crunches > 0 && (
-                <div style={statBox}>
+                <div style={{ ...statBox, ...tappable }} onClick={() => setInfoKey('core')} role="button" tabIndex={0}>
+                  <InfoDot dark />
                   <div style={statLabel}>CORE WORK</div>
                   <div style={statValue}>{stats.core_crunches.toLocaleString()} crunches</div>
                 </div>
               )}
               {stats.cardio_minutes > 0 && (
-                <div style={statBox}>
+                <div style={{ ...statBox, ...tappable }} onClick={() => setInfoKey('cardio_time')} role="button" tabIndex={0}>
+                  <InfoDot dark />
                   <div style={statLabel}>CARDIO</div>
                   <div style={statValue}>{Math.round(stats.cardio_minutes)} min</div>
                 </div>
               )}
               {stats.cardio_miles > 0 && (
-                <div style={statBox}>
+                <div style={{ ...statBox, ...tappable }} onClick={() => setInfoKey('distance')} role="button" tabIndex={0}>
+                  <InfoDot dark />
                   <div style={statLabel}>DISTANCE</div>
                   <div style={statValue}>{stats.cardio_miles.toFixed(1)} mi</div>
                 </div>
               )}
               {stats.est_calories > 0 && (
-                <div style={statBox}>
+                <div style={{ ...statBox, ...tappable }} onClick={() => setInfoKey('calories')} role="button" tabIndex={0}>
+                  <InfoDot dark />
                   <div style={statLabel}>EST. CALORIES</div>
                   <div style={statValue}>{stats.est_calories}</div>
                 </div>
               )}
             </div>
+            <MetricSheet infoKey={infoKey} onClose={() => setInfoKey(null)} />
           </>
         ) : (
           <p style={{ fontSize: 14, opacity: 0.7, margin: '0 0 16px' }}>

@@ -1,4 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
+import MetricSheet, { InfoDot } from '../common/MetricSheet';
+import { METRIC_INFO, GLOSSARY_CHIP_ORDER } from '../../data/metricGlossary';
 
 const QUALIFIER_2X = ['each', 'each arm', 'each leg', 'each side', 'all one arm first', 'all one leg first'];
 const COMBO_QUALIFIERS = { 'x2 combo': 2, 'x3 combo': 3, 'x4 combo': 4 };
@@ -572,9 +574,41 @@ const s = {
     textAlign: 'center',
     fontStyle: 'italic',
   },
+  // Mini-glossary shown while there is nothing logged yet. This box used to sit
+  // empty with one italic line in it — dead space at exactly the moment a new
+  // client is most curious what any of this means. The chips turn the wait into
+  // the explanation. Once real stats appear they take over and the tiles
+  // themselves become the tap targets.
+  chipHint: {
+    fontSize: '12px',
+    color: '#8b90a6',
+    textAlign: 'center',
+    margin: '10px 0 8px',
+  },
+  chipRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '6px',
+    justifyContent: 'center',
+  },
+  chip: {
+    border: '1px solid #dfe3f0',
+    background: '#f7f8fc',
+    color: '#4554c9',
+    borderRadius: '999px',
+    padding: '7px 12px',
+    fontSize: '12px',
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
 };
 
+// Tiles are plain divs; this makes one tappable without disturbing its look.
+const tappable = { position: 'relative', cursor: 'pointer' };
+
 export default function DailyTonnage({ blocks, maxes, trackingData, userWeight, userGender }) {
+  // Which stat's explainer sheet is open (null = closed).
+  const [infoKey, setInfoKey] = useState(null);
   const { tonnage, cardio, coreEquiv, estCalories } = useMemo(() => {
     const effectiveWeight = userWeight > 0 ? userWeight : getDefaultWeight(userGender);
     const weightKg = effectiveWeight * 0.453592;
@@ -612,43 +646,61 @@ export default function DailyTonnage({ blocks, maxes, trackingData, userWeight, 
     <div style={s.card}>
       <h3 style={s.title}>{'\uD83D\uDCCA'} Today's Volume</h3>
       {!hasAnything && (
-        <div style={s.empty}>Mark exercises complete to see your volume stats</div>
+        <>
+          <div style={s.empty}>Mark exercises complete to see your volume stats</div>
+          <div style={s.chipHint}>New to this? Tap any stat to see what it means:</div>
+          <div style={s.chipRow}>
+            {GLOSSARY_CHIP_ORDER.map(key => (
+              <button key={key} type="button" style={s.chip} onClick={() => setInfoKey(key)}>
+                {METRIC_INFO[key].emoji} {METRIC_INFO[key].title}
+              </button>
+            ))}
+          </div>
+        </>
       )}
       <div style={s.row}>
         {tonnage > 0 && (
-          <div style={s.stat}>
+          <div style={{ ...s.stat, ...tappable }} onClick={() => setInfoKey('tonnage')} role="button" tabIndex={0}>
+            <InfoDot />
             <div style={s.statLabel}>TOTAL TONNAGE</div>
             <div style={s.statValue}>{tonnage.toLocaleString()} lbs</div>
           </div>
         )}
         {coreEquiv > 0 && (
-          <div style={s.coreStat}>
+          <div style={{ ...s.coreStat, ...tappable }} onClick={() => setInfoKey('core')} role="button" tabIndex={0}>
+            <InfoDot />
             <div style={s.statLabel}>CORE WORK</div>
             <div style={s.statValue}>{coreEquiv.toLocaleString()} crunches</div>
           </div>
         )}
         {cardio.minutes > 0 && (
-          <div style={s.cardioStat}>
+          <div style={{ ...s.cardioStat, ...tappable }} onClick={() => setInfoKey('cardio_time')} role="button" tabIndex={0}>
+            <InfoDot />
             <div style={s.statLabel}>CARDIO TIME</div>
             <div style={s.statValue}>{Math.round(cardio.minutes)} min</div>
           </div>
         )}
         {cardio.miles > 0 && (
-          <div style={s.cardioStat}>
+          <div style={{ ...s.cardioStat, ...tappable }} onClick={() => setInfoKey('distance')} role="button" tabIndex={0}>
+            <InfoDot />
             <div style={s.statLabel}>DISTANCE</div>
             <div style={s.statValue}>{cardio.miles.toFixed(1)} mi</div>
           </div>
         )}
         {estCalories > 0 && (
-          <div style={{
-            ...s.stat,
-            background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-          }}>
+          <div
+            style={{ ...s.stat, ...tappable, background: 'linear-gradient(135deg, #ef4444, #dc2626)' }}
+            onClick={() => setInfoKey('calories')}
+            role="button"
+            tabIndex={0}
+          >
+            <InfoDot />
             <div style={s.statLabel}>EST. CALORIES</div>
             <div style={s.statValue}>{Math.round(estCalories)}</div>
           </div>
         )}
       </div>
+      <MetricSheet infoKey={infoKey} onClose={() => setInfoKey(null)} />
     </div>
   );
 }

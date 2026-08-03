@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { cnsLoadForDay } from '../../utils/cnsLoadCalc';
 import { projectDayStats } from './DailyTonnage';
+import MetricSheet, { InfoDot } from '../common/MetricSheet';
 
 const s = {
   card: {
@@ -111,19 +112,25 @@ const s = {
   },
 };
 
+// `info` points at the plain-English explainer in data/metricGlossary.js.
 const GRAPH_METRICS = [
-  { key: 'tonnage', label: 'Tonnage (lbs)', color: '#667eea', suffix: '' },
-  { key: 'cns_load', label: '⚡ CNS Load', color: '#dc2626', suffix: '' },
-  { key: 'est_calories', label: 'Calories', color: '#ef4444', suffix: '' },
-  { key: 'core_crunches', label: 'Core (reps)', color: '#10b981', suffix: '' },
-  { key: 'cardio_minutes', label: 'Time (min)', color: '#f59e0b', suffix: ' min' },
-  { key: 'cardio_miles', label: 'Distance (mi)', color: '#3b82f6', suffix: ' mi' },
+  { key: 'tonnage', label: 'Tonnage (lbs)', color: '#667eea', suffix: '', info: 'tonnage' },
+  { key: 'cns_load', label: '⚡ CNS Load', color: '#dc2626', suffix: '', info: 'cns_load' },
+  { key: 'est_calories', label: 'Calories', color: '#ef4444', suffix: '', info: 'calories' },
+  { key: 'core_crunches', label: 'Core (reps)', color: '#10b981', suffix: '', info: 'core' },
+  { key: 'cardio_minutes', label: 'Time (min)', color: '#f59e0b', suffix: ' min', info: 'cardio_time' },
+  { key: 'cardio_miles', label: 'Distance (mi)', color: '#3b82f6', suffix: ' mi', info: 'distance' },
 ];
+
+// Makes a stat tile tappable without changing how it looks.
+const tappable = { position: 'relative', cursor: 'pointer' };
 
 export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, daysPerWeek, totalWeeks, getWeeklyStats, liveStats, dayBlocks, allWorkouts, maxes, userWeight, userGender }) {
   const [weeklyData, setWeeklyData] = useState([]);
   const [graphMetric, setGraphMetric] = useState('tonnage');
   const [loaded, setLoaded] = useState(false);
+  // Which stat's explainer sheet is open (null = closed).
+  const [infoKey, setInfoKey] = useState(null);
 
   const fetchStats = useCallback(async () => {
     if (!getWeeklyStats || !accessCode || !userEmail) return;
@@ -260,45 +267,58 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
 
       {currentStats && (
         <>
-          <div style={s.progress}>
-            {currentStats.workouts} / {daysPerWeek || '?'} workouts completed
+          <div style={{ ...s.progress, ...tappable }} onClick={() => setInfoKey('workouts')} role="button" tabIndex={0}>
+            {currentStats.workouts} / {daysPerWeek || '?'} workouts completed{' '}
+            <span style={{ fontSize: '11px', opacity: 0.6 }}>ⓘ</span>
           </div>
-          {/* ACWR — live acute:chronic neural-load flag, off logged CNS history */}
+          {/* ACWR — live acute:chronic neural-load flag, off logged CNS history.
+              Tappable: this is the most jargon-heavy number in the app, and the
+              `title` tooltip it used to carry was invisible on a phone. */}
           {acwrZone && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', margin: '0 0 10px', padding: '8px 12px', borderRadius: '10px', background: 'rgba(255,255,255,0.06)', border: `1px solid ${acwrZone.color}55` }}
+            <div
+              onClick={() => setInfoKey('acwr')}
+              role="button"
+              tabIndex={0}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', margin: '0 0 10px', padding: '8px 12px', borderRadius: '10px', background: 'rgba(255,255,255,0.06)', border: `1px solid ${acwrZone.color}55`, cursor: 'pointer' }}
               title={`Acute ${acwr.acute.toLocaleString()} ÷ chronic ${acwr.chronic.toLocaleString()} (4-wk avg) — ${acwrZone.label}`}>
               <span style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.5px' }}>⚖️ ACWR</span>
               <span style={{ fontSize: '18px', fontWeight: 800, color: acwrZone.color }}>{acwr.ratio.toFixed(2)}</span>
               <span style={{ fontSize: '12px', fontWeight: 700, color: acwrZone.color }}>{acwrZone.emoji} {acwrZone.label}</span>
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', fontWeight: 700 }}>ⓘ</span>
             </div>
           )}
           <div style={s.row}>
             {currentStats.tonnage > 0 && (
-              <div style={s.stat}>
+              <div style={{ ...s.stat, ...tappable }} onClick={() => setInfoKey('tonnage')} role="button" tabIndex={0}>
+                <InfoDot dark />
                 <div style={s.statLabel}>TONNAGE</div>
                 <div style={s.statValue}>{currentStats.tonnage.toLocaleString()}</div>
               </div>
             )}
             {currentStats.core_crunches > 0 && (
-              <div style={s.stat}>
+              <div style={{ ...s.stat, ...tappable }} onClick={() => setInfoKey('core')} role="button" tabIndex={0}>
+                <InfoDot dark />
                 <div style={s.statLabel}>CORE</div>
                 <div style={s.statValue}>{currentStats.core_crunches.toLocaleString()}</div>
               </div>
             )}
             {currentStats.cardio_minutes > 0 && (
-              <div style={s.stat}>
+              <div style={{ ...s.stat, ...tappable }} onClick={() => setInfoKey('cardio_time')} role="button" tabIndex={0}>
+                <InfoDot dark />
                 <div style={s.statLabel}>CARDIO</div>
                 <div style={s.statValue}>{Math.round(currentStats.cardio_minutes)} min</div>
               </div>
             )}
             {currentStats.cardio_miles > 0 && (
-              <div style={s.stat}>
+              <div style={{ ...s.stat, ...tappable }} onClick={() => setInfoKey('distance')} role="button" tabIndex={0}>
+                <InfoDot dark />
                 <div style={s.statLabel}>DISTANCE</div>
                 <div style={s.statValue}>{currentStats.cardio_miles.toFixed(1)} mi</div>
               </div>
             )}
             {currentStats.est_calories > 0 && (
-              <div style={s.stat}>
+              <div style={{ ...s.stat, ...tappable }} onClick={() => setInfoKey('calories')} role="button" tabIndex={0}>
+                <InfoDot dark />
                 <div style={s.statLabel}>CALORIES</div>
                 <div style={s.statValue}>{currentStats.est_calories}</div>
               </div>
@@ -322,15 +342,29 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
               </button>
             ))}
           </div>
+          {/* Explains whichever metric is selected. CNS Load only ever appears
+              here, so without this there is no way to find out what it is. */}
+          {metric.info && (
+            <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+              <button
+                type="button"
+                onClick={() => setInfoKey(metric.info)}
+                style={{
+                  border: 'none', background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.75)',
+                  borderRadius: '999px', padding: '5px 12px', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
+                }}
+              >ⓘ What is {metric.label.replace(/^⚡ /, '')}?</button>
+            </div>
+          )}
           {/* Legend: dashed = the program's plan, solid dot = what you've logged */}
           <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', marginBottom: '6px', fontSize: '10px', color: 'rgba(255,255,255,0.6)' }}>
             {metricHasProjection && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <span onClick={() => setInfoKey('projection')} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
                 <svg width="18" height="6"><line x1="0" y1="3" x2="18" y2="3" stroke={metric.color} strokeWidth="2" strokeDasharray="3,2" opacity="0.7" /></svg>
                 projected
               </span>
             )}
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <span onClick={() => setInfoKey('projection')} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
               <svg width="10" height="10"><circle cx="5" cy="5" r="4" fill={metric.color} stroke="#fff" strokeWidth="1" /></svg>
               logged
             </span>
@@ -419,6 +453,8 @@ export default function WeeklyStatsCard({ accessCode, userEmail, currentWeek, da
           </div>
         </div>
       )}
+
+      <MetricSheet infoKey={infoKey} onClose={() => setInfoKey(null)} />
     </div>
   );
 }
