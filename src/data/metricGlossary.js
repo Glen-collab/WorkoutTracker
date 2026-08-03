@@ -118,9 +118,6 @@ export const METRIC_INFO = {
   },
 };
 
-// Order used for the "tap any stat" chips shown before anything is logged.
-export const GLOSSARY_CHIP_ORDER = ['tonnage', 'core', 'calories', 'cardio_time', 'distance'];
-
 export function getMetricInfo(key) {
   return METRIC_INFO[key] || null;
 }
