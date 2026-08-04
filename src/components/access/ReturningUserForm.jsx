@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { formatAccessCode } from '../../utils/trackerHelpers';
 import HelpTip from '../common/HelpTip';
+import { lookupUserProfile } from '../../hooks/useTrackerAPI';
 
 const SAVED_CREDS_KEY = 'gwt_saved_credentials';
 
@@ -160,6 +161,60 @@ export default function ReturningUserForm({ onSubmit, onBack, error }) {
   const [weight, setWeight] = useState('');
   const [age, setAge] = useState('');
 
+  const [recalled, setRecalled] = useState(false);
+  const recallKeyRef = React.useRef('');
+
+  // Pull this athlete's saved maxes + body stats back from the server as soon as
+  // we know who they are.
+  //
+  // These used to live ONLY in localStorage, which loses them in the two ways
+  // clients actually hit: an iOS PWA added to the home screen gets its own
+  // storage separate from Safari (and reinstalling wipes it), and arriving via
+  // the gym-TV QR means the device has no history at all — the TV can only put
+  // the program code in the QR, since it has no idea who is about to scan it.
+  //
+  // Only fills fields the client hasn't typed into, so it can never fight them
+  // mid-entry, and it opens the sections so the numbers are visibly there
+  // rather than hidden behind a collapsed panel.
+  useEffect(() => {
+    const cleanCode = String(code || '').replace(/\D/g, '');
+    const cleanEmail = String(email || '').trim();
+    if (cleanCode.length < 4 || !cleanEmail.includes('@')) return undefined;
+    const key = `${cleanEmail.toLowerCase()}|${cleanCode}`;
+    if (recallKeyRef.current === key) return undefined; // already handled
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      const res = await lookupUserProfile({ email: cleanEmail, code: cleanCode });
+      if (cancelled) return;
+      recallKeyRef.current = key;
+      if (!res?.found || !res.profile) return;
+      const p = res.profile;
+      const num = (v) => (v === null || v === undefined ? '' : String(Math.round(Number(v) * 100) / 100));
+      let filledMax = false, filledBody = false;
+      const setIfBlank = (cur, setter, val, isBody) => {
+        if (cur !== '' || val === null || val === undefined) return;
+        setter(num(val));
+        if (isBody) filledBody = true; else filledMax = true;
+      };
+      setIfBlank(benchMax, setBenchMax, p.benchMax, false);
+      setIfBlank(squatMax, setSquatMax, p.squatMax, false);
+      setIfBlank(deadliftMax, setDeadliftMax, p.deadliftMax, false);
+      setIfBlank(cleanMax, setCleanMax, p.cleanMax, false);
+      if (p.height !== null && p.height !== undefined && heightFeet === '' && heightInches === '') {
+        setHeightFeet(String(Math.floor(Number(p.height) / 12)));
+        setHeightInches(String(Math.round(Number(p.height) % 12)));
+        filledBody = true;
+      }
+      setIfBlank(weight, setWeight, p.weight, true);
+      setIfBlank(age, setAge, p.age, true);
+      if (filledMax) setShowMaxes(true);
+      if (filledBody) setShowBodyStats(true);
+      if (filledMax || filledBody) setRecalled(true);
+    }, 500);
+    return () => { cancelled = true; clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [email, code]);
+
   const handleCodeChange = (e) => {
     setCode(formatAccessCode(e.target.value));
   };
@@ -195,6 +250,16 @@ export default function ReturningUserForm({ onSubmit, onBack, error }) {
         </div>
 
         {error && <div style={styles.error}>{error}</div>}
+
+        {recalled && (
+          <div style={{
+            background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#047857',
+            borderRadius: '10px', padding: '9px 12px', fontSize: '13px',
+            fontWeight: 600, marginBottom: '14px', lineHeight: 1.45,
+          }}>
+            ✓ Found your saved numbers — check them below and change anything that's out of date.
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <label style={styles.label}>Email *</label>

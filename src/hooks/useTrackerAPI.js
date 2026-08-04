@@ -3,6 +3,31 @@ import { useState, useCallback } from 'react';
 const API_BASE = 'https://app.bestrongagain.com/api/workout/';
 const MEDIA_API_BASE = 'https://app.bestrongagain.com/api/media/';
 
+// Recall an athlete's saved maxes + body stats so the returning-user form can
+// fill itself in. Standalone (not part of the hook) so the access forms can call
+// it without spinning up a second useTrackerAPI instance.
+//
+// Deliberately quiet: no global loading spinner, no surfaced error, no retry.
+// It is a convenience — if it fails the client types their numbers exactly as
+// they did before, and nothing about login is blocked.
+export async function lookupUserProfile({ email, code }) {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const r = await fetch(API_BASE + 'lookup-user.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!r.ok) return { found: false };
+    return await r.json();
+  } catch {
+    return { found: false };
+  }
+}
+
 export default function useTrackerAPI() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -76,5 +101,7 @@ export default function useTrackerAPI() {
     }
   }, []);
 
-  return { loading, error, loadProgram, loadUserOverride, logWorkout, submitQuestionnaire, submitCompletion, sendSessionRecap, getWeeklyStats, getBodyweightHistory, getSessionNotes, getTravelWorkouts, getTrackerOverrides, updateUserStats };
+  const lookupUser = useCallback(lookupUserProfile, []);
+
+  return { loading, error, loadProgram, loadUserOverride, logWorkout, submitQuestionnaire, submitCompletion, sendSessionRecap, getWeeklyStats, getBodyweightHistory, getSessionNotes, getTravelWorkouts, getTrackerOverrides, updateUserStats, lookupUser };
 }
