@@ -163,6 +163,29 @@ export default function ReturningUserForm({ onSubmit, onBack, error }) {
 
   const [recalled, setRecalled] = useState(false);
   const recallKeyRef = React.useRef('');
+  // Which email the numbers currently on screen belong to.
+  const filledForRef = React.useRef('');
+
+  // Changing the email means "I'm a different person now" — so wipe the numbers.
+  //
+  // Without this they just sat there: pull up one athlete, get their maxes and
+  // body stats recalled, retype the email as someone else, submit — and the
+  // FIRST athlete's stats were written onto the second one's record. That
+  // happened for real (a coach's height/weight/age overwrote a client's), and
+  // on a shared phone or kiosk it would happen constantly.
+  //
+  // Clearing on any change, including deleting the email entirely, also gives
+  // an obvious way to start clean. The recall below refills from the server the
+  // moment a valid email + code is present again.
+  useEffect(() => {
+    const norm = String(email || '').trim().toLowerCase();
+    if (!filledForRef.current || norm === filledForRef.current) return;
+    filledForRef.current = '';
+    recallKeyRef.current = '';
+    setRecalled(false);
+    setBenchMax(''); setSquatMax(''); setDeadliftMax(''); setCleanMax('');
+    setHeightFeet(''); setHeightInches(''); setWeight(''); setAge('');
+  }, [email]);
 
   // Pull this athlete's saved maxes + body stats back from the server as soon as
   // we know who they are.
@@ -207,6 +230,9 @@ export default function ReturningUserForm({ onSubmit, onBack, error }) {
       }
       setIfBlank(weight, setWeight, p.weight, true);
       setIfBlank(age, setAge, p.age, true);
+      // Remember whose numbers are on screen, so the effect above can wipe them
+      // if the email is edited to someone else.
+      filledForRef.current = cleanEmail.toLowerCase();
       if (filledMax) setShowMaxes(true);
       if (filledBody) setShowBodyStats(true);
       if (filledMax || filledBody) setRecalled(true);
