@@ -7,7 +7,9 @@ const SAVED_CREDS_KEY = 'gwt_saved_credentials';
 const WELCOME_SEEN_KEY = 'gwt_welcome_seen';
 
 // ── Welcome Walkthrough (first-time visitors only) ──
-function WelcomeOverlay({ onDismiss }) {
+// Exported so the program screen can replay it from the "?" button —
+// the walkthrough is now once-per-athlete, so there has to be a way back in.
+export function WelcomeOverlay({ onDismiss }) {
   const [step, setStep] = useState(0);
 
   const steps = [
@@ -122,15 +124,18 @@ export default function AccessScreen({ onLoadProgram }) {
   const [error, setError] = useState('');
 
   // Show welcome walkthrough for first-time visitors or users arriving from website (?code= in URL)
+  // Once per PERSON, not once per program.
+  //
+  // The key used to include the access code, so scanning a different gym TV
+  // counted as a brand-new first visit and replayed the whole walkthrough — for
+  // a client alternating between two programs, every single session. It also
+  // ignored saved credentials, so a returning athlete arriving by QR got it
+  // again regardless. Anyone we already recognise on this device has been here
+  // before; the server flag (seeded on program load) covers new devices.
   const [showWelcome, setShowWelcome] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    const fromWebsite = params.has('code');
-    // Show if: never seen before, OR came from website and haven't seen it for this code
-    const seenKey = fromWebsite ? WELCOME_SEEN_KEY + '_' + params.get('code') : WELCOME_SEEN_KEY;
     try {
-      if (fromWebsite && !localStorage.getItem(seenKey)) return true;
-      if (!savedCreds && !localStorage.getItem(WELCOME_SEEN_KEY)) return true;
-      return false;
+      if (savedCreds) return false;
+      return !localStorage.getItem(WELCOME_SEEN_KEY);
     } catch { return false; }
   });
   const dismissWelcome = () => {

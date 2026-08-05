@@ -28,6 +28,22 @@ export async function lookupUserProfile({ email, code }) {
   }
 }
 
+// Record that this athlete has been through a first-time gate (welcome
+// walkthrough, consent, questionnaire, a challenge announce). Fire-and-forget:
+// the local flag is already set, so a failure here only means they might see it
+// once more on a different device — never a blocked or broken screen.
+export function markOnboarding(email, flag, challengeId) {
+  if (!email || !flag) return;
+  try {
+    fetch(API_BASE + 'set-onboarding.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, flag, ...(challengeId ? { challenge_id: String(challengeId) } : {}) }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch { /* noop */ }
+}
+
 export default function useTrackerAPI() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);

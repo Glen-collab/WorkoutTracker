@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import useTrackerState from './hooks/useTrackerState';
-import useTrackerAPI from './hooks/useTrackerAPI';
+import useTrackerAPI, { markOnboarding } from './hooks/useTrackerAPI';
 import AccessScreen from './components/access/AccessScreen';
 import KioskPickerScreen from './components/access/KioskPickerScreen';
 import OneOnOnePickerScreen from './components/access/OneOnOnePickerScreen';
@@ -787,6 +787,27 @@ export default function App() {
           setPreviousWeekWorkout(null);
         }
 
+        // Seed the local "already seen this" flags from the athlete's SERVER
+        // record. Every one of these gates was localStorage keyed by program
+        // code, so switching programs — or picking up a second device — replayed
+        // the walkthrough, the challenge announce and the questionnaire. Seen
+        // once is now seen everywhere, which is the whole point.
+        const ob = result.data?.onboarding;
+        if (ob) {
+          try {
+            if (ob.welcomeSeen) localStorage.setItem('gwt_welcome_seen', 'true');
+            // Dismissed on this device but not yet on their record — sync it up
+            // so a second device skips it too.
+            else if (localStorage.getItem('gwt_welcome_seen')) markOnboarding(u.email, 'welcome');
+            if (ob.questionnaireCompleted) {
+              localStorage.setItem(`gwt_questionnaire_${u.accessCode}_${u.email}`, 'true');
+            }
+            (ob.dismissedChallenges || []).forEach((cid) => {
+              localStorage.setItem(`gwt_challenge_seen_${cid}`, 'true');
+            });
+          } catch { /* private mode — the gates just behave as before */ }
+        }
+
         if (result.data?.grace_days_remaining != null) {
           setGraceInfo({ daysRemaining: result.data.grace_days_remaining });
         }
@@ -1139,6 +1160,7 @@ export default function App() {
   const handleAcceptConsent = useCallback(() => {
     setConsentAccepted(true);
     setConsentTimestamp(new Date().toISOString());
+    markOnboarding(user?.email, 'consent');
 
     const questionnaireKey = `gwt_questionnaire_${user.accessCode}_${user.email}`;
     const alreadyDone = localStorage.getItem(questionnaireKey);
@@ -1177,6 +1199,8 @@ export default function App() {
       });
       const questionnaireKey = `gwt_questionnaire_${user.accessCode}_${user.email}`;
       localStorage.setItem(questionnaireKey, 'true');
+      // Against the PERSON too, so a different program or device doesn't ask again.
+      markOnboarding(user.email, 'questionnaire');
     } catch (err) {
       console.error('Questionnaire submit error:', err);
     }

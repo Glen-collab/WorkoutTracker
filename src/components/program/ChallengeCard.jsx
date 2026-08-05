@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { markOnboarding } from '../../hooks/useTrackerAPI';
 import { isTimeUnit, parseClock, formatScore } from '../../utils/challengeFormat';
 
 /**
@@ -110,6 +111,9 @@ export default function ChallengeCard({ userEmail }) {
     setShowAnnounce(false);
     setExpanded(true);
     try { localStorage.setItem(`gwt_challenge_seen_${challenge.id}`, 'true'); } catch {}
+    // Also remember it against the ATHLETE, so the announce doesn't reappear on
+    // their other device or after switching programs.
+    markOnboarding(userEmail, 'challenge', challenge.id);
   };
 
   return (
