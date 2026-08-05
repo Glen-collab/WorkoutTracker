@@ -3,11 +3,15 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 import { startSwAutoUpdate } from './swUpdate';
+import CrashScreen from './components/common/CrashScreen';
 
 const rootEl = document.getElementById('gwt-react-root') || document.getElementById('root');
 ReactDOM.createRoot(rootEl).render(
   <React.StrictMode>
-    <App />
+    {/* Never let a client stand in the gym looking at a blank white screen. */}
+    <CrashScreen>
+      <App />
+    </CrashScreen>
   </React.StrictMode>
 );
 
