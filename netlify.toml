@@ -40,3 +40,16 @@
   for = "/index.html"
   [headers.values]
     Cache-Control = "no-cache, no-store, must-revalidate"
+
+# Hashed bundles are immutable — the filename changes when the content does —
+# so they can be cached hard. This is what makes a repeat visit instant instead
+# of revalidating the whole bundle on every load.
+[[headers]]
+  for = "/tracker.*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/tracker.*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

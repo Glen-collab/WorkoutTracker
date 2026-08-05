@@ -119,8 +119,18 @@ export default defineConfig({
     outDir: 'dist',
     rollupOptions: {
       output: {
-        entryFileNames: 'tracker.js',
-        assetFileNames: 'tracker.[ext]',
+        // Content-hashed. A FIXED filename is what forced the nuclear cache
+        // reset on every deploy: the browser and service worker could serve a
+        // stale tracker.js indefinitely, so the only guarantee of freshness was
+        // to delete everything and reload — which is the multi-second blank
+        // wait athletes were hitting after each release. With a hash in the
+        // name a new build is a new URL, so staleness is impossible and the
+        // teardown is unnecessary.
+        //
+        // The legacy WordPress plugin enqueues its own copy of dist/ by fixed
+        // name; it is not fed from this Netlify build, so it is unaffected.
+        entryFileNames: 'tracker.[hash].js',
+        assetFileNames: 'tracker.[hash].[ext]',
       }
     },
     cssCodeSplit: false,
