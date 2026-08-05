@@ -1058,6 +1058,28 @@ export default function App() {
           code: formData.code,
         }));
       } catch { /* ignore */ }
+
+      // Consume the scanned ?code= now that it's been used.
+      //
+      // It used to sit in the address bar for the rest of the session, and the
+      // sign-in form reads the URL BEFORE saved credentials — so every refresh
+      // re-applied whichever board they last scanned, silently pulling them out
+      // of the program they were actually working in. That is the "it jumps
+      // programs when I refresh" report.
+      //
+      // Switching programs on purpose still works exactly as before: scanning
+      // another TV loads a fresh URL with its own code. This only stops a stale
+      // one from re-firing. Left alone for TV / kiosk / 1-on-1, where the URL
+      // code IS the configuration and must survive reloads.
+      if (!isTVMode) {
+        try {
+          const url = new URL(window.location.href);
+          if (url.searchParams.has('code')) {
+            url.searchParams.delete('code');
+            window.history.replaceState({}, '', url.toString());
+          }
+        } catch { /* noop */ }
+      }
     }
 
     const newMaxes = {

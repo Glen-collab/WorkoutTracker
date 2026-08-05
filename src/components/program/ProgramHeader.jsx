@@ -126,21 +126,10 @@ export default function ProgramHeader({
   return (
     <div style={s.card}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', flexWrap: 'wrap', marginBottom: '4px' }}>
-        {/* Name + nickname + code, always on screen. A gym running several
-            squads has more than one "August" program on the boards, so the name
-            alone can't tell an athlete whether they scanned the right TV — and
-            the code is what's printed on the QR they scanned, which makes it
-            the one thing they can check against. Silent wrong-program sessions
-            were only noticed when the app later reloaded into the right one. */}
-        <div style={{ minWidth: 0 }}>
-          <h2 style={{ ...s.title, margin: 0 }}>{program?.name || 'Workout Program'}</h2>
-          {(program?.nickname || program?.accessCode || user?.accessCode) && (
-            <div style={{ fontSize: '11.5px', fontWeight: 600, color: 'rgba(255,255,255,0.65)', marginTop: '2px' }}>
-              {program?.nickname ? `${program.nickname} · ` : ''}
-              Code {program?.accessCode || user?.accessCode}
-            </div>
-          )}
-        </div>
+        {/* Program name only. The nickname is the coach's private shorthand
+            for their own filing and means nothing to an athlete, who just
+            wants the workout that matches the board. */}
+        <h2 style={{ ...s.title, margin: 0 }}>{program?.name || 'Workout Program'}</h2>
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
           <DashboardButton userEmail={userEmail} />
           <CastButton
