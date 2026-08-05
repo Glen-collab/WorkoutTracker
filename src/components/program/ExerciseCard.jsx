@@ -1183,22 +1183,41 @@ export default function ExerciseCard({
   // (keeps the prescribed sets/reps/scheme — the client just does their numbers
   // on the new movement), a searched exercise, or a write-your-own. Reuses the
   // same swapped_exercise tracking field the cardio swap saves through.
-  const renderStrengthSwap = () => {
+  // Swap is NOT a strength-only idea. A client with a busy rack needs an
+  // alternative just as much when the card says "Copenhagen hold" or "hip
+  // 90/90" — arguably more, since those are the ones they're least sure how to
+  // substitute themselves. The matcher was always generic (same category, same
+  // movement tag, plus free-text search over the whole index); only the render
+  // gate was strength-only, so core, warm-ups, mobility and circuits silently
+  // had no way out. Cardio keeps its own machine picker instead — swapping a
+  // rower for a bike is a better answer there than a library search.
+  const renderSwap = () => {
     if (inputLocked) return null;
     const cur = SWAP_BY_NAME.get((ex.name || '').toLowerCase());
     const cat = cur?.category;
-    const mv = cur?.movement?.[0];
+    const mvs = cur?.movement || [];
+    // Match on the most SPECIFIC movement tag first. Core exercises are tagged
+    // broad-to-narrow (['Core','Obliques']), so keying off movement[0] handed a
+    // side plank all 178 core moves — technically correct, useless to choose
+    // from. The narrow tag gives oblique work for oblique work. Widen back to
+    // the broad tag only if the specific one is too thin to be worth showing.
+    const narrow = mvs.length > 1 ? mvs[mvs.length - 1] : mvs[0];
+    const broad = mvs[0];
     const q = swapSearch.trim().toLowerCase();
+
+    const byTag = (tag) => SWAP_INDEX.list.filter(e =>
+      e.category === cat && e.name !== ex.name && (!tag || (e.movement || []).includes(tag)));
 
     let results = [];
     if (q) {
       results = SWAP_INDEX.list.filter(e => e.name.toLowerCase().includes(q) && e.name !== ex.name).slice(0, 40);
     } else if (cat) {
-      results = SWAP_INDEX.list.filter(e =>
-        e.category === cat && e.name !== ex.name && (!mv || (e.movement || []).includes(mv)));
+      results = byTag(narrow);
+      if (results.length < 5 && broad !== narrow) results = byTag(broad);
     }
     const capped = (!q && !showAllCat) ? results.slice(0, 10) : results;
-    const heading = q ? 'Matches' : (cat ? 'Similar exercises (same muscle)' : 'Search for an exercise');
+    // "same muscle" read wrong once this covered mobility and movement drills.
+    const heading = q ? 'Matches' : (cat ? 'Similar exercises' : 'Search for an exercise');
 
     const row = (e) => (
       <button key={e.name} onClick={() => handleSwap(e.name, e.video)}
@@ -1734,7 +1753,7 @@ export default function ExerciseCard({
 
       {!collapsed && (
         <div style={s.body}>
-          {!ex.isUserDefined && isStrength && renderStrengthSwap()}
+          {!ex.isUserDefined && !isCardio && renderSwap()}
           {ex.isUserDefined ? renderUserDefined() : (
             <>
               {isStrength && renderStrength()}

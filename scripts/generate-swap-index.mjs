@@ -18,6 +18,8 @@ import { build } from 'esbuild';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const libPath = resolve(here, '../../workoutbuilder/src/data/exerciseLibrary.js');
+const mobPath = resolve(here, '../../workoutbuilder/src/data/mobilityExercises.js');
+const gmPath = resolve(here, '../../workoutbuilder/src/data/generalMovements.js');
 const outPath = resolve(here, '../src/data/exerciseSwapIndex.json');
 
 const uid = (yt) => {
@@ -30,9 +32,14 @@ const uid = (yt) => {
 // bare node ESM can't resolve, so bundle it to a temp ESM file with esbuild
 // (which inlines ./generalMovements etc.) and import that.
 const tmp = mkdtempSync(join(tmpdir(), 'swapidx-'));
-const bundled = join(tmp, 'lib.mjs');
-await build({ entryPoints: [libPath], bundle: true, format: 'esm', outfile: bundled, logLevel: 'silent' });
-const mod = await import(pathToFileURL(bundled).href);
+async function load(path, name) {
+  const bundled = join(tmp, `${name}.mjs`);
+  await build({ entryPoints: [path], bundle: true, format: 'esm', outfile: bundled, logLevel: 'silent' });
+  return import(pathToFileURL(bundled).href);
+}
+const mod = await load(libPath, 'lib');
+const mobMod = await load(mobPath, 'mob');
+const gmMod = await load(gmPath, 'gm');
 rmSync(tmp, { recursive: true, force: true });
 const categories = mod.exerciseCategories || mod.default?.exerciseCategories;
 if (!categories) {
@@ -42,24 +49,47 @@ if (!categories) {
 
 const list = [];
 const seen = new Set();
-for (const [catKey, catVal] of Object.entries(categories)) {
-  const subs = catVal?.subcategories || {};
-  for (const subVal of Object.values(subs)) {
-    for (const ex of subVal?.exercises || []) {
-      if (!ex?.name || seen.has(ex.name)) continue;
-      seen.add(ex.name);
-      list.push({
-        name: ex.name,
-        category: catKey,
-        equipment: Array.isArray(ex.equipment) ? ex.equipment : [],
-        movement: Array.isArray(ex.movement) ? ex.movement : [],
-        video: uid(ex.youtube),
-      });
+
+// Walks a category map, handling BOTH shapes the libraries use: nested
+// subcategories (strength) and a flat exercises array (most mobility and
+// movement categories). The original only walked subcategories, which is why
+// mobility and conditioning work never made it into the index — and therefore
+// why those exercises could never find a "similar" substitute.
+function collect(cats) {
+  for (const [catKey, catVal] of Object.entries(cats || {})) {
+    const pools = [];
+    if (Array.isArray(catVal)) pools.push(catVal);
+    else {
+      if (Array.isArray(catVal?.exercises)) pools.push(catVal.exercises);
+      for (const subVal of Object.values(catVal?.subcategories || {})) {
+        pools.push(Array.isArray(subVal) ? subVal : (subVal?.exercises || []));
+      }
+    }
+    for (const pool of pools) {
+      for (const ex of pool) {
+        if (!ex?.name || seen.has(ex.name)) continue;
+        seen.add(ex.name);
+        list.push({
+          name: ex.name,
+          category: catKey,
+          equipment: Array.isArray(ex.equipment) ? ex.equipment : [],
+          movement: Array.isArray(ex.movement) ? ex.movement : [],
+          video: uid(ex.youtube),
+        });
+      }
     }
   }
 }
 
+collect(categories);
+collect(mobMod.mobilityCategories || mobMod.default?.mobilityCategories);
+collect(gmMod.generalMovements || gmMod.default?.generalMovements);
+
 list.sort((a, b) => a.name.localeCompare(b.name));
-const out = { generatedFrom: 'workoutbuilder/src/data/exerciseLibrary.js', count: list.length, list };
+const out = {
+  generatedFrom: 'workoutbuilder/src/data/{exerciseLibrary,mobilityExercises,generalMovements}.js',
+  count: list.length,
+  list,
+};
 writeFileSync(outPath, JSON.stringify(out));
 console.log(`Wrote ${list.length} exercises -> ${outPath}`);
