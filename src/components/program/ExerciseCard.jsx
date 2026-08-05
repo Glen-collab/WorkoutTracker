@@ -1205,15 +1205,26 @@ export default function ExerciseCard({
     const broad = mvs[0];
     const q = swapSearch.trim().toLowerCase();
 
-    const byTag = (tag) => SWAP_INDEX.list.filter(e =>
-      e.category === cat && e.name !== ex.name && (!tag || (e.movement || []).includes(tag)));
+    const sameCat = (e) => e.category === cat && e.name !== ex.name;
+    const byTag = (tag) => SWAP_INDEX.list.filter(e => sameCat(e) && (!tag || (e.movement || []).includes(tag)));
 
     let results = [];
     if (q) {
       results = SWAP_INDEX.list.filter(e => e.name.toLowerCase().includes(q) && e.name !== ex.name).slice(0, 40);
     } else if (cat) {
-      results = byTag(narrow);
-      if (results.length < 5 && broad !== narrow) results = byTag(broad);
+      if (mvs.length) {
+        results = byTag(narrow);
+        if (results.length < 5 && broad !== narrow) results = byTag(broad);
+      } else if (cur?.sub) {
+        // No movement tags — warm-ups and cool-downs are the whole of this
+        // case. Their subcategory IS the pattern: a butt kick is a sprint
+        // drill, a foam roll is myofascial, and offering one in place of the
+        // other is useless. Narrow to the same family, widen only if thin.
+        results = SWAP_INDEX.list.filter((e) => sameCat(e) && e.sub === cur.sub);
+        if (results.length < 5) results = SWAP_INDEX.list.filter(sameCat);
+      } else {
+        results = SWAP_INDEX.list.filter(sameCat);
+      }
     }
     const capped = (!q && !showAllCat) ? results.slice(0, 10) : results;
     // "same muscle" read wrong once this covered mobility and movement drills.

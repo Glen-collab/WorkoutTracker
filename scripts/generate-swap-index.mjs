@@ -57,21 +57,28 @@ const seen = new Set();
 // why those exercises could never find a "similar" substitute.
 function collect(cats) {
   for (const [catKey, catVal] of Object.entries(cats || {})) {
+    // [subKey, exercises] — subKey null for a flat category.
     const pools = [];
-    if (Array.isArray(catVal)) pools.push(catVal);
+    if (Array.isArray(catVal)) pools.push([null, catVal]);
     else {
-      if (Array.isArray(catVal?.exercises)) pools.push(catVal.exercises);
-      for (const subVal of Object.values(catVal?.subcategories || {})) {
-        pools.push(Array.isArray(subVal) ? subVal : (subVal?.exercises || []));
+      if (Array.isArray(catVal?.exercises)) pools.push([null, catVal.exercises]);
+      for (const [subKey, subVal] of Object.entries(catVal?.subcategories || {})) {
+        pools.push([subKey, Array.isArray(subVal) ? subVal : (subVal?.exercises || [])]);
       }
     }
-    for (const pool of pools) {
+    for (const [subKey, pool] of pools) {
       for (const ex of pool) {
         if (!ex?.name || seen.has(ex.name)) continue;
         seen.add(ex.name);
         list.push({
           name: ex.name,
           category: catKey,
+          // Carried so the tracker can narrow swaps for families that have no
+          // movement tags. Warm-ups and cool-downs are the case that matters:
+          // nothing marks a butt kick as a sprint drill and a foam roll as
+          // myofascial EXCEPT which subcategory the coach filed it under, so
+          // dropping this left every warm-up matching all 171 of them.
+          sub: subKey || '',
           equipment: Array.isArray(ex.equipment) ? ex.equipment : [],
           movement: Array.isArray(ex.movement) ? ex.movement : [],
           video: uid(ex.youtube),
