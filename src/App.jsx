@@ -1696,7 +1696,14 @@ export default function App() {
           textAlign: 'center', fontSize: 13, fontWeight: '600', color: '#1a1a2e',
         }}>
           Free access ends in <b>{graceInfo.daysRemaining} day{graceInfo.daysRemaining !== 1 ? 's' : ''}</b> —{' '}
-          <a href="https://app.bestrongagain.com/register/GLENM7NUS?tier=basic" target="_blank" rel="noopener noreferrer"
+          {/* Sign-in, not sign-up. Anyone seeing this banner already HAS an
+              account — the gate hard-blocks emails with no user row — so the
+              old /register link made them fill in a full signup form only to be
+              told the account exists and bounced to login anyway. Pre-filling
+              the email and carrying the upgrade intent means signing in (or
+              using the magic link) lands straight in Stripe checkout. */}
+          <a href={`https://app.bestrongagain.com/login?email=${encodeURIComponent(user?.email || '')}&reason=upgrade&tier=tracker`}
+            target="_blank" rel="noopener noreferrer"
             style={{ color: '#1a1a2e', textDecoration: 'underline', fontWeight: '800' }}
           >Subscribe to keep your programs</a>
         </div>
