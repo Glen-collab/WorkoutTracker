@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
 import CastButton from './CastButton';
-import { WelcomeOverlay } from '../access/AccessScreen';
 import DashboardButton from './DashboardButton';
 import { getVisibleDays } from '../../utils/visibleDays';
 
@@ -91,6 +90,7 @@ const s = {
 };
 
 export default function ProgramHeader({
+  onShowWalkthrough,
   program,
   user,
   userName,
@@ -107,7 +107,6 @@ export default function ProgramHeader({
   maxes,
   groupMembers,
 }) {
-  const [showWalkthrough, setShowWalkthrough] = useState(false);
   const isGroup = Array.isArray(groupMembers) && groupMembers.length > 0;
   // Only show days the coach left visible (hidden days are dropped for the client).
   const days = getVisibleDays(daysPerWeek, hiddenDays);
@@ -127,7 +126,6 @@ export default function ProgramHeader({
 
   return (
     <div style={s.card}>
-      {showWalkthrough && <WelcomeOverlay onDismiss={() => setShowWalkthrough(false)} />}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', flexWrap: 'wrap', marginBottom: '4px' }}>
         {/* Program name only. The nickname is the coach's private shorthand
             for their own filing and means nothing to an athlete, who just
@@ -140,7 +138,7 @@ export default function ProgramHeader({
           {program?.name || 'Workout Program'}
           <button
             type="button"
-            onClick={() => setShowWalkthrough(true)}
+            onClick={() => onShowWalkthrough && onShowWalkthrough()}
             aria-label="How this app works"
             title="How this app works"
             style={{

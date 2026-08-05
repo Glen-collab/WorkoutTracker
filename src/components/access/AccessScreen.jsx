@@ -7,9 +7,7 @@ const SAVED_CREDS_KEY = 'gwt_saved_credentials';
 const WELCOME_SEEN_KEY = 'gwt_welcome_seen';
 
 // ── Welcome Walkthrough (first-time visitors only) ──
-// Exported so the program screen can replay it from the "?" button —
-// the walkthrough is now once-per-athlete, so there has to be a way back in.
-export function WelcomeOverlay({ onDismiss }) {
+function WelcomeOverlay({ onDismiss }) {
   const [step, setStep] = useState(0);
 
   const steps = [

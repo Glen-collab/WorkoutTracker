@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import HelpTip from '../common/HelpTip';
+import { markOnboarding } from '../../hooks/useTrackerAPI';
 import ProgramHeader from './ProgramHeader';
 import BlockCard from './BlockCard';
 import DailyTonnage, { calcBlockTonnage, calcCardio, getDefaultWeight } from './DailyTonnage';
@@ -203,14 +204,30 @@ export default function ProgramView({
   const blocks = program?.blocks || [];
   const [showProfileEdit, setShowProfileEdit] = useState(false);
 
-  // First-time walkthrough
-  const walkthroughKey = `gwt_walkthrough_${accessCode}_${userEmail}`;
+  // First-time walkthrough — once per PERSON, not once per program.
+  //
+  // This key used to include the access code, so every program was a fresh
+  // "first time" and a coach six months in still got the full tour each time he
+  // scanned a different gym TV. Same fault as the access-screen welcome; this
+  // one just lives on the program screen and was missed when that was fixed.
+  //
+  // `gwt_welcome_seen` is the shared "this person has been onboarded" flag,
+  // seeded from their SERVER record on every program load — so a new device or
+  // a new program skips it too. Replayable any time from the "?" in the header.
+  const walkthroughKey = `gwt_walkthrough_${userEmail}`;
   const [showWalkthrough, setShowWalkthrough] = useState(() => {
-    try { return !localStorage.getItem(walkthroughKey); } catch { return false; }
+    try {
+      if (localStorage.getItem('gwt_welcome_seen')) return false;
+      return !localStorage.getItem(walkthroughKey);
+    } catch { return false; }
   });
   const dismissWalkthrough = () => {
     setShowWalkthrough(false);
-    try { localStorage.setItem(walkthroughKey, 'true'); } catch {}
+    try {
+      localStorage.setItem(walkthroughKey, 'true');
+      localStorage.setItem('gwt_welcome_seen', 'true');
+    } catch { /* private mode */ }
+    markOnboarding(userEmail, 'welcome');
   };
   const [tempFeet, setTempFeet] = useState('');
   const [tempInches, setTempInches] = useState('');
@@ -305,6 +322,7 @@ export default function ProgramView({
         )}
 
         <ProgramHeader
+          onShowWalkthrough={() => setShowWalkthrough(true)}
           program={program}
           user={user}
           userName={userName}
