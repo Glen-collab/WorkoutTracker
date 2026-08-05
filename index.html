@@ -18,6 +18,19 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
 
     <title>Workout Tracker</title>
+
+    <!-- Start the TLS + DNS handshake to the API before any JS runs. The first
+         call after a cache reset otherwise pays for connection setup on gym
+         wifi at the exact moment the athlete is staring at a blank screen. -->
+    <link rel="preconnect" href="https://app.bestrongagain.com" crossorigin />
+    <link rel="dns-prefetch" href="https://app.bestrongagain.com" />
+
+    <script>
+      // Wake the backend NOW, not after the bundle parses and React mounts.
+      // Flask on EC2 cold-starts, and this is the single biggest chunk of the
+      // wait on the first load of the day. Fire and forget — it's a warmup.
+      try { fetch('https://app.bestrongagain.com/api/health', { mode: 'cors' }).catch(function(){}); } catch (e) {}
+    </script>
     <script>
       // ── Service Worker management ─────────────────────────────
       // BUILD_VERSION is bumped on every deploy where we want clients to
@@ -129,7 +142,51 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Boot splash. Plain markup inside #root, so it paints on the FIRST frame
+         — before the bundle downloads, before React exists — and is thrown away
+         the moment React renders over it.
+
+         The cache reset deletes everything and the next load re-fetches the
+         whole app, which on gym wifi is long enough that an empty page reads as
+         "it's broken, scan it again". There was nothing in the document to
+         look at: an empty #root is a white screen by definition. No script, no
+         stylesheet, nothing that can fail. -->
+    <style>
+      @keyframes bsaSpin { to { transform: rotate(360deg); } }
+      #bsa-boot {
+        position: fixed; inset: 0; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 18px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+      #bsa-boot .ring {
+        width: 42px; height: 42px; border-radius: 50%;
+        border: 4px solid rgba(255,255,255,0.25); border-top-color: #fff;
+        animation: bsaSpin 0.9s linear infinite;
+      }
+      #bsa-boot .msg { font-size: 15px; font-weight: 600; opacity: 0.9; }
+      #bsa-boot .sub { font-size: 12.5px; opacity: 0.6; max-width: 260px; text-align: center; line-height: 1.5; }
+    </style>
+    <div id="root">
+      <div id="bsa-boot">
+        <div class="ring"></div>
+        <div class="msg">Loading your workout…</div>
+        <div class="sub" id="bsa-boot-sub">First load after an update takes a few seconds.</div>
+        <button id="bsa-boot-retry" onclick="location.reload()" style="display:none;padding:13px 26px;border:none;border-radius:11px;background:#fff;color:#4554c9;font-size:15px;font-weight:800;cursor:pointer;">Tap to retry</button>
+      </div>
+    </div>
+    <script>
+      // If the bundle never arrives — dead wifi mid-set, a failed asset — the
+      // spinner would otherwise turn forever. Give them a way out rather than
+      // an animation that lies about progress.
+      setTimeout(function () {
+        var sub = document.getElementById('bsa-boot-sub');
+        var btn = document.getElementById('bsa-boot-retry');
+        if (!sub || !btn) return;   // React already took over
+        sub.textContent = 'This is taking longer than it should. Check your signal, then try again.';
+        btn.style.display = 'block';
+      }, 15000);
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
