@@ -1102,7 +1102,15 @@ function InlineQR({ code }) {
       <div style={qs.inlineQrBox}>
         <QRCodeSVG value={qrUrl} size={56} bgColor="#ffffff" fgColor="#0a0a1a" level="M" />
       </div>
-      <div style={qs.inlineLabel}>Scan to track</div>
+      <div style={qs.inlineLabelWrap}>
+        <div style={qs.inlineLabel}>Scan to track</div>
+        {/* The code in plain digits, big enough to read across the gym.
+            An athlete already holding the app open shouldn't have to close it,
+            open the camera and scan a screen to switch programs — they can just
+            read this and type it. Same reason the code beats the program name
+            here: it's what the app actually asks for. */}
+        {code && <div style={qs.inlineCode}>or enter <b style={qs.inlineCodeNum}>{code}</b></div>}
+      </div>
     </div>
   );
 }
@@ -1115,9 +1123,18 @@ const qs = {
     border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px',
   },
   inlineQrBox: { background: '#fff', padding: '4px', borderRadius: '6px', lineHeight: 0 },
+  inlineLabelWrap: { display: 'flex', flexDirection: 'column', gap: '1px' },
   inlineLabel: {
     fontSize: 'clamp(11px, 0.9vw, 16px)', fontWeight: '600',
     color: 'rgba(255,255,255,0.75)', whiteSpace: 'nowrap',
+  },
+  inlineCode: {
+    fontSize: 'clamp(10px, 0.8vw, 14px)', fontWeight: '600',
+    color: 'rgba(255,255,255,0.55)', whiteSpace: 'nowrap',
+  },
+  inlineCodeNum: {
+    color: '#fff', fontWeight: '800', letterSpacing: '1.5px',
+    fontSize: 'clamp(13px, 1.05vw, 19px)',
   },
 };
 

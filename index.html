@@ -40,7 +40,13 @@
         // pass legitimately saw a different version.
         var busted = '';
         try { busted = sessionStorage.getItem('bsa_sw_busted') || ''; } catch (e) {}
-        var needsBust = (isTvPath || stored !== BUILD_VERSION) && !busted;
+        // /tv is deliberately OUTSIDE the session guard. The guard exists to
+        // stop a bust->reload->bust cycle, and /tv never reloads (see below),
+        // so it cannot cycle. Including it would have been worse than the bug:
+        // a Pi holds its tab open for days, sessionStorage survives reloads, so
+        // the wall display would bust once and then serve stale code forever —
+        // the exact failure that already costs a Pi reboot to clear.
+        var needsBust = isTvPath || (stored !== BUILD_VERSION && !busted);
 
         if (needsBust) {
           // Nuclear option: unregister all SWs + clear all caches.
