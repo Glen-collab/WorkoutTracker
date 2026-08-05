@@ -30,23 +30,38 @@
         var isTvPath = window.location.pathname.startsWith('/tv');
         var stored = '';
         try { stored = localStorage.getItem('bsa_sw_build') || ''; } catch (e) {}
-        // Hard cap: at most ONE nuclear reset per tab, ever.
+
+        // The "already reset once" marker lives in the URL, NOT in storage.
         //
-        // The reset ends in a reload, and the reload re-runs this script. If a
-        // NEW deploy lands in between — a real case while shipping fixes during
-        // a live session — BUILD_VERSION has moved again, so it resets and
-        // reloads again, and the athlete sits on a white screen that never
-        // stops loading. localStorage alone couldn't catch that, because each
-        // pass legitimately saw a different version.
-        var busted = '';
-        try { busted = sessionStorage.getItem('bsa_sw_busted') || ''; } catch (e) {}
-        // /tv is deliberately OUTSIDE the session guard. The guard exists to
-        // stop a bust->reload->bust cycle, and /tv never reloads (see below),
-        // so it cannot cycle. Including it would have been worse than the bug:
-        // a Pi holds its tab open for days, sessionStorage survives reloads, so
-        // the wall display would bust once and then serve stale code forever —
-        // the exact failure that already costs a Pi reboot to clear.
-        var needsBust = isTvPath || (stored !== BUILD_VERSION && !busted);
+        // This is the fix for a blank page that never stopped loading when the
+        // app was opened by scanning a QR from the iOS Camera app. Safari can
+        // refuse or partition storage on some launch paths, and every previous
+        // guard here depended on storage that silently failed:
+        //   localStorage.getItem  -> '' , so the version ALWAYS looked stale
+        //   sessionStorage.setItem -> throws, caught, so the marker never stuck
+        // The reset ends in a reload, the reload re-runs this script, nothing
+        // was remembered, so it reset and reloaded again — forever. It worked
+        // fine in a normal tab, which is why it looked intermittent.
+        //
+        // A query param survives the reload with no storage of any kind, so the
+        // cycle is capped whatever Safari decides to allow. It is stripped back
+        // out below so nobody sees it in the address bar.
+        var alreadyBusted = window.location.search.indexOf('_swb=1') !== -1;
+        if (alreadyBusted) {
+          try {
+            var cleanUrl = new URL(window.location.href);
+            cleanUrl.searchParams.delete('_swb');
+            window.history.replaceState({}, '', cleanUrl.toString());
+          } catch (e) {}
+        }
+
+        // /tv is deliberately OUTSIDE the guard. The guard exists to stop a
+        // bust->reload->bust cycle, and /tv never reloads (see below), so it
+        // cannot cycle. Including it would be worse than the bug: a Pi holds
+        // its tab open for days, so the wall display would bust once and then
+        // serve stale code forever — the exact failure that already costs a Pi
+        // reboot to clear.
+        var needsBust = isTvPath || (stored !== BUILD_VERSION && !alreadyBusted);
 
         if (needsBust) {
           // Nuclear option: unregister all SWs + clear all caches.
@@ -54,8 +69,19 @@
           // Safari was caching sw.js for hours; this guarantees a fresh
           // bundle on the next reload.
           try { localStorage.setItem('bsa_sw_build', BUILD_VERSION); } catch (e) {}
-          try { sessionStorage.setItem('bsa_sw_busted', '1'); } catch (e) {}
           var didReload = false;
+          // Reload carrying the marker, so the next pass can't reset again even
+          // with every storage API unavailable. `replace` so Back doesn't walk
+          // the athlete into the reset again.
+          var goOn = function () {
+            if (didReload || isTvPath) return;
+            didReload = true;
+            try {
+              var next = new URL(window.location.href);
+              next.searchParams.set('_swb', '1');
+              window.location.replace(next.toString());
+            } catch (e) { window.location.reload(); }
+          };
           Promise.all([
             navigator.serviceWorker.getRegistrations().then(function(rs) {
               return Promise.all(rs.map(function(r) { return r.unregister(); }));
@@ -65,17 +91,11 @@
                   return Promise.all(names.map(function(n) { return caches.delete(n); }));
                 })
               : Promise.resolve()
-          ]).then(function() {
-            // Only reload outside /tv (which doesn't need a reload — the
-            // /tv flow is single-shot and already fetched fresh assets).
-            if (!isTvPath) { didReload = true; window.location.reload(); }
-          });
+          ]).then(goOn);
           // Belt and braces: if unregistering or cache-clearing never settles
-          // — Safari can leave either pending — the reload above never fires
+          // — Safari can leave either pending — the handler above never fires
           // and the athlete is left on a blank page with a spinner. Go anyway.
-          if (!isTvPath) {
-            setTimeout(function () { if (!didReload) window.location.reload(); }, 3000);
-          }
+          if (!isTvPath) setTimeout(goOn, 3000);
         } else {
           // Steady-state: ping for new SW updates; activate any waiting
           // worker immediately; reload once when the controller swaps.
