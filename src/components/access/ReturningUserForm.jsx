@@ -162,7 +162,13 @@ export default function ReturningUserForm({ onSubmit, onBack, error }) {
   const [age, setAge] = useState('');
 
   const [recalled, setRecalled] = useState(false);
+  const [myPrograms, setMyPrograms] = useState([]);
   const recallKeyRef = React.useRef('');
+  // The code that arrived in the URL — i.e. scanned off the gym TV.
+  const scannedCode = React.useMemo(() => {
+    const c = new URLSearchParams(window.location.search).get('code') || '';
+    return c.replace(/\D/g, '');
+  }, []);
   // Which email the numbers currently on screen belong to.
   const filledForRef = React.useRef('');
 
@@ -210,6 +216,7 @@ export default function ReturningUserForm({ onSubmit, onBack, error }) {
       const res = await lookupUserProfile({ email: cleanEmail, code: cleanCode });
       if (cancelled) return;
       recallKeyRef.current = key;
+      if (Array.isArray(res?.programs)) setMyPrograms(res.programs);
       if (!res?.found || !res.profile) return;
       const p = res.profile;
       const num = (v) => (v === null || v === undefined ? '' : String(Math.round(Number(v) * 100) / 100));
@@ -276,6 +283,41 @@ export default function ReturningUserForm({ onSubmit, onBack, error }) {
         </div>
 
         {error && <div style={styles.error}>{error}</div>}
+
+        {/* The gym-TV QR carries whichever program is on the BOARD, not this
+            athlete's. A Legacy athlete scanning on a Prime day was silently put
+            into Prime — and since the tracker only ever shows the workout, not
+            which program it came from, the switch was invisible until something
+            reloaded and dropped them back into their own. Name both and let
+            them choose. Only appears when they genuinely differ. */}
+        {myPrograms.length > 1 && scannedCode && myPrograms.some(p => p.code === scannedCode)
+          && myPrograms[0].code !== scannedCode && (
+          <div style={{
+            background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '10px',
+            padding: '12px 14px', marginBottom: '14px', fontSize: '13px', color: '#78350f', lineHeight: 1.5,
+          }}>
+            <div style={{ fontWeight: 700, marginBottom: '8px' }}>Which workout today?</div>
+            {[myPrograms.find(p => p.code === scannedCode), myPrograms[0]].filter(Boolean).map((p, i) => (
+              <button
+                key={p.code}
+                type="button"
+                onClick={() => setCode(p.code)}
+                style={{
+                  display: 'block', width: '100%', textAlign: 'left', marginBottom: '6px',
+                  padding: '10px 12px', borderRadius: '8px', cursor: 'pointer',
+                  border: code.replace(/\D/g, '') === p.code ? '2px solid #d97706' : '1px solid #e5e7eb',
+                  background: code.replace(/\D/g, '') === p.code ? '#fef3c7' : '#fff',
+                  fontSize: '13px', fontWeight: 600, color: '#1a1a2e',
+                }}
+              >
+                {p.name}{p.nickname ? ` — ${p.nickname}` : ''}
+                <span style={{ display: 'block', fontWeight: 500, fontSize: '11.5px', color: '#92400e', marginTop: '2px' }}>
+                  {i === 0 ? 'scanned from the gym screen' : 'the one you were on last'}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {recalled && (
           <div style={{
