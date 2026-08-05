@@ -168,8 +168,16 @@ export default function DashboardButton({ userEmail }) {
                 </a>
               ) : (
                 <>
+                  {/* Sign-in, not sign-up. Anyone deep enough into the tracker
+                      to see this already has an account — the paywall blocks
+                      emails without one — so /register only sent them through a
+                      full signup form to be told the account exists. /login
+                      carries the upgrade intent straight into Stripe checkout.
+                      Stays on `basic` on purpose: this is the $20 coaching
+                      upsell, a different offer from the $5.99 tracker the
+                      paywall screens sell. */}
                   <a
-                    href={`${PLATFORM_BASE}/register?tier=basic${userEmail ? '&email=' + encodeURIComponent(userEmail) : ''}`}
+                    href={`${PLATFORM_BASE}/login?reason=upgrade&tier=basic${userEmail ? '&email=' + encodeURIComponent(userEmail) : ''}`}
                     target="_blank" rel="noopener noreferrer"
                     style={s.primaryBtn}
                   >
