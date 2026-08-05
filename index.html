@@ -30,7 +30,17 @@
         var isTvPath = window.location.pathname.startsWith('/tv');
         var stored = '';
         try { stored = localStorage.getItem('bsa_sw_build') || ''; } catch (e) {}
-        var needsBust = isTvPath || stored !== BUILD_VERSION;
+        // Hard cap: at most ONE nuclear reset per tab, ever.
+        //
+        // The reset ends in a reload, and the reload re-runs this script. If a
+        // NEW deploy lands in between — a real case while shipping fixes during
+        // a live session — BUILD_VERSION has moved again, so it resets and
+        // reloads again, and the athlete sits on a white screen that never
+        // stops loading. localStorage alone couldn't catch that, because each
+        // pass legitimately saw a different version.
+        var busted = '';
+        try { busted = sessionStorage.getItem('bsa_sw_busted') || ''; } catch (e) {}
+        var needsBust = (isTvPath || stored !== BUILD_VERSION) && !busted;
 
         if (needsBust) {
           // Nuclear option: unregister all SWs + clear all caches.
@@ -38,6 +48,8 @@
           // Safari was caching sw.js for hours; this guarantees a fresh
           // bundle on the next reload.
           try { localStorage.setItem('bsa_sw_build', BUILD_VERSION); } catch (e) {}
+          try { sessionStorage.setItem('bsa_sw_busted', '1'); } catch (e) {}
+          var didReload = false;
           Promise.all([
             navigator.serviceWorker.getRegistrations().then(function(rs) {
               return Promise.all(rs.map(function(r) { return r.unregister(); }));
@@ -50,8 +62,14 @@
           ]).then(function() {
             // Only reload outside /tv (which doesn't need a reload — the
             // /tv flow is single-shot and already fetched fresh assets).
-            if (!isTvPath) window.location.reload();
+            if (!isTvPath) { didReload = true; window.location.reload(); }
           });
+          // Belt and braces: if unregistering or cache-clearing never settles
+          // — Safari can leave either pending — the reload above never fires
+          // and the athlete is left on a blank page with a spinner. Go anyway.
+          if (!isTvPath) {
+            setTimeout(function () { if (!didReload) window.location.reload(); }, 3000);
+          }
         } else {
           // Steady-state: ping for new SW updates; activate any waiting
           // worker immediately; reload once when the controller swaps.
