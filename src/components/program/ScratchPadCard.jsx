@@ -104,8 +104,15 @@ export default function ScratchPadCard({ accessCode, programName, currentWeek, c
       const message = kind === 'pt'
         ? buildPtSummaryPrompt(clientName, programName, notesText)
         : buildProgramSummaryPrompt(clientName, programName, notesText);
+      // These take 15-30s for a full block of notes — the model is writing a
+      // four-section report from the whole program. Give it room, but not
+      // forever: without an abort a dead connection spins the button
+      // indefinitely with no way to tell whether it's working.
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 150000);
       const res = await fetch(`${CHAT_API_BASE}/api/embed-chat`, {
         method: 'POST',
+        signal: ctrl.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message,
@@ -120,10 +127,19 @@ export default function ScratchPadCard({ accessCode, programName, currentWeek, c
         throw new Error(t || `${res.status} ${res.statusText}`);
       }
       const json = await res.json();
+      clearTimeout(timer);
       setSummary(json.response || '(no response)');
     } catch (e) {
-      setSummaryErr(e.message || 'Could not generate the summary.');
+      // Safari words a dropped connection as "Load failed", which tells the
+      // coach nothing — this one was a 30s gunicorn worker timeout on the chat
+      // server killing long summaries mid-write. Say something they can act on.
+      const raw = String(e?.message || '');
+      const dropped = e?.name === 'AbortError' || /load failed|failed to fetch|networkerror/i.test(raw);
+      setSummaryErr(dropped
+        ? 'The summary took too long and the connection dropped. Tap Regenerate to try again — a long block of notes can take up to a minute.'
+        : (raw || 'Could not generate the summary.'));
     } finally {
+      clearTimeout(timer);
       setSummarizing(false);
     }
   };
@@ -280,11 +296,11 @@ export default function ScratchPadCard({ accessCode, programName, currentWeek, c
       {open && entries.length > 0 && (
         <div style={s.summaryOuter}>
           <button style={s.ptBtn} onClick={runPtSummary} disabled={summarizing}>
-            {summarizing && summaryKind === 'pt' ? '🩺 Writing the PT / Doctor summary…' : '🩺 Summary for PT / Doctor'}
+            {summarizing && summaryKind === 'pt' ? '🩺 Writing the PT / Doctor summary… (up to a minute)' : '🩺 Summary for PT / Doctor'}
           </button>
           {isLastWeek && (
             <button style={{ ...s.summaryBtn, marginTop: 8 }} onClick={runSummary} disabled={summarizing}>
-              {summarizing && summaryKind === 'block' ? '🧠 Summarizing the program…' : '🧠 Summarize this program for the next one'}
+              {summarizing && summaryKind === 'block' ? '🧠 Summarizing the program… (up to a minute)' : '🧠 Summarize this program for the next one'}
             </button>
           )}
           {summaryErr && <div style={s.summaryErr}>{summaryErr}</div>}
