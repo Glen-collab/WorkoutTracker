@@ -776,11 +776,30 @@ export default function App() {
                 }
               });
             });
+            // Fill only slots that are genuinely EMPTY. `{...carry, ...prev}`
+            // looked equivalent but wasn't: the autosaved working copy loaded a
+            // moment ago holds '' for every box the athlete has so much as
+            // touched, and '' is a present key, so it beat the carried weight.
+            // Open next week's day once before entering anything and carry-over
+            // was silently dead for those slots — which is exactly why it
+            // carried for some exercises and not others.
+            const fillBlank = (prev, incoming) => {
+              const next = { ...prev };
+              let touched = false;
+              for (const k of Object.keys(incoming)) {
+                const cur = next[k];
+                if (cur === undefined || cur === null || cur === '') {
+                  next[k] = incoming[k];
+                  touched = true;
+                }
+              }
+              return touched ? next : prev;
+            };
             if (Object.keys(carry).length) {
-              setTrackingData(prev => ({ ...carry, ...prev }));
+              setTrackingData(prev => fillBlank(prev, carry));
             }
             if (Object.keys(carryRecs).length) {
-              setRecommendations(prev => ({ ...carryRecs, ...prev }));
+              setRecommendations(prev => fillBlank(prev, carryRecs));
             }
           }
         } else {
