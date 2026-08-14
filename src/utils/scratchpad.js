@@ -50,16 +50,40 @@ function stampDate() {
   }
 }
 
-// Append (or replace, if the same week+day already exists) one stamped note.
+// Add one stamped note for a week+day, MERGING with whatever is already on that
+// day rather than replacing it.
+//
+// This used to overwrite the day's entry outright, which quietly ate notes the
+// coach wrote mid-session: type "right shoulder hurts, maybe swap exercises
+// next week" into the notes card during the workout, hit Log Workout at the
+// end, and the recap note replaced it. It looked like the mid-workout save had
+// never worked — it had, and then it was wiped.
+//
+// The replace existed for a good reason: in 1-on-1 the same day gets re-logged
+// repeatedly, and blind appending would stack the same recap three times. So
+// merge instead of either extreme — skip text the day already has, and keep one
+// entry per day so there's still a single date stamp, not two rows for one
+// session.
+//
 // Empty text is ignored so a no-note log-out doesn't add a blank block.
 export function appendScratchpadNote(accessCode, programName, email, { week, day, text }) {
   const trimmed = (text || '').trim();
   if (!trimmed) return readScratchpad(accessCode, programName, email);
   const entries = readScratchpad(accessCode, programName, email);
-  const entry = { week, day, date: stampDate(), text: trimmed };
   const idx = entries.findIndex((e) => e.week === week && e.day === day);
-  if (idx >= 0) entries[idx] = entry;
-  else entries.push(entry);
+
+  if (idx < 0) {
+    entries.push({ week, day, date: stampDate(), text: trimmed });
+    return writeScratchpad(accessCode, programName, email, entries);
+  }
+
+  const prev = (entries[idx].text || '').trim();
+  let merged;
+  if (!prev) merged = trimmed;                       // day existed but was blank
+  else if (prev.includes(trimmed)) merged = prev;    // re-log, same recap — no duplicate
+  else if (trimmed.includes(prev)) merged = trimmed; // new text already contains the old
+  else merged = [prev, trimmed].join('\n');          // genuinely new — keep both
+  entries[idx] = { ...entries[idx], text: merged };  // keep the ORIGINAL date stamp
   return writeScratchpad(accessCode, programName, email, entries);
 }
 
