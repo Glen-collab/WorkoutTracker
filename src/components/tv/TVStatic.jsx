@@ -652,9 +652,15 @@ export default function TVStatic() {
         // Keep layout in sync with what the coach picked on their dashboard
         const serverLayout = data?.device?.layout || 'two_day';
         setLayout((prev) => (prev === serverLayout ? prev : serverLayout));
-        // Display-mode toggle (workout vs leaderboard scoreboard).
+        // Display-mode toggle (workout vs leaderboard scoreboard vs contest).
+        // Anything not listed here is ignored on purpose: the game_* modes are
+        // driven by the kiosk agent (a separate process that swaps Chromium for
+        // RetroArch), not by this component. Keep this in step with the render
+        // branches below — a mode that renders but isn't accepted here never
+        // reaches the screen.
+        const RENDERABLE_MODES = ['workout', 'leaderboard', 'contest', 'cards'];
         const disp = data?.device?.display;
-        if (disp && (disp.mode === 'workout' || disp.mode === 'leaderboard' || disp.mode === 'cards')) {
+        if (disp && RENDERABLE_MODES.includes(disp.mode)) {
           setDisplay((prev) => {
             const dispIds = Array.isArray(disp.metric_ids) ? disp.metric_ids : [];
             const same = prev
