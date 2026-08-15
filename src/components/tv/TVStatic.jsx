@@ -813,6 +813,23 @@ export default function TVStatic() {
     );
   }
 
+  // Strongman contest board — coach flipped this Pi to the running comp via the
+  // GymTV remote. Fullscreen iframe of the leaderboard's /contests/tv, which
+  // rotates each event's placings then the overall standings and re-fetches
+  // every 5s, so scores entered on the coach's phone land here on their own.
+  // Contest reads are public precisely so this works: the session cookie is
+  // blocked in this third-party iframe by Chromium's storage partitioning.
+  if (display.mode === 'contest') {
+    return (
+      <iframe
+        src="https://leaderboard.bestrongagain.com/contests/tv"
+        title="BSA Contest"
+        style={{ position: 'fixed', inset: 0, width: '100vw', height: '100vh', border: 0, background: '#000' }}
+        allow="autoplay; fullscreen"
+      />
+    );
+  }
+
   if (display.mode === 'leaderboard') {
     const lbParams = new URLSearchParams();
     if (display.metric_id) lbParams.set('metric_id', display.metric_id);
