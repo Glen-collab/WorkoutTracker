@@ -608,14 +608,17 @@ export default function TVStatic() {
     // (universal SD — customer enters their coach's code in the setup portal).
     if (!piId && !coachCode) return;
     // Device identity. The Pi passes its CPU serial as ?device=...
-    // Tablet mode: URL is the source of truth. Skip the device-polling
-    // entirely — the tablet view doesn't have its own coach_devices row
-    // to sync from (or if it does, it's the phone's auto-registered row
-    // which defaults view_week=1, view_start_day=1 and would constantly
-    // snap the tablet back to Week 1, fighting the URL's ?week=4&day=5).
-    // If a coach wants to change what the tablet shows, they re-open
-    // "View Workout" from RemoteControl which regenerates the URL.
-    if (tabletMode) return;
+    // Tablet mode: only poll when we were explicitly pointed at a TV's
+    // serial. Given ?device=<that TV's serial>, tv-config's upsert takes
+    // its ON CONFLICT branch, so the wall tablet reads that TV's
+    // week/day/layout/program without ever creating a row of its own —
+    // it just mirrors the TV, including when the coach swaps the kiosk
+    // program from their dashboard.
+    // Without an explicit serial we must bail BEFORE the auto-mint below:
+    // a self-minted row defaults to view_week=1, view_start_day=1 and
+    // would constantly snap the tablet back to Week 1, fighting the URL's
+    // ?week=4&day=5. In that case the URL stays the source of truth.
+    if (tabletMode && !(params.get('device') || '').trim()) return;
 
     // A plain smart-TV browser has no hardware serial, so we mint a
     // stable per-browser UUID the first time this page is loaded and
