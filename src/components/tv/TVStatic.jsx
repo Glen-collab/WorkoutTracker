@@ -257,6 +257,35 @@ function DayColumn({ blocks, dayLabel, userName, maxes, fontScale = 1, scrollRef
   );
 }
 
+// ── Wall-tablet pairing, persisted ──
+// An installed PWA always launches at the manifest's start_url, so the
+// ?code / ?coach / ?device the tablet was paired with never survive into a
+// PWA launch (or a reboot, or Android killing the app). Persist them the
+// first time we're opened with a real URL, and restore them on any later
+// bare launch. Keyed per-origin, so re-pairing to a different TV is just
+// opening a fresh URL — the new values overwrite the old.
+const TABLET_CFG_KEY = 'bsa_tablet_cfg';
+
+function resolveTabletConfig(params) {
+  const fromUrl = {
+    code:   (params.get('code')   || '').trim(),
+    coach:  (params.get('coach')  || '').trim().toUpperCase(),
+    device: (params.get('device') || '').trim(),
+  };
+  // A URL that carries any pairing value wins and is remembered.
+  if (fromUrl.code || fromUrl.coach || fromUrl.device) {
+    try { localStorage.setItem(TABLET_CFG_KEY, JSON.stringify(fromUrl)); } catch { /* private mode */ }
+    return fromUrl;
+  }
+  try {
+    const saved = JSON.parse(localStorage.getItem(TABLET_CFG_KEY) || 'null');
+    if (saved && typeof saved === 'object') {
+      return { code: saved.code || '', coach: saved.coach || '', device: saved.device || '' };
+    }
+  } catch { /* unparseable — fall through to the empty config */ }
+  return fromUrl;
+}
+
 // ── Main Static TV ──
 // Tablet mode (?tablet=1): same workout view as the gym TV but with tap
 // targets on each exercise to play its demo video, plus a "← Back" button
@@ -277,6 +306,17 @@ export default function TVStatic() {
       return allowed.includes(u.hostname) ? u.toString() : null;
     } catch { return null; }
   }, [fromUrl]);
+  // Point the install prompt at the TV-only manifest: fullscreen (hides
+  // Chrome's address bar AND the status bar), landscape, and a start_url of
+  // /tv/static?tablet=1. The app-wide manifest is portrait and starts at '/',
+  // which would install the member login screen sideways — so only tablet
+  // mode swaps it, leaving the client tracker's own PWA untouched.
+  useEffect(() => {
+    if (!tabletMode) return;
+    const link = document.querySelector('link[rel="manifest"]');
+    if (link) link.setAttribute('href', '/tv-manifest.webmanifest');
+  }, [tabletMode]);
+
   // Fullscreen video overlay — pops when a tablet user taps an exercise's
   // play button, dismissed by tapping the close X or anywhere outside.
   const [playingVideo, setPlayingVideo] = useState(null); // { url, name } | null
@@ -563,9 +603,13 @@ export default function TVStatic() {
   // "active program" and switches when they change it from their Gym TV page).
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const urlCode = (params.get('code') || '').trim();
+    // In tablet mode the pairing may come from localStorage rather than the
+    // URL (PWA launches always land on the bare start_url). Everywhere else
+    // — the Pis, plain smart-TV browsers — the URL stays the only source.
+    const tcfg = tabletMode ? resolveTabletConfig(params) : null;
+    const urlCode = tcfg ? tcfg.code : (params.get('code') || '').trim();
     const piId = (params.get('pi') || '').trim();
-    const coachCode = (params.get('coach') || '').trim().toUpperCase();
+    const coachCode = tcfg ? tcfg.coach : (params.get('coach') || '').trim().toUpperCase();
 
     // Fixed-code mode (legacy): load once. URL params ?week= and ?day=
     // are passed through so the tablet view (opened from the dashboard's
@@ -618,14 +662,14 @@ export default function TVStatic() {
     // a self-minted row defaults to view_week=1, view_start_day=1 and
     // would constantly snap the tablet back to Week 1, fighting the URL's
     // ?week=4&day=5. In that case the URL stays the source of truth.
-    if (tabletMode && !(params.get('device') || '').trim()) return;
+    if (tabletMode && !tcfg.device) return;
 
     // A plain smart-TV browser has no hardware serial, so we mint a
     // stable per-browser UUID the first time this page is loaded and
     // keep it in localStorage. Each of the gym's 4 TVs then becomes its
     // own row in coach_devices and the coach can name/program each one
     // independently from /gym-tv.
-    let deviceSerial = (params.get('device') || '').trim();
+    let deviceSerial = tcfg ? tcfg.device : (params.get('device') || '').trim();
     if (!deviceSerial) {
       try {
         const KEY = 'bsa_tv_device_id';
@@ -731,8 +775,11 @@ export default function TVStatic() {
         // week/day. Once the fixed-code path completes, `code` becomes
         // truthy and the effect re-runs with a fresh closure; subsequent
         // polls behave normally (handle "coach swapped programs" etc).
+        // (In tablet mode the code can come from localStorage instead of the
+        // URL — a PWA launch has no query string — so check the resolved
+        // config, or the guard misses and both loaders race on every launch.)
         const usp = new URLSearchParams(window.location.search);
-        if (usp.get('code') && !code) return;
+        if ((tcfg ? tcfg.code : usp.get('code')) && !code) return;
         // Code changed — load the new program. Pass through the device's
         // view state if available so the load lands directly on the
         // displayed week/day instead of userPosition's saved default.
