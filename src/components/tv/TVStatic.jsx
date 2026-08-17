@@ -317,6 +317,38 @@ export default function TVStatic() {
     if (link) link.setAttribute('href', '/tv-manifest.webmanifest');
   }, [tabletMode]);
 
+  // In-page install button. Chrome's own "Install app" menu item is buried
+  // (on some tablet builds it renders as a horizontal ⋯ in an unexpected
+  // spot), so catch the beforeinstallprompt event Chrome fires and offer the
+  // install right on the page instead. Chrome only fires it when the app is
+  // installable and NOT already installed, so the button self-hides after
+  // install and never shows inside the installed PWA — members won't see it.
+  const [installPrompt, setInstallPrompt] = useState(null);
+  useEffect(() => {
+    if (!tabletMode) return;
+    const onPrompt = (e) => {
+      e.preventDefault();   // suppress Chrome's own mini-infobar; we drive it
+      setInstallPrompt(e);
+    };
+    const onInstalled = () => setInstallPrompt(null);
+    window.addEventListener('beforeinstallprompt', onPrompt);
+    window.addEventListener('appinstalled', onInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onPrompt);
+      window.removeEventListener('appinstalled', onInstalled);
+    };
+  }, [tabletMode]);
+
+  const doInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    try { await installPrompt.userChoice; } catch { /* dismissed */ }
+    // The event is single-use whichever way it went. If they dismissed it,
+    // Chrome re-fires beforeinstallprompt on the next load, so the button
+    // comes back on refresh rather than being lost for good.
+    setInstallPrompt(null);
+  };
+
   // Fullscreen video overlay — pops when a tablet user taps an exercise's
   // play button, dismissed by tapping the close X or anywhere outside.
   const [playingVideo, setPlayingVideo] = useState(null); // { url, name } | null
@@ -999,6 +1031,25 @@ export default function TVStatic() {
             }}
           >← Back to Remote</button>
         </div>
+      )}
+
+      {/* Install button — floats bottom-right, only while Chrome says the app
+          is installable. Disappears for good once installed (Chrome stops
+          firing the event), so it's a setup affordance, not gym-floor chrome.
+          Bottom-right keeps it clear of the week/day controls up top. */}
+      {tabletMode && installPrompt && (
+        <button
+          onClick={doInstall}
+          style={{
+            position: 'fixed', bottom: '18px', right: '18px', zIndex: 9998,
+            background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+            color: '#1a1a2e', border: 'none',
+            padding: '14px 20px', borderRadius: '12px',
+            fontSize: '16px', fontWeight: 900, cursor: 'pointer',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+            letterSpacing: '0.3px',
+          }}
+        >📲 Install as App</button>
       )}
 
       {/* Tablet mode: fullscreen video overlay. Tap a play ▶ button on any
