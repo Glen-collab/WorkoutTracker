@@ -12,6 +12,7 @@ import CompletionModal from './components/modals/CompletionModal';
 import CongratulationsModal from './components/modals/CongratulationsModal';
 import SessionRecapModal from './components/modals/SessionRecapModal';
 import { appendScratchpadNote } from './utils/scratchpad';
+import SWAP_INDEX from './data/exerciseSwapIndex.json';
 import { cnsLoadForDay } from './utils/cnsLoadCalc';
 import { computeTargetTime } from './utils/sprintTargets';
 import { stepVisibleDay, getVisibleDays } from './utils/visibleDays';
@@ -30,6 +31,11 @@ import CastTVDisplay from './components/tv/CastTVDisplay';
 import KioskScreen from './components/kiosk/KioskScreen';
 
 // Check if TV mode requested via /tv path or ?tv=1 param
+// name -> library entry, for filling in videos a saved program never baked.
+const SWAP_BY_NAME = new Map(
+  (SWAP_INDEX.list || []).map((e) => [String(e.name || '').trim().toLowerCase(), e]),
+);
+
 const isTVMode = window.location.pathname === '/tv' || new URLSearchParams(window.location.search).get('tv') === '1';
 const isStaticTV = window.location.pathname === '/tv/static';
 const isKioskMode = window.location.pathname === '/kiosk';
@@ -529,6 +535,34 @@ export default function App() {
             }
           }
         } catch { /* fall back to bundled videos silently */ }
+
+        // Last resort: the bundled library.
+        //
+        // An exercise added to a program BEFORE its video was filmed has an
+        // empty youtube baked in, and neither the saved program nor the coach's
+        // uploads can fill it — so the client sees no demo even though the clip
+        // now exists. That's what had a client asking "I forgot what leg swings
+        // were and there was no video". 45 exercises across live programs were
+        // in that state.
+        //
+        // Resolved at LOAD time from the swap index (name -> video for every
+        // library exercise, regenerated whenever the library changes) rather
+        // than written into program_data. Baking would fix today and rot the
+        // next time a clip is re-filmed — which is precisely the mess this
+        // session started with. Runs last so a baked video, and then a coach's
+        // own upload, both still win.
+        try {
+          if (Array.isArray(prog.blocks)) {
+            for (const block of prog.blocks) {
+              if (!Array.isArray(block?.exercises)) continue;
+              for (const ex of block.exercises) {
+                if (!ex?.name || (ex.youtube || '').trim()) continue;
+                const lib = SWAP_BY_NAME.get(ex.name.trim().toLowerCase());
+                if (lib?.video) ex.youtube = `https://iframe.videodelivery.net/${lib.video}`;
+              }
+            }
+          }
+        } catch { /* no library fallback available */ }
 
         // Re-apply the athlete's persisted exercise swaps so a swap carries
         // across weeks. Keyed by lowercased prescribed name. We stamp the
