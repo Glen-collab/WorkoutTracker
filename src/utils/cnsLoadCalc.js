@@ -56,8 +56,12 @@ function liftSets(ex, maxes) {
     ? (Number(maxes[ex.baseMax] ?? maxes[BASEMAX_ALIAS[ex.baseMax]]) || 0)
     : 0;
   const out = [];
-  // % sets carried as objects (builder working copy)
-  if (Array.isArray(ex.sets) && ex.sets.length && typeof ex.sets[0] === 'object' && ex.sets[0].percentage != null) {
+  // % sets carried as objects (builder working copy). An explicit
+  // isPercentageBased:false means the coach turned percentages OFF and these
+  // rows are stale leftovers — counting them charges CNS load to an accessory
+  // that never ran at a % of 1RM, which skews the ACWR trend.
+  if (ex.isPercentageBased !== false
+      && Array.isArray(ex.sets) && ex.sets.length && typeof ex.sets[0] === 'object' && ex.sets[0].percentage != null) {
     for (const s of ex.sets) {
       if (s.isWarmup) continue;
       const pct = Number(s.percentage) || 0, reps = Number(s.reps) || 0;

@@ -293,6 +293,16 @@ export default function ExerciseCard({
   // Also apply exercise defaults for any missing fields (safety net)
   const normalizedEx = (() => {
     const ex = applyExerciseDefaults({ ...exercise });
+    // Toggling "Enable %" back OFF in the builder leaves the per-set rows
+    // behind, so a 3x15 accessory can still carry one orphaned
+    // {reps: 5, percentage: 75}. Flattening that prescribes 1 set of 5 at 75%
+    // of a 1RM — wrong sets, wrong reps, wrong load. With percentages off,
+    // setsCount/reps is the truth. Only an explicit `false` counts: older
+    // programs leave the flag undefined alongside a genuine percentage array.
+    if (ex.isPercentageBased === false
+        && (parseInt(ex.setsCount) || 0) > 0 && String(ex.reps ?? '').trim() !== '') {
+      ex.sets = parseInt(ex.setsCount);
+    }
     if (Array.isArray(ex.sets) && ex.sets.length > 0 && typeof ex.sets[0] === 'object') {
       // Builder format: sets are objects per set. Could be percentage-driven
       // (1RM-based) or bodyweight/manual-weight (just reps per set). Either

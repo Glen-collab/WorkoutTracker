@@ -233,9 +233,15 @@ export function calcBlockTonnage(block, maxes, trackingData, blockIndex, userWei
     const functional = isFunctional(ex.name);
     const bwEffort = getBodyweightEffort(ex.name);
 
+    // Percentage mode off ⇒ leftover sets[] rows are stale builder state, not
+    // per-set data (same guard as ExerciseCard). Counting or pricing them turns
+    // a 3x15 accessory into 1 set at 75% of a 1RM.
+    const staleSets = ex.isPercentageBased === false
+      && (parseInt(ex.setsCount) || 0) > 0 && String(ex.reps ?? '').trim() !== '';
+
     // Determine how many sets this exercise has
     let setsCount;
-    if (Array.isArray(ex.sets) && ex.sets.length > 0 && typeof ex.sets[0] === 'object') {
+    if (!staleSets && Array.isArray(ex.sets) && ex.sets.length > 0 && typeof ex.sets[0] === 'object') {
       setsCount = ex.sets.length; // Builder format: array of objects
     } else if (typeof ex.sets === 'number') {
       setsCount = ex.sets;
@@ -253,8 +259,8 @@ export function calcBlockTonnage(block, maxes, trackingData, blockIndex, userWei
     }
 
     // Check for percentage-based exercise (builder format or normalized)
-    const isPercentage = ex.isPercentageBased ||
-      (Array.isArray(ex.sets) && ex.sets.length > 0 && typeof ex.sets[0] === 'object' && ex.sets[0]?.percentage != null);
+    const isPercentage = !staleSets && (ex.isPercentageBased ||
+      (Array.isArray(ex.sets) && ex.sets.length > 0 && typeof ex.sets[0] === 'object' && ex.sets[0]?.percentage != null));
     const percentages = ex.percentages || (isPercentage && Array.isArray(ex.sets) ? ex.sets.map(s => s.percentage) : null);
     const repsPerSet = ex.repsPerSet || (isPercentage && Array.isArray(ex.sets) ? ex.sets.map(s => s.reps) : null);
 
