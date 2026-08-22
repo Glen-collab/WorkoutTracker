@@ -35,8 +35,10 @@ function formatExercise(exercise) {
   // Per-set WORK reps (warmups excluded) so a varied scheme like 10,10,8,8 shows
   // as "10/10/8/8" on the board instead of collapsing to the first set's count.
   let workReps = [];
+  let fromSetsArray = false;
   if (Array.isArray(ex.sets) && ex.sets.length > 0 && typeof ex.sets[0] === 'object') {
     workReps = ex.sets.filter((s) => !s.isWarmup).map((s) => (s?.reps ?? s?.targetReps));
+    fromSetsArray = true;
   } else if (Array.isArray(ex.repsPerSet)) {
     workReps = ex.repsPerSet;
   } else if (typeof reps === 'string' && /[,/]/.test(reps)) {
@@ -48,6 +50,21 @@ function formatExercise(exercise) {
     workReps = reps.split(/[,/]/);
   }
   workReps = workReps.map((r) => (r == null ? '' : String(r).trim())).filter((r) => r !== '');
+  // The builder only shows sets[] while "Enable %" is on, but toggling it back
+  // OFF leaves the rows behind. The coach then edits SETS/REPS and saves, so a
+  // 3x15 exercise still carries one orphaned {reps: 5} — which read as "1x5" on
+  // the board. Trust sets[] only when it IS the coach's per-set data: percentage
+  // mode on, and its work-set count agreeing with the SETS field. Otherwise fall
+  // through to setsCount x reps, which is what the builder is showing them.
+  // Which field is stale depends entirely on percentage mode, and the two cases
+  // are exact mirrors — so key off isPercentageBased and nothing else. A wave
+  // like 10/10/8/8 is percentage-based with a leftover setsCount of 3; the
+  // pushdown is the reverse. Comparing the two counts cannot separate them.
+  // Never blank it out unless there's a real fallback to land on.
+  if (fromSetsArray && workReps.length > 0 && ex.isPercentageBased === false
+      && sets > 0 && reps) {
+    workReps = [];
+  }
   // Fallback 'sec' (matches the tracker's ExerciseCard) — holds/planks with no
   // saved durationUnit were reading as minutes. Named cardio still gets its
   // unit from applyExerciseDefaults above.
