@@ -25,9 +25,18 @@ import { applyExerciseDefaults } from '../../data/exerciseDefaults';
 const API_BASE = 'https://app.bestrongagain.com/api/workout/';
 
 // ── Helper: format sets/reps for an exercise ──
-function formatExercise(exercise) {
+function formatExercise(exercise, block) {
   const ex = applyExerciseDefaults(exercise);
-  const sets = parseInt(ex.setsCount) || (typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 0));
+  // In a rounds circuit the block badge ("3 ROUNDS") IS the multiplier, and the
+  // builder's circuit card shows no SETS field at all — so whatever setsCount an
+  // exercise happens to carry is invisible leftover state the coach can't see or
+  // edit. Printing it gave three different answers for three rows of the SAME
+  // circuit: "1x50 total", "x5 each", "3x 10 cal". Show the work per round only
+  // and let the badge do the multiplying.
+  const inRoundsCircuit = block?.type === 'circuit' && !!block?.rounds;
+  const sets = inRoundsCircuit
+    ? 0
+    : parseInt(ex.setsCount) || (typeof ex.sets === 'number' ? ex.sets : (Array.isArray(ex.sets) ? ex.sets.length : parseInt(ex.sets) || 0));
   // Check all places reps could be stored
   const reps = ex.repsPerSet?.[0] || ex.reps
     || (Array.isArray(ex.sets) && ex.sets.length > 0 && typeof ex.sets[0] === 'object' ? (ex.sets[0].reps || ex.sets[0].targetReps || '') : '')
@@ -65,6 +74,9 @@ function formatExercise(exercise) {
       && sets > 0 && reps) {
     workReps = [];
   }
+  // Per-set breakdowns are meaningless inside a rounds circuit for the same
+  // reason — one pass per round, not a set scheme.
+  if (inRoundsCircuit && reps) workReps = [];
   // Fallback 'sec' (matches the tracker's ExerciseCard) — holds/planks with no
   // saved durationUnit were reading as minutes. Named cardio still gets its
   // unit from applyExerciseDefaults above.
@@ -88,7 +100,9 @@ function formatExercise(exercise) {
     detail = uniqueReps.length === 1 ? `${workReps.length}x${uniqueReps[0]}` : workReps.join('/');
   }
   else if (sets > 0 && reps) detail = `${sets}x${reps}`;
-  else if (reps) detail = `x${reps}`;
+  // Bare reps in a circuit ("50 total"); elsewhere the leading x still reads as
+  // a multiplier against an unstated set count ("x10").
+  else if (reps) detail = inRoundsCircuit ? `${reps}` : `x${reps}`;
   else if (sets > 0 && duration) detail = `${sets}x ${duration}`;
   else if (duration) detail = duration;
   else if (sets > 0 && calories) detail = `${sets}x ${calories}`;
@@ -193,7 +207,7 @@ function DayColumn({ blocks, dayLabel, userName, maxes, fontScale = 1, scrollRef
             <span style={s.sectionLabel}>{getBlockIcon(block.type)} {typeName}:</span>
             <span style={s.sectionText}>
               {(block.exercises || []).map((ex, ei) => {
-                const f = formatExercise(ex);
+                const f = formatExercise(ex, block);
                 return (
                   <span key={ei} style={{ marginRight: '8px', whiteSpace: 'nowrap' }}>
                     {ex.youtube && onPlayVideo && (
@@ -214,7 +228,7 @@ function DayColumn({ blocks, dayLabel, userName, maxes, fontScale = 1, scrollRef
       } else {
         // TV-mode plain text join (original behavior, no buttons).
         const exList = (block.exercises || []).map(ex => {
-          const f = formatExercise(ex);
+          const f = formatExercise(ex, block);
           return f.detail ? `${f.name} ${f.detail}` : f.name;
         }).join(', ');
         rows.push(
@@ -246,7 +260,7 @@ function DayColumn({ blocks, dayLabel, userName, maxes, fontScale = 1, scrollRef
       // Exercise rows — tablet mode adds a play button next to the name
       // when the exercise has a video; tap → fullscreen video overlay.
       (block.exercises || []).forEach((exercise, ei) => {
-        const f = formatExercise(exercise);
+        const f = formatExercise(exercise, block);
         rows.push(
           <div key={`${bi}-${ei}`} style={s.exerciseRow}>
             <span style={s.exName}>
