@@ -982,6 +982,18 @@ export default function TVStatic() {
     // locked metric but auto-gender, TVMode still flips Boys↔Girls every
     // cycle so the coach sees both at the chosen metric.
     if (display.metric_id && display.gender) lbParams.set('rotate', 'off');
+    // This TV is driven by the remote, so say so explicitly and stop the
+    // leaderboard's own global "Gym TV" panel from reaching in behind it.
+    //
+    // Two ways it used to: its Contest boards checkbox spliced a comp into any
+    // leaderboard TV in the gym, and its Rotate-selected list narrowed a TV the
+    // remote had set to show everything. Both are one global setting acting on
+    // four TVs — the remote is per-TV and is where the coach actually works.
+    // Contest belongs on a TV the remote put in Contest mode, not on this one.
+    lbParams.set('contest', 'off');
+    if (!display.metric_id && !(display.metric_ids && display.metric_ids.length)) {
+      lbParams.set('metrics', 'all');
+    }
     const lbUrl = `https://leaderboard.bestrongagain.com/tv${lbParams.toString() ? '?' + lbParams.toString() : ''}`;
     return (
       <iframe
