@@ -118,6 +118,26 @@ function formatExercise(exercise, block) {
   return { name: ex.name, detail, notes: ex.notes || '' };
 }
 
+// Which visible days the wall shows for a given start day.
+//
+// Landing on the LAST visible day leaves nothing to pair with, and the lone
+// column then stretches across the whole TV — what a 2-day program looks like
+// when the remote is set to start on Day 2. Backing up one shows the last two
+// visible days instead. The WOD layouts are deliberately one day and stay put.
+//
+// The renderer and the block prefetch MUST agree on this: if they disagree the
+// wall fetches one day and draws another, which reads as a blank column.
+function dayPairFor(visibleDays, startDay, twoDay) {
+  if (!visibleDays.length) return [];
+  const raw = Math.max(0, visibleDays.indexOf(
+    visibleDays.includes(startDay) ? startDay : visibleDays[0]
+  ));
+  const i = (twoDay && visibleDays.length > 1 && raw === visibleDays.length - 1) ? raw - 1 : raw;
+  const pair = [visibleDays[i]];
+  if (twoDay && i + 1 < visibleDays.length) pair.push(visibleDays[i + 1]);
+  return pair;
+}
+
 // ── Code Entry ──
 function StaticCodeEntry({ onLoad }) {
   const [code, setCode] = useState('');
@@ -883,9 +903,8 @@ export default function TVStatic() {
   useEffect(() => {
     if (!program || !code) return;
     const vd = getVisibleDays(program?.daysPerWeek, program?.hiddenDays);
-    const idx = vd.indexOf(startDay);
-    const targetDays = [startDay];
-    if (idx >= 0 && idx + 1 < vd.length) targetDays.push(vd[idx + 1]);
+    // Same pairing the renderer uses, or the wall draws a day it never fetched.
+    const targetDays = dayPairFor(vd, startDay, layout !== 'wod' && layout !== 'wod_scaled');
     const missing = targetDays.filter((d) => !allBlocks[`${currentWeek}-${d}`]);
     if (missing.length === 0) return;
     let cancelled = false;
@@ -909,7 +928,7 @@ export default function TVStatic() {
       }
     });
     return () => { cancelled = true; };
-  }, [currentWeek, startDay, program, code, allBlocks]);
+  }, [currentWeek, startDay, program, code, allBlocks, layout]);
 
   // Leaderboard scoreboard mode — coach flipped this Pi to the youth-
   // leaderboard scoreboard via the GymTV remote control. Drop in a
@@ -1019,9 +1038,8 @@ export default function TVStatic() {
   const tw = program?.totalWeeks || 4;
   // Show two consecutive *visible* days (hidden days are skipped on the wall).
   const visibleDays = getVisibleDays(program?.daysPerWeek, program?.hiddenDays);
-  const day1 = visibleDays.includes(startDay) ? startDay : visibleDays[0];
-  const idx1 = visibleDays.indexOf(day1);
-  const day2 = idx1 + 1 < visibleDays.length ? visibleDays[idx1 + 1] : null;
+  const isTwoDay = layout !== 'wod' && layout !== 'wod_scaled';
+  const [day1, day2 = null] = dayPairFor(visibleDays, startDay, isTwoDay);
 
   const blocks1 = allBlocks[`${currentWeek}-${day1}`] || [];
   const blocks2 = day2 ? (allBlocks[`${currentWeek}-${day2}`] || []) : null;
