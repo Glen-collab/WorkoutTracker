@@ -4,12 +4,11 @@ import TrackingInputs from './TrackingInputs';
 import { getMotivationalMessage } from '../../data/exerciseMotivation';
 import { isFunctional } from './DailyTonnage';
 import { applyExerciseDefaults } from '../../data/exerciseDefaults';
-import SWAP_INDEX from '../../data/exerciseSwapIndex.json';
+import { getExerciseList, getExerciseByName } from '../../data/exerciseIndex';
 import { computeTargetTime, SPRINT_DISTANCE_BY_KEY } from '../../utils/sprintTargets';
 
-// name -> swap-index entry, built once. Lets a strength exercise find its
-// muscle category to suggest same-muscle substitutes.
-const SWAP_BY_NAME = new Map(SWAP_INDEX.list.map((e) => [e.name.toLowerCase(), e]));
+// name -> exercise-index entry (see data/exerciseIndex.js) lets a strength
+// exercise find its muscle category to suggest same-muscle substitutes.
 
 function showToast(message) {
   const toast = document.createElement('div');
@@ -1203,7 +1202,8 @@ export default function ExerciseCard({
   // rower for a bike is a better answer there than a library search.
   const renderSwap = () => {
     if (inputLocked) return null;
-    const cur = SWAP_BY_NAME.get((ex.name || '').toLowerCase());
+    const cur = getExerciseByName(ex.name);
+    const all = getExerciseList();
     const cat = cur?.category;
     const mvs = cur?.movement || [];
     // Match on the most SPECIFIC movement tag first. Core exercises are tagged
@@ -1216,11 +1216,11 @@ export default function ExerciseCard({
     const q = swapSearch.trim().toLowerCase();
 
     const sameCat = (e) => e.category === cat && e.name !== ex.name;
-    const byTag = (tag) => SWAP_INDEX.list.filter(e => sameCat(e) && (!tag || (e.movement || []).includes(tag)));
+    const byTag = (tag) => all.filter(e => sameCat(e) && (!tag || (e.movement || []).includes(tag)));
 
     let results = [];
     if (q) {
-      results = SWAP_INDEX.list.filter(e => e.name.toLowerCase().includes(q) && e.name !== ex.name).slice(0, 40);
+      results = all.filter(e => e.name.toLowerCase().includes(q) && e.name !== ex.name).slice(0, 40);
     } else if (cat) {
       if (mvs.length) {
         results = byTag(narrow);
@@ -1230,10 +1230,10 @@ export default function ExerciseCard({
         // case. Their subcategory IS the pattern: a butt kick is a sprint
         // drill, a foam roll is myofascial, and offering one in place of the
         // other is useless. Narrow to the same family, widen only if thin.
-        results = SWAP_INDEX.list.filter((e) => sameCat(e) && e.sub === cur.sub);
-        if (results.length < 5) results = SWAP_INDEX.list.filter(sameCat);
+        results = all.filter((e) => sameCat(e) && e.sub === cur.sub);
+        if (results.length < 5) results = all.filter(sameCat);
       } else {
-        results = SWAP_INDEX.list.filter(sameCat);
+        results = all.filter(sameCat);
       }
     }
     const capped = (!q && !showAllCat) ? results.slice(0, 10) : results;

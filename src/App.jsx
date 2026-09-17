@@ -12,7 +12,7 @@ import CompletionModal from './components/modals/CompletionModal';
 import CongratulationsModal from './components/modals/CongratulationsModal';
 import SessionRecapModal from './components/modals/SessionRecapModal';
 import { appendScratchpadNote } from './utils/scratchpad';
-import SWAP_INDEX from './data/exerciseSwapIndex.json';
+import { getExerciseByName, refreshExerciseIndex } from './data/exerciseIndex';
 import { cnsLoadForDay } from './utils/cnsLoadCalc';
 import { computeTargetTime } from './utils/sprintTargets';
 import { stepVisibleDay, getVisibleDays } from './utils/visibleDays';
@@ -31,11 +31,6 @@ import CastTVDisplay from './components/tv/CastTVDisplay';
 import KioskScreen from './components/kiosk/KioskScreen';
 
 // Check if TV mode requested via /tv path or ?tv=1 param
-// name -> library entry, for filling in videos a saved program never baked.
-const SWAP_BY_NAME = new Map(
-  (SWAP_INDEX.list || []).map((e) => [String(e.name || '').trim().toLowerCase(), e]),
-);
-
 const isTVMode = window.location.pathname === '/tv' || new URLSearchParams(window.location.search).get('tv') === '1';
 const isStaticTV = window.location.pathname === '/tv/static';
 const isKioskMode = window.location.pathname === '/kiosk';
@@ -83,6 +78,10 @@ export default function App() {
 
   const state = useTrackerState();
   const api = useTrackerAPI();
+
+  // Fetch the latest exercise list in the background; swaps and fallback
+  // videos use it as soon as it lands (see data/exerciseIndex.js).
+  useEffect(() => { refreshExerciseIndex(); }, []);
 
   const {
     screen, setScreen,
@@ -557,7 +556,7 @@ export default function App() {
               if (!Array.isArray(block?.exercises)) continue;
               for (const ex of block.exercises) {
                 if (!ex?.name || (ex.youtube || '').trim()) continue;
-                const lib = SWAP_BY_NAME.get(ex.name.trim().toLowerCase());
+                const lib = getExerciseByName(ex.name);
                 if (lib?.video) ex.youtube = `https://iframe.videodelivery.net/${lib.video}`;
               }
             }
